@@ -104,6 +104,16 @@ const ProductSearchDialog = ({
     }
   }, [showDialogProduct, products, selectedBodega, initialSelectedProducts]);
 
+
+  const showNoStockToast = useCallback((productName) => {
+    toast.current?.show({
+      severity: "warn",
+      summary: "Sin existencia",
+      detail: `El producto ${productName || "seleccionado"} no tiene existencia disponible.`,
+      life: 2800,
+    });
+  }, []);
+
   const filteredProducts = useMemo(() => {
     const criteria = searchTerm.trim().toLowerCase();
     if (!criteria) return localProducts;
@@ -146,6 +156,11 @@ const ProductSearchDialog = ({
   }, [selectedProducts]);
 
   const handleCantidadChange = (producto, nuevaCantidad) => {
+    if ((producto.existencia_total || 0) <= 0) {
+      showNoStockToast(producto?.nombreproducto);
+      return;
+    }
+
     const cantidadFinal = Math.min(nuevaCantidad || 0, producto.existencia_total || 0);
 
     const updatedProducts = localProducts.map((p) =>
@@ -157,6 +172,12 @@ const ProductSearchDialog = ({
   };
 
   const handleCantidadBodegaChange = (producto, bodegaId, nuevaCantidad) => {
+    const targetBodega = producto.bodegas.find((b) => b.codigobodega === bodegaId);
+    if ((targetBodega?.existencia || 0) <= 0) {
+      showNoStockToast(producto?.nombreproducto);
+      return;
+    }
+
     const updatedProducts = localProducts.map((p) => {
       if (p.uniqueKey === producto.uniqueKey) {
         const updatedBodegas = p.bodegas.map((b) =>
@@ -199,7 +220,10 @@ const ProductSearchDialog = ({
                 )
               }
               min={0}
-              max={bodega.existencia}
+              max={bodega.existencia || 0}
+              onFocus={() => {
+                if ((bodega.existencia || 0) <= 0) showNoStockToast(product?.nombreproducto);
+              }}
               showButtons
               mode="decimal"
               locale="en-US"
@@ -408,7 +432,10 @@ const ProductSearchDialog = ({
               onValueChange={(e) => handleCantidadChange(rowData, e.value)}
               disabled={isMultiBodega}
               min={0}
-              max={rowData.existencia_total}
+              max={rowData.existencia_total || 0}
+              onFocus={() => {
+                if ((rowData.existencia_total || 0) <= 0) showNoStockToast(rowData?.nombreproducto);
+              }}
               showButtons
               mode="decimal"
               locale="en-US"
