@@ -1,0 +1,43 @@
+.clientes-page {
+  padding-top: 0.25rem;
+}
+
+.clientes-title {
+  margin-bottom: 0.6rem;
+}
+
+.clientes-toolbar {
+  border: 0;
+  padding: 0;
+}
+
+.clientes-search-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.clientes-search-input {
+  width: min(420px, 55vw);
+}
+
+.clientes-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.clientes-table-wrapper {
+  margin-top: 0.6rem;
+}
+
+@media (max-width: 768px) {
+  .clientes-search-group,
+  .clientes-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .clientes-search-input {
+    width: 100%;
+  }
+}
