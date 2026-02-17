@@ -106,11 +106,15 @@ const EntregasList = ({
 
   const handleCantidadEntregarInput = useCallback(
     (e, rowData) => {
-      const incoming = e.value;
-      const parsedIncoming = toNumber(incoming);
+      const rawValue = e?.originalEvent?.target?.value;
+      let parsedIncoming = toNumber(e.value);
       const saldo = toNumber(rowData.saldo);
 
-      if (!incoming) {
+      if ((e.value === null || e.value === undefined) && rawValue?.includes(",")) {
+        parsedIncoming = toNumber(rawValue.replace(",", "."));
+      }
+
+      if (!rawValue || parsedIncoming <= 0) {
         setCantidadesEntregar((prev) => ({ ...prev, [rowData.id]: null }));
         return;
       }
@@ -230,8 +234,9 @@ const EntregasList = ({
         onValueChange={(e) => handleCantidadEntregarInput(e, rowData)}
         minFractionDigits={2}
         maxFractionDigits={2}
-        locale="es-CO"
+        locale="en-US"
         inputClassName="delivery-quantity-input"
+        useGrouping={false}
       />
     );
   };

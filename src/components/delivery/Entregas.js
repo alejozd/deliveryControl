@@ -32,12 +32,9 @@ function Entregas() {
   const filteredProducts = useMemo(() => {
     if (!showOnlyPending) return products;
 
-    return products
-      .map((factura) => ({
-        ...factura,
-        detalle: (factura.detalle || []).filter((item) => toNumber(item.saldo) > 0),
-      }))
-      .filter((factura) => factura.detalle.length > 0);
+    return products.filter((factura) =>
+      (factura.detalle || []).some((item) => toNumber(item.saldo) > 0)
+    );
   }, [products, showOnlyPending]);
 
   const handleUpdateAceptapotradatos = useCallback((idcliente, accepted) => {
