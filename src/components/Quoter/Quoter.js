@@ -1140,21 +1140,31 @@ const Quoter = ({ onSave, quotationData, user }) => {
     return missing;
   }, [emptyFields, selectedBodega, selectedProducts.length]);
 
-  const canSaveQuotation = useCallback(() => missingRequiredFields.length === 0, [missingRequiredFields]);
+  const canOpenSaveDialog = useCallback(
+    () => Boolean(selectedCustomer?.idcliente) && Boolean(selectedBodega || selectedBodega === "-1") && selectedProducts.length > 0,
+    [selectedBodega, selectedCustomer?.idcliente, selectedProducts.length]
+  );
 
   const handleOpenSaveDialog = () => {
     setShowValidationErrors(true);
 
-    if (!canSaveQuotation()) {
+    if (!canOpenSaveDialog()) {
       toast.current?.show({
         severity: "warn",
-        summary: "Campos pendientes",
-        detail: `Completa los campos requeridos: ${missingRequiredFields.slice(0, 3).join(", ")}${
-          missingRequiredFields.length > 3 ? "..." : ""
-        }`,
+        summary: "Datos mínimos pendientes",
+        detail: "Selecciona cliente, bodega y al menos un producto para continuar.",
         life: 3200,
       });
       return;
+    }
+
+    if (missingRequiredFields.length > 0) {
+      toast.current?.show({
+        severity: "info",
+        summary: "Cliente con datos incompletos",
+        detail: "La cotización se puede guardar con información parcial del cliente, como en el flujo original.",
+        life: 3600,
+      });
     }
 
     setShowDialog(true);
