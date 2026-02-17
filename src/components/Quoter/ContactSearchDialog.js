@@ -10,7 +10,7 @@ import ContactCreation from "../ContactCreation";
 import { Toolbar } from "primereact/toolbar";
 import { Toast } from "primereact/toast";
 import config from "../../Config";
-import "./SearchDialogListBox.css";
+import "../../styles/quoter/search-dialog-listbox.css";
 
 const ContactSearchDialog = ({
   showDialogContact,

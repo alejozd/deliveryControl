@@ -9,7 +9,7 @@ import { Toast } from "primereact/toast";
 import CardDashboard from "./CardDashboard";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import { Dialog } from "primereact/dialog";
-import "./SalesDashboard.css";
+import "../../styles/reports/sales-dashboard.css";
 import { segments, clients, salesData, salesDataByProduct } from "./mockData";
 
 const formatCurrency = (value = 0) =>

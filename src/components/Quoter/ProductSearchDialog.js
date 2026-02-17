@@ -5,7 +5,7 @@ import { InputNumber } from "primereact/inputnumber";
 import { Column } from "primereact/column";
 import { DataTable } from "primereact/datatable";
 import { Toast } from "primereact/toast";
-import "./SearchDialogListBox.css";
+import "../../styles/quoter/search-dialog-listbox.css";
 
 const ProductSearchDialog = ({
   showDialogProduct,

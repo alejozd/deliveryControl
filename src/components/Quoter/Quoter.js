@@ -20,7 +20,7 @@ import AdditionalContacts from "./AdditionalContacts";
 import config from "../../Config";
 import axios from "axios";
 import ClientCreation from "../ClientCreation";
-import "./Quoter.css";
+import "../../styles/quoter/quoter.css";
 
 const Quoter = ({ onSave, quotationData, user }) => {
   let emptyProduct = {

@@ -13,7 +13,7 @@ import Potradatos from "./Potradatos";
 import ClientCreationAddiData from "./ClientCreationAddiData";
 import ClientCreationComercialData from "./ClientCreationComercialData";
 import ClientCreationFELData from "./ClientCreationFELData";
-import "../index.css";
+import "../styles/base/index.css";
 
 const ClientCreation = ({
   visible,

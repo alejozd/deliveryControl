@@ -7,7 +7,7 @@ import { Card } from "primereact/card";
 import { Message } from "primereact/message";
 import { Divider } from "primereact/divider";
 import config from "./Config";
-import "./Login.css";
+import "./styles/base/login.css";
 
 const INITIAL_FORM = {
   nombre: "",

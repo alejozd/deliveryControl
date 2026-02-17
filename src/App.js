@@ -5,7 +5,7 @@ import Content from "./components/content/Content";
 import axios from "axios";
 import Login from "./Login";
 import config from "./Config";
-import "./App.css";
+import "./styles/base/app.css";
 
 function App() {
   const [sidebarVisible, setSidebarVisible] = useState(false);

@@ -7,7 +7,7 @@ import { IconField } from "primereact/iconfield";
 import { InputIcon } from "primereact/inputicon";
 import ClientCreation from "../ClientCreation";
 import { Toolbar } from "primereact/toolbar";
-import "./SearchDialogListBox.css";
+import "../../styles/quoter/search-dialog-listbox.css";
 
 const CustomerSearchDialog = ({
   showDialogCustomer,

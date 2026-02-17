@@ -1,6 +1,6 @@
 import React from "react";
 import { Card } from "primereact/card";
-import "./CardDashboard.css"; // Archivo CSS personalizado
+import "../../styles/reports/card-dashboard.css"; // Archivo CSS personalizado
 
 const CardDashboard = ({ title, value, icon, iconBgColor, borderColor }) => {
   return (

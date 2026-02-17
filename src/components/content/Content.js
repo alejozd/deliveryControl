@@ -13,7 +13,7 @@ import ClientContactAssociation from "../ClientContactAssociation";
 import UserPermission from "../UserPermission";
 import SalesDashboard from "../Reports/SalesDashboard";
 import NavBar from "./Navbar";
-import "./CustomCard.css";
+import "../../styles/components/custom-card.css";
 
 const Content = ({ setSidebarVisible, user, empresa }) => {
   // const [sidebarVisible, setSidebarVisible] = useState(false);
