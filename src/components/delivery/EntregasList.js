@@ -107,12 +107,10 @@ const EntregasList = ({
   const handleCantidadEntregarInput = useCallback(
     (e, rowData) => {
       const rawValue = e?.originalEvent?.target?.value;
-      let parsedIncoming = toNumber(e.value);
       const saldo = toNumber(rowData.saldo);
-
-      if ((e.value === null || e.value === undefined) && rawValue?.includes(",")) {
-        parsedIncoming = toNumber(rawValue.replace(",", "."));
-      }
+      const parsedFromEvent = toNumber(e.value);
+      const parsedFromRaw = toNumber(String(rawValue || "").replace(",", "."));
+      const parsedIncoming = parsedFromRaw > 0 ? parsedFromRaw : parsedFromEvent;
 
       if (!rawValue || parsedIncoming <= 0) {
         setCantidadesEntregar((prev) => ({ ...prev, [rowData.id]: null }));
@@ -126,13 +124,16 @@ const EntregasList = ({
           detail: `El valor supera el saldo disponible (${saldo}).`,
           life: 2500,
         });
-        setCantidadesEntregar((prev) => ({ ...prev, [rowData.id]: saldo }));
+        setCantidadesEntregar((prev) => ({
+          ...prev,
+          [rowData.id]: Number(saldo.toFixed(2)),
+        }));
         return;
       }
 
       setCantidadesEntregar((prev) => ({
         ...prev,
-        [rowData.id]: parsedIncoming,
+        [rowData.id]: Number(parsedIncoming.toFixed(2)),
       }));
     },
     [toast]
@@ -228,7 +229,7 @@ const EntregasList = ({
     return (
       <InputNumber
         readOnly={saldo <= 0}
-        value={cantidadesEntregar[rowData.id] ?? null}
+        value={Math.min(toNumber(cantidadesEntregar[rowData.id]), saldo) || null}
         min={0.01}
         onValueChange={(e) => handleCantidadEntregarInput(e, rowData)}
         minFractionDigits={2}
