@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import config from "../Config";
 import { Panel } from "primereact/panel";
 import { DataTable } from "primereact/datatable";
@@ -11,28 +11,41 @@ import { MultiSelect } from "primereact/multiselect";
 import { Tooltip } from "primereact/tooltip";
 import { InputSwitch } from "primereact/inputswitch";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Message } from "primereact/message";
 import ContactCreation from "./ContactCreation";
 import useExcelExport from "./hooks/useExcelExport";
 import axios from "axios";
+import "../styles/modules/contacto-adicional.css";
+
+const getFriendlyErrorMessage = (error) => {
+  const rawMessage = String(error?.message || error || "");
+
+  if (rawMessage.includes("Network Error") || rawMessage.includes("Failed to fetch")) {
+    return "No se pudo conectar con el servidor. Verifica tu conexión e inténtalo de nuevo.";
+  }
+
+  return "Ocurrió un error al procesar la solicitud. Inténtalo nuevamente en unos minutos.";
+};
 
 const ContactoAdicional = () => {
   const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaContactos`;
   const apiUrlSegmentacion = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaSegmentacion`;
   const toast = useRef(null);
+  const dt = useRef(null);
+
   const [contactos, setContactos] = useState([]);
-  const [filteredContactos, setFilteredContactos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
   const [dialogVisible, setDialogVisible] = useState(false);
   const [selectedContacto, setSelectedContacto] = useState(null);
-  const [segmentos, setSegmentos] = useState([]); // Estado para almacenar los segmentos
-  const [selectedSegmentos, setSelectedSegmentos] = useState(null); // Estado para el filtro de segmentos
-  const [exportAllColumns, setExportAllColumns] = useState(false); // Estado para el toggle
-  const { exportToExcel } = useExcelExport("contactos_adicionales");
-  const dt = useRef(null); // Creamos una referencia al DataTable
+  const [segmentos, setSegmentos] = useState([]);
+  const [selectedSegmentos, setSelectedSegmentos] = useState([]);
+  const [exportAllColumns, setExportAllColumns] = useState(false);
 
-  // Definir los títulos de columna personalizados
+  const { exportToExcel } = useExcelExport("contactos_adicionales");
+
   const columnTitles = {
     idcontacto: "ID de Contacto",
     nombreCa: "Nombre",
@@ -46,88 +59,59 @@ const ContactoAdicional = () => {
   const handleSearch = useCallback(async () => {
     try {
       setLoading(true);
-      const requestData = {
-        criterio: searchTerm,
-      };
+      setErrorMessage("");
 
-      const response = await axios.put(apiUrl, requestData);
-      if (response.data.status === 200) {
-        setContactos(response.data.data);
-      } else {
-        setErrorMessage(response.data.error);
-        console.error("Error en la respuesta:", response.data.error);
+      const response = await axios.put(apiUrl, { criterio: searchTerm });
+      if (response.data?.status === 200) {
+        setContactos(Array.isArray(response.data.data) ? response.data.data : []);
+        return;
       }
+
+      setErrorMessage(response.data?.error || "No se pudo consultar el listado de contactos.");
     } catch (error) {
-      if (error.message === "Network Error") {
-        setErrorMessage(
-          "Error de red: No se puede conectar al servidor. Por favor, verifica tu conexión a Internet o inténtalo más tarde."
-        );
-        console.error("Error de red:", error.message);
-      } else {
-        setErrorMessage(`Error al realizar la solicitud: ${error.message}`);
-        console.error("Error al realizar la solicitud:", error.message);
-      }
-      console.error("Error al realizar la solicitud:", error.message);
+      setErrorMessage(getFriendlyErrorMessage(error));
     } finally {
       setLoading(false);
     }
   }, [apiUrl, searchTerm]);
 
-  const filterContactos = useCallback(async () => {
-    let filtered = contactos;
+  const loadSegmentos = useCallback(async () => {
+    try {
+      const response = await axios.get(apiUrlSegmentacion);
+      setSegmentos(Array.isArray(response.data?.result) ? response.data.result : []);
+    } catch (error) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Segmentos",
+        detail: "No fue posible cargar los segmentos de filtro.",
+        life: 2800,
+      });
+    }
+  }, [apiUrlSegmentacion]);
 
-    if (selectedSegmentos && selectedSegmentos.length > 0) {
-      filtered = filtered.filter((contacto) =>
-        selectedSegmentos.includes(contacto.nombresegmento)
-      );
+  useEffect(() => {
+    handleSearch();
+    loadSegmentos();
+  }, [handleSearch, loadSegmentos]);
+
+  const filteredContactos = useMemo(() => {
+    if (!selectedSegmentos.length) {
+      return contactos;
     }
 
-    setFilteredContactos(filtered);
+    return contactos.filter((contacto) => selectedSegmentos.includes(contacto.nombresegmento));
   }, [contactos, selectedSegmentos]);
 
-  useEffect(() => {
-    // Cargar contactos
-    handleSearch();
-
-    // Cargar segmentos
-    axios
-      .get(apiUrlSegmentacion)
-      .then((response) => {
-        // console.log("Segmentos cargados:", response.data.result);
-        setSegmentos(response.data.result); // Asume que la respuesta es un array de segmentos
-      })
-      .catch((error) => {
-        console.error("Error al cargar segmentos:", error);
-      });
-  }, [apiUrlSegmentacion, handleSearch]);
-
-  useEffect(() => {
-    // Filtrar contactos cuando cambien los segmentos seleccionados o el término de búsqueda
-    filterContactos();
-  }, [contactos, selectedSegmentos, filterContactos]);
-
   const segmentoFilterTemplate = (options) => {
-    // Maneja cambios en el MultiSelect
     const handleSegmentoChange = (e) => {
-      const selectedSegmentos = e.value
-        ? e.value.map((segmento) => segmento.nombresegmento)
-        : []; // Asegúrate de que sea un array vacío si e.value es null
-      // console.log("Segmentos seleccionados:", selectedSegmentos);
-
-      setSelectedSegmentos(selectedSegmentos);
-
-      // Aplica el filtro como un array para que se maneje correctamente en el DataTable
-      options.filterApplyCallback(selectedSegmentos);
+      const selected = e.value ? e.value.map((segmento) => segmento.nombresegmento) : [];
+      setSelectedSegmentos(selected);
+      options.filterApplyCallback(selected);
     };
-
-    // Asegúrate de que selectedSegmentos no sea null
-    const filteredSelectedSegmentos = selectedSegmentos || [];
 
     return (
       <MultiSelect
-        value={segmentos.filter((seg) =>
-          filteredSelectedSegmentos.includes(seg.nombresegmento)
-        )} // Muestra los elementos seleccionados actualmente
+        value={segmentos.filter((seg) => selectedSegmentos.includes(seg.nombresegmento))}
         options={segmentos}
         onChange={handleSegmentoChange}
         placeholder="Seleccionar Segmentos"
@@ -142,26 +126,13 @@ const ContactoAdicional = () => {
   };
 
   const handleCreateContact = () => {
-    setSelectedContacto(null); // Limpiar contacto seleccionado para creación
+    setSelectedContacto(null);
     setDialogVisible(true);
   };
 
   const handleEditContact = (contacto) => {
-    // console.log("Contacto seleccionado: ", contacto);
-    setSelectedContacto(contacto); // Establecer contacto seleccionado para edición
+    setSelectedContacto(contacto);
     setDialogVisible(true);
-  };
-
-  const handleDeleteContact = (contacto) => {
-    setSelectedContacto(contacto); // Establecer contacto seleccionado para eliminación
-    confirmDialog({
-      message: `¿Estás seguro de que deseas eliminar al contacto ${contacto.nombreCa}?`,
-      header: "Confirmación de Eliminación",
-      icon: "pi pi-exclamation-triangle",
-      acceptLabel: "Sí",
-      rejectLabel: "No",
-      accept: () => deleteContact(contacto),
-    });
   };
 
   const deleteContact = async (contacto) => {
@@ -170,9 +141,7 @@ const ContactoAdicional = () => {
         `${config.apiUrl}/your-endpoint/${contacto.idcontacto}`
       );
       if (response.status === 200) {
-        setContactos((prev) =>
-          prev.filter((c) => c.idcontacto !== contacto.idcontacto)
-        );
+        setContactos((prev) => prev.filter((c) => c.idcontacto !== contacto.idcontacto));
         toast.current.show({
           severity: "success",
           summary: "Contacto Eliminado",
@@ -197,18 +166,24 @@ const ContactoAdicional = () => {
     }
   };
 
-  const refreshContacts = (message, severity) => {
-    handleSearch(); // Actualiza la lista de contactos después de crear o actualizar un contacto
-    toast.current.show({
-      severity: severity,
-      summary: message,
-      //   detail: response.data.result,
-      life: 3000,
+  const handleDeleteContact = (contacto) => {
+    setSelectedContacto(contacto);
+    confirmDialog({
+      message: `¿Estás seguro de que deseas eliminar al contacto ${contacto.nombreCa}?`,
+      header: "Confirmación de Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí",
+      rejectLabel: "No",
+      accept: () => deleteContact(contacto),
     });
   };
 
+  const refreshContacts = (message, severity) => {
+    handleSearch();
+    toast.current.show({ severity, summary: message, life: 3000 });
+  };
+
   const handleExportExcel = () => {
-    // Obtener las columnas del DataTable
     const columns = React.Children.toArray(dt.current?.props.children)
       .filter((col) => col.props.field)
       .map((col) => ({
@@ -216,48 +191,44 @@ const ContactoAdicional = () => {
         hidden: col.props.hidden,
       }));
 
-    exportToExcel(dt.current.filteredValue || contactos, columns, {
+    exportToExcel(dt.current?.filteredValue || filteredContactos, columns, {
       columnTitles,
       exportAllColumns,
-      hiddenColumns: ["idcontacto"], // Excluir la columna idcontacto
+      hiddenColumns: ["idcontacto"],
     });
   };
 
   return (
-    <div>
+    <div className="contacto-adicional-page">
       <Toast ref={toast} />
       <ConfirmDialog />
       <Tooltip target=".export-buttons>button" position="bottom" />
-      <h1>Contactos Adicionales</h1>
-      <Panel header="Listado de Contactos Adicionales" toggleable>
+
+      <div className="contacto-adicional-header">
+        <h1 className="contacto-adicional-title">Contactos Adicionales</h1>
+        <span className="contacto-adicional-counter">{filteredContactos.length} registros</span>
+      </div>
+
+      <Panel header="Listado de Contactos Adicionales" toggleable className="contacto-adicional-panel">
         <Toolbar
+          className="contacto-adicional-toolbar"
           start={
-            <>
+            <div className="contacto-adicional-search-group">
               <InputText
                 placeholder="Buscar contacto..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleSearch();
-                  }
-                }}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 tooltip="Buscar contacto por nombre o identificación"
                 tooltipOptions={{ position: "top" }}
+                className="contacto-adicional-search-input"
               />
-              <Button icon="pi pi-search" onClick={handleSearch} />
-            </>
+              <Button icon="pi pi-search" label="Buscar" onClick={handleSearch} />
+            </div>
           }
           end={
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <Button
-                label="Nuevo"
-                icon="pi pi-plus"
-                severity="help"
-                outlined
-                raised
-                onClick={handleCreateContact}
-              />
+            <div className="contacto-adicional-actions">
+              <Button label="Nuevo" icon="pi pi-plus" severity="help" outlined raised onClick={handleCreateContact} />
               <Button
                 label="Editar"
                 icon="pi pi-pencil"
@@ -286,30 +257,25 @@ const ContactoAdicional = () => {
                 onClick={handleExportExcel}
                 className="custom-excel-button"
               />
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
+              <div className="contacto-adicional-export-toggle" title="Define si exportar todas las columnas o solo las visibles">
                 <InputSwitch
                   checked={exportAllColumns}
                   onChange={(e) => setExportAllColumns(e.value)}
                   tooltip="Exportar todas las columnas"
+                  tooltipOptions={{ position: "top" }}
                 />
-                <label>
-                  {exportAllColumns ? "Exportar todas" : "Exportar visibles"}
-                </label>
+                <label>{exportAllColumns ? "Todas" : "Visibles"}</label>
               </div>
             </div>
           }
-        ></Toolbar>
+        />
       </Panel>
-      <div className="card">
+
+      {errorMessage ? <Message severity="error" text={errorMessage} /> : null}
+
+      <div className="card contacto-adicional-table-wrapper">
         <DataTable
           ref={dt}
-          // value={contactos}
           value={filteredContactos}
           dataKey="idcontacto"
           loading={loading}
@@ -325,6 +291,7 @@ const ContactoAdicional = () => {
           selection={selectedContacto}
           onSelectionChange={(e) => setSelectedContacto(e.value)}
           filterDisplay="menu"
+          responsiveLayout="scroll"
         >
           <Column
             selectionMode="single"
@@ -344,22 +311,19 @@ const ContactoAdicional = () => {
             filterMatchMode="in"
             filterElement={segmentoFilterTemplate}
             filterField="nombresegmento"
-            // showFilterMenu={false}
             showClearButton={false}
             showApplyButton={false}
             showAddButton={false}
             showFilterMenuOptions={false}
-            // filterMenuStyle={{ width: "14rem" }}
-            // style={{ minWidth: "14rem" }}
             sortable
           />
         </DataTable>
       </div>
+
       {dialogVisible && (
         <ContactCreation
           visible={dialogVisible}
           onHide={() => setDialogVisible(false)}
-          // idCliente={idCliente ? idCliente : null}
           idCliente={0}
           selectedContact={selectedContacto}
           refreshContacts={refreshContacts}

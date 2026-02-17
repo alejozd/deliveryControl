@@ -1,0 +1,70 @@
+.app-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-radius: 12px;
+  margin-bottom: 0.55rem;
+  background: linear-gradient(90deg, #ffffff 0%, #f7fbff 100%);
+  border: 1px solid #d9e8f6;
+  box-shadow: 0 4px 14px rgba(15, 57, 94, 0.08);
+}
+
+.app-navbar__start {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-navbar__logo {
+  width: 70px;
+  height: 37px;
+  object-fit: contain;
+}
+
+.app-navbar__title-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-navbar__title {
+  font-weight: 700;
+  color: #123b5f;
+}
+
+.app-navbar__company {
+  font-weight: 700;
+  font-size: 0.98rem;
+  padding: 0.45rem 0.8rem;
+}
+
+.app-navbar__end {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-navbar__user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+
+.app-navbar__user-info small {
+  color: #667788;
+}
+
+.app-navbar__avatar {
+  background: #1f7ab8;
+  color: #fff;
+}
+
+@media (max-width: 900px) {
+  .app-navbar .p-toolbar-group-center {
+    display: none;
+  }
+
+  .app-navbar__title {
+    display: none;
+  }
+}

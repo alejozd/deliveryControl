@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import { Sidebar } from "primereact/sidebar";
 import { PanelMenu } from "primereact/panelmenu";
 import { useNavigate } from "react-router-dom";
@@ -14,25 +14,21 @@ import {
   FaAddressBook,
   FaUserFriends,
   FaKey,
+  FaBuilding,
 } from "react-icons/fa";
-import "./SideBar.css";
+import "../../styles/layout/sidebar.css";
 
-const SideBar = ({ sidebarVisible, user, onLogout }) => {
+const SideBar = ({ sidebarVisible, setSidebarVisible, user, onLogout }) => {
   const navigate = useNavigate();
-  const [visible, setVisible] = useState(false);
-  const version = "Versión: " + packageJson.version;
 
-  const toggleSidebar = () => {
-    setVisible(true);
-  };
-
-  useEffect(() => {
-    toggleSidebar();
-  }, [sidebarVisible]);
-
-  const isAllowedUser = () => {
+  const isAllowedUser = useMemo(() => {
     const allowedUsers = ["ADMINISTRADOR", "SISTEMAS"];
     return user && allowedUsers.includes(user.name);
+  }, [user]);
+
+  const goTo = (path, options) => {
+    setSidebarVisible(false);
+    navigate(path, options);
   };
 
   const items = [
@@ -42,18 +38,12 @@ const SideBar = ({ sidebarVisible, user, onLogout }) => {
         {
           label: "Entregas",
           icon: <FaTruck className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/entregas");
-          },
+          command: () => goTo("/entregas"),
         },
         {
           label: "Productos",
           icon: <FaBox className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/productos");
-          },
+          command: () => goTo("/productos"),
         },
       ],
     },
@@ -63,18 +53,12 @@ const SideBar = ({ sidebarVisible, user, onLogout }) => {
         {
           label: "Consulta Entregas",
           icon: <FaBriefcase className="custom-icon" />,
-          command: async () => {
-            setVisible(false);
-            await navigate("/consultaentregas");
-          },
+          command: () => goTo("/consultaentregas"),
         },
         {
           label: "Pendientes por Entregar",
           icon: <FaClock className="custom-icon" />,
-          command: async () => {
-            setVisible(false);
-            await navigate("/consultapendientes");
-          },
+          command: () => goTo("/consultapendientes"),
         },
       ],
     },
@@ -85,10 +69,7 @@ const SideBar = ({ sidebarVisible, user, onLogout }) => {
         {
           label: "Dashboard Ventas",
           icon: "pi pi-chart-line",
-          command: async () => {
-            setVisible(false);
-            await navigate("/salesdashboard");
-          },
+          command: () => goTo("/salesdashboard"),
         },
       ],
     },
@@ -98,52 +79,33 @@ const SideBar = ({ sidebarVisible, user, onLogout }) => {
         {
           label: "Clientes",
           icon: <FaUsers className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/clientes", { state: { user } });
-          },
-          // visible: isAllowedUser(),
+          command: () => goTo("/clientes", { state: { user } }),
         },
         {
           label: "Contactos",
           icon: <FaAddressBook className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/contactoadicional");
-          },
-          // visible: isAllowedUser(),
+          command: () => goTo("/contactoadicional"),
         },
         {
           label: "Asociar Clientes y Contactos",
           icon: <FaUserFriends className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/clientcontactassociation");
-          },
-          // visible: isAllowedUser(),
+          command: () => goTo("/clientcontactassociation"),
         },
         {
           label: "Cotizaciones",
           icon: <FaFileAlt className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/quoterlist", { state: { user } });
-          },
-          // visible: isAllowedUser(),
+          command: () => goTo("/quoterlist", { state: { user } }),
         },
       ],
     },
     {
-      label: "Configuración", // Nuevo grupo
+      label: "Configuración",
       items: [
         {
           label: "Permisos de usuario",
           icon: <FaKey className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/userpermission");
-          },
-          visible: isAllowedUser(),
+          command: () => goTo("/userpermission"),
+          visible: isAllowedUser,
         },
       ],
     },
@@ -151,27 +113,30 @@ const SideBar = ({ sidebarVisible, user, onLogout }) => {
       label: "Cerrar Sesión",
       icon: <FaSignOutAlt className="custom-icon" />,
       command: () => {
-        setVisible(false);
-        onLogout(); // Llama a la función de logout pasada por las props
+        setSidebarVisible(false);
+        onLogout();
       },
     },
   ];
 
   return (
-    <div className="card flex justify-content-left">
-      <Sidebar
-        visible={visible}
-        position="left"
-        onHide={() => setVisible(false)}
-        header={version}
-        closeIcon="pi pi-times"
-      >
-        <h2>Control de Entregas</h2>
-        <div className="card flex justify-content-center">
-          <PanelMenu model={items} className="w-full md:w-15rem" />
+    <Sidebar
+      visible={sidebarVisible}
+      position="left"
+      onHide={() => setSidebarVisible(false)}
+      className="app-sidebar"
+      header={
+        <div className="app-sidebar__header">
+          <div className="app-sidebar__title-wrap">
+            <FaBuilding className="app-sidebar__brand-icon" />
+            <span className="app-sidebar__title">Control de Entregas</span>
+          </div>
+          <small>Versión {packageJson.version}</small>
         </div>
-      </Sidebar>
-    </div>
+      }
+    >
+      <PanelMenu model={items} className="app-panelmenu" />
+    </Sidebar>
   );
 };
 

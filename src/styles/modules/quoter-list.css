@@ -1,0 +1,83 @@
+.quoter-list-page {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.quoter-toolbar {
+  border: 0;
+  padding: 0;
+}
+
+.quoter-toolbar__search {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.quoter-toolbar__dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: min(36rem, 100%);
+}
+
+.quoter-toolbar__dates .p-calendar,
+.quoter-toolbar__dates .p-inputtext,
+.quoter-toolbar__search-field,
+.quoter-toolbar__search-field .p-inputtext {
+  width: 100%;
+}
+
+.quoter-toolbar__search .p-inputtext {
+  width: min(22rem, 58vw);
+}
+
+.quoter-toolbar__action-btn {
+  min-width: 7.75rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.quoter-toolbar__action-btn .p-button-label {
+  white-space: nowrap;
+}
+
+.quoter-list-panel .p-panel-content {
+  padding-top: 0.5rem;
+}
+
+.quoter-main-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.quoter-table {
+  margin-top: 0.5rem;
+}
+
+.quoter-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.1rem;
+}
+
+.quoter-inline-error {
+  display: inline-block;
+  margin-top: 0.5rem;
+  color: #dc2626;
+}
+
+@media (max-width: 900px) {
+  .quoter-toolbar__dates,
+  .quoter-toolbar__search {
+    width: 100%;
+    flex-wrap: wrap;
+    grid-template-columns: 1fr;
+  }
+
+  .quoter-toolbar__search .p-inputtext {
+    width: 100%;
+  }
+}

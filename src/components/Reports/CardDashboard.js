@@ -1,10 +1,15 @@
 import React from "react";
 import { Card } from "primereact/card";
-import "./CardDashboard.css"; // Archivo CSS personalizado
+import "../../styles/reports/card-dashboard.css"; // Archivo CSS personalizado
 
-const CardDashboard = ({ title, value, icon, iconBgColor }) => {
+const CardDashboard = ({ title, value, icon, iconBgColor, borderColor }) => {
   return (
-    <Card className="card-dashboard">
+    <Card
+      className="card-dashboard"
+      style={{
+        border: `1px solid ${borderColor || "#e2e8f0"}`,
+      }}
+    >
       <div className="card-header">
         <h3 className="card-title">{title}</h3>
         <div className="card-icon" style={{ backgroundColor: iconBgColor }}>

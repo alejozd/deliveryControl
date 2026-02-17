@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
+import "../styles/modules/client-creation-sections.css";
 
 const ClientCreationComercialData = ({
   regimenList,
@@ -23,122 +24,132 @@ const ClientCreationComercialData = ({
   selectedaplicaBasereteICA,
   setSelectedAplicaBasereteICA,
 }) => {
-  const [error, setError] = useState(null);
+  const commercialFields = useMemo(
+    () => [
+      {
+        id: "idregimen",
+        label: "Régimen",
+        value: selectedRegimen,
+        onChange: setSelectedRegimen,
+        options: regimenList,
+        placeholder: "Seleccionar Régimen",
+      },
+      {
+        id: "idformadepago",
+        label: "Forma de pago",
+        value: selectedFormaPago,
+        onChange: setSelectedFormaPago,
+        options: formaPagoList,
+        placeholder: "Seleccionar Forma de pago",
+      },
+      {
+        id: "idlistaprecios",
+        label: "Lista de Precios",
+        value: selectedlistaprecios,
+        onChange: setSelectedlistaprecios,
+        options: listapreciosList,
+        placeholder: "Seleccionar Lista de Precios",
+      },
+    ],
+    [
+      formaPagoList,
+      listapreciosList,
+      regimenList,
+      selectedFormaPago,
+      selectedRegimen,
+      selectedlistaprecios,
+      setSelectedFormaPago,
+      setSelectedRegimen,
+      setSelectedlistaprecios,
+    ]
+  );
 
-  const handleDropdownChange = (setter) => (e) => {
-    if (e.value) {
-      setter(e.value);
-      setError(null); // Clear error on valid selection
-    } else {
-      setError("Debe seleccionar una opción válida.");
-    }
-  };
-
-  const handleCheckboxChange = (setter) => (e) => {
-    setter(e.checked);
-  };
+  const checkboxes = useMemo(
+    () => [
+      {
+        id: "idareaica",
+        label: "Área ICA",
+        checked: selectedareaIca,
+        onChange: setSelectedareaIca,
+      },
+      {
+        id: "idaplicaretefte",
+        label: "Aplica retención en la fuente",
+        checked: selectedaplicaReteFte,
+        onChange: setSelectedAplicaReteFte,
+      },
+      {
+        id: "idaplicabaseretefte",
+        label: "Aplica base de retención en la fuente",
+        checked: selectedaplicaBaseretefte,
+        onChange: setSelectedAplicaBaseretefte,
+      },
+      {
+        id: "idaplicabasereteIVA",
+        label: "Aplica base en retención de IVA",
+        checked: selectedaplicaBasereteIVA,
+        onChange: setSelectedAplicaBasereteIVA,
+      },
+      {
+        id: "idaplicabasereteICA",
+        label: "Aplica base en retención de ICA",
+        checked: selectedaplicaBasereteICA,
+        onChange: setSelectedAplicaBasereteICA,
+      },
+    ],
+    [
+      selectedaplicaBasereteICA,
+      selectedaplicaBasereteIVA,
+      selectedaplicaBaseretefte,
+      selectedaplicaReteFte,
+      selectedareaIca,
+      setSelectedAplicaBasereteICA,
+      setSelectedAplicaBasereteIVA,
+      setSelectedAplicaBaseretefte,
+      setSelectedAplicaReteFte,
+      setSelectedareaIca,
+    ]
+  );
 
   return (
-    <div className="flex flex-column">
-      {error && <div className="error-message">{error}</div>}
-      <div className="labelinput">
-        <label htmlFor="idregimen">Régimen</label>
-        <Dropdown
-          className="inputtext"
-          id="idregimen"
-          value={selectedRegimen}
-          onChange={handleDropdownChange(setSelectedRegimen)}
-          options={regimenList}
-          optionLabel="label"
-          placeholder="Seleccionar Régimen"
-          aria-label="Seleccionar Régimen"
-        />
+    <div className="client-creation-section">
+      <small className="client-creation-section__hint">
+        Configura las condiciones comerciales y retenciones aplicables.
+      </small>
+
+      <div className="client-creation-section__grid">
+        {commercialFields.map((field) => (
+          <div className="labelinput" key={field.id}>
+            <label htmlFor={field.id}>{field.label}</label>
+            <Dropdown
+              className="inputtext"
+              id={field.id}
+              value={field.value}
+              onChange={(e) => field.onChange(e.value)}
+              options={field.options}
+              optionLabel="label"
+              placeholder={field.placeholder}
+              aria-label={field.label}
+            />
+          </div>
+        ))}
       </div>
-      <div className="labelinput">
-        <label htmlFor="idformadepago">Forma de pago</label>
-        <Dropdown
-          className="inputtext"
-          id="idformadepago"
-          value={selectedFormaPago}
-          onChange={handleDropdownChange(setSelectedFormaPago)}
-          options={formaPagoList}
-          optionLabel="label"
-          placeholder="Seleccionar Forma de pago"
-          aria-label="Seleccionar Forma de pago"
-        />
-      </div>
-      <div className="labelinput">
-        <label htmlFor="idlistaprecios">Lista de Precios</label>
-        <Dropdown
-          className="inputtext"
-          id="idlistaprecios"
-          value={selectedlistaprecios}
-          onChange={handleDropdownChange(setSelectedlistaprecios)}
-          options={listapreciosList}
-          optionLabel="label"
-          placeholder="Seleccionar Lista de Precios"
-          aria-label="Seleccionar Lista de Precios"
-        />
-      </div>
-      <div className="checkbox-container">
-        <div className="flex align-items-center">
-          <Checkbox
-            inputId="idareaica"
-            onChange={handleCheckboxChange(setSelectedareaIca)}
-            checked={selectedareaIca}
-            aria-label="Área ICA"
-          />
-          <label htmlFor="idareaica" className="ml-2">
-            Área ICA
-          </label>
-        </div>
-        <div className="flex align-items-center">
-          <Checkbox
-            inputId="idaplicaretefte"
-            onChange={handleCheckboxChange(setSelectedAplicaReteFte)}
-            checked={selectedaplicaReteFte}
-            aria-label="Aplica retención en la fuente"
-          />
-          <label htmlFor="idaplicaretefte" className="ml-2">
-            Aplica retención en la fuente
-          </label>
-        </div>
-        <div className="flex align-items-center">
-          <Checkbox
-            inputId="idaplicabaseretefte"
-            onChange={handleCheckboxChange(setSelectedAplicaBaseretefte)}
-            checked={selectedaplicaBaseretefte}
-            aria-label="Aplica base de retención en la fuente"
-          />
-          <label htmlFor="idaplicabaseretefte" className="ml-2">
-            Aplica base de retención en la fuente
-          </label>
-        </div>
-        <div className="flex align-items-center">
-          <Checkbox
-            inputId="idaplicabasereteIVA"
-            onChange={handleCheckboxChange(setSelectedAplicaBasereteIVA)}
-            checked={selectedaplicaBasereteIVA}
-            aria-label="Aplica base en retención de IVA"
-          />
-          <label htmlFor="idaplicabasereteIVA" className="ml-2">
-            Aplica base en retención de IVA
-          </label>
-        </div>
-        <div className="flex align-items-center">
-          <Checkbox
-            inputId="idaplicabasereteICA"
-            onChange={handleCheckboxChange(setSelectedAplicaBasereteICA)}
-            checked={selectedaplicaBasereteICA}
-            aria-label="Aplica base en retención de ICA"
-          />
-          <label htmlFor="idaplicabasereteICA" className="ml-2">
-            Aplica base en retención de ICA
-          </label>
-        </div>
+
+      <div className="client-creation-section__checks">
+        {checkboxes.map((item) => (
+          <div className="client-creation-section__check-item" key={item.id}>
+            <Checkbox
+              inputId={item.id}
+              onChange={(e) => item.onChange(e.checked)}
+              checked={item.checked}
+              aria-label={item.label}
+            />
+            <label htmlFor={item.id}>{item.label}</label>
+          </div>
+        ))}
       </div>
     </div>
   );
 };
 
-export default ClientCreationComercialData;
+export default React.memo(ClientCreationComercialData);

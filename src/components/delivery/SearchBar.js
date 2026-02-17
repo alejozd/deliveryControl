@@ -1,94 +1,115 @@
-// SearchBar.js
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Calendar } from "primereact/calendar";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { Toolbar } from "primereact/toolbar";
-import setupLocale from "../../config/localeConfig"; // Importar el locale
-import "../../App.css";
+import { Checkbox } from "primereact/checkbox";
+import setupLocale from "../../config/localeConfig";
+import "../../styles/modules/delivery.css";
 
-function SearchBar(props) {
-  const [errorMessage, setErrorMessage] = useState(""); // Estado para el mensaje de error
+function SearchBar({
+  selectedDate,
+  setSelectedDate,
+  searchTerm,
+  setSearchTerm,
+  showOnlyPending,
+  setShowOnlyPending,
+  handleSearch,
+  loading,
+}) {
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     setupLocale("es");
   }, []);
 
-  const handleSearch = () => {
+  const dayDifference = useMemo(() => {
     const today = new Date();
-    const selectedDate = new Date(props.selectedDate);
+    const selected = new Date(selectedDate);
 
-    if (isNaN(selectedDate)) {
-      setErrorMessage("Por favor, seleccione una fecha válida.");
-      return;
+    if (Number.isNaN(selected.getTime())) {
+      return Number.POSITIVE_INFINITY;
     }
 
-    const diffDays = Math.ceil((today - selectedDate) / (1000 * 60 * 60 * 24)); // Diferencia en días
+    return Math.ceil((today - selected) / (1000 * 60 * 60 * 24));
+  }, [selectedDate]);
 
-    if (diffDays > 15 && !props.searchTerm.trim()) {
-      setErrorMessage("Por favor, ingrese un criterio de búsqueda.");
-      return;
+  const validate = () => {
+    const selected = new Date(selectedDate);
+
+    if (Number.isNaN(selected.getTime())) {
+      setErrorMessage("Selecciona una fecha válida.");
+      return false;
+    }
+
+    if (dayDifference > 15 && !searchTerm.trim()) {
+      setErrorMessage(
+        "Para consultar más de 15 días atrás debes ingresar un criterio de búsqueda."
+      );
+      return false;
     }
 
     setErrorMessage("");
-    props.handleSearch();
+    return true;
   };
 
-  const handleKeyDown = (event) => {
-    if (event.key === "Enter") {
-      handleSearch();
-    }
+  const onSearch = () => {
+    if (!validate()) return;
+    handleSearch();
   };
 
   return (
     <div>
       <Toolbar
+        className="delivery-searchbar"
         start={
-          <div style={{ paddingTop: "3px" }}>
+          <div className="delivery-searchbar__left">
             <span className="p-float-label">
               <Calendar
                 inputId="fechaFacturas"
-                value={props.selectedDate}
-                onChange={(e) => props.setSelectedDate(e.value)}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.value)}
                 showIcon
                 dateFormat="dd/mm/yy"
-                // locale="es"
               />
               <label htmlFor="fechaFacturas">Fecha facturas</label>
             </span>
+
+            <div className="delivery-filter-toggle">
+              <Checkbox
+                inputId="soloPendientes"
+                checked={showOnlyPending}
+                onChange={(e) => setShowOnlyPending(e.checked)}
+              />
+              <label htmlFor="soloPendientes">Solo facturas con saldo pendiente</label>
+            </div>
           </div>
         }
         end={
-          <div className="flex" style={{ paddingTop: "3px" }}>
+          <div className="delivery-searchbar__actions">
             <span className="p-float-label">
               <InputText
-                style={{ width: "320px" }}
                 id="searchCriteria"
-                // placeholder="Num. factura, cédula o nombre cliente"
-                value={props.searchTerm}
-                onChange={(e) => props.setSearchTerm(e.target.value)}
-                onKeyPress={handleKeyDown}
-                className="mobile-input"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && onSearch()}
+                className="delivery-searchbar__input"
               />
               <label htmlFor="searchCriteria">
-                Num. factura, cédula o nombre cliente
+                Núm. factura, cédula o nombre del cliente
               </label>
             </span>
             <Button
               label="Buscar"
               icon="pi pi-search"
-              className="mr-2"
-              onClick={handleSearch}
+              onClick={onSearch}
+              loading={loading}
               raised
-              loading={props.loading}
-              style={{ marginLeft: "3px" }}
             />
           </div>
         }
       />
-      {errorMessage && (
-        <div style={{ color: "red", marginTop: "1em" }}>{errorMessage}</div>
-      )}
+      {errorMessage && <small className="delivery-inline-error">{errorMessage}</small>}
     </div>
   );
 }

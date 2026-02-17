@@ -3,6 +3,13 @@
   flex: 1;
   padding: 15px; /* Espaciado interno */
   min-width: 200px; /* Ancho mínimo para evitar que las tarjetas se hagan demasiado pequeñas */
+  border-radius: 12px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card-dashboard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
 }
 
 .card-header {

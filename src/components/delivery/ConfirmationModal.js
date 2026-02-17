@@ -1,9 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { InputTextarea } from "primereact/inputtextarea";
+import { Tag } from "primereact/tag";
+import "../../styles/modules/delivery.css";
+
+const formatNumber = (value) => Number(value || 0).toFixed(2);
 
 const ConfirmationModal = ({
   factura,
@@ -11,72 +15,109 @@ const ConfirmationModal = ({
   onCancel,
   visible,
   numEntrega,
+  loading,
 }) => {
   const [notas, setNotas] = useState("");
 
+  useEffect(() => {
+    if (visible) {
+      setNotas("");
+    }
+  }, [visible]);
+
+  const totals = useMemo(() => {
+    const items = factura?.detalle || [];
+    const totalLineas = items.length;
+    const totalCantidad = items.reduce(
+      (sum, item) => sum + Number(item.cantidad_entregar || 0),
+      0
+    );
+
+    return { totalLineas, totalCantidad };
+  }, [factura]);
+
   const handleConfirm = async () => {
-    const resolvedNumeroEntrega = await onConfirm(numEntrega, notas);
-    onCancel(resolvedNumeroEntrega);
+    await onConfirm(numEntrega, notas.trim());
   };
 
   return (
     <Dialog
-      header={`Confirmar Entrega ${numEntrega} para la Factura ${factura.numfactura}`}
+      header={`Confirmar entrega #${numEntrega} · Factura ${factura.numfactura}`}
       visible={visible}
-      style={{ width: "50vw" }}
-      breakpoints={{ "960px": "75vw", "641px": "100vw" }}
+      style={{ width: "56rem", maxWidth: "95vw" }}
+      breakpoints={{ "960px": "95vw", "641px": "100vw" }}
       onHide={onCancel}
+      className="delivery-confirmation-modal"
       position="top"
       footer={
-        <div>
+        <div className="delivery-confirmation-footer">
           <Button
             label="Cancelar"
             icon="pi pi-times"
-            severity="danger"
+            severity="secondary"
             text
-            raised
             onClick={onCancel}
+            disabled={loading}
           />
           <Button
-            label="Confirmar"
+            label="Confirmar entrega"
             icon="pi pi-check"
             severity="success"
-            raised
             onClick={handleConfirm}
+            loading={loading}
+            disabled={loading || totals.totalLineas === 0}
           />
         </div>
       }
     >
-      <div>
-        <h4>Cliente: {factura.nombrecliente}</h4>
-        <h4>Fecha de Factura: {factura.fechafactura}</h4>
-        <h4>Productos:</h4>
-        <DataTable
-          value={factura.detalle}
-          emptyMessage="No se han encontrado resultados"
-          scrollable
-          scrollHeight="200px"
-        >
-          <Column field="nombreproductos" header="Nombre del Producto" />
-          <Column
-            field="cantidad_entregar"
-            header="Cantidad a Entregar"
-            body={(rowData) => (
-              <span>{rowData.cantidad_entregar.toFixed(2)}</span>
-            )}
-          />
-        </DataTable>
-        <div className="card" style={{ paddingTop: "20px", marginTop: "5px" }}>
-          <span className="p-float-label">
-            <InputTextarea
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              autoResize
-              style={{ width: "100%", height: "100px" }}
-            />
-            <label htmlFor="Notas">Notas</label>
-          </span>
+      <div className="delivery-confirmation-summary">
+        <div>
+          <small>Cliente</small>
+          <strong>{factura.nombrecliente}</strong>
         </div>
+        <div>
+          <small>Fecha factura</small>
+          <strong>{factura.fechafactura}</strong>
+        </div>
+        <Tag value={`${totals.totalLineas} productos`} severity="info" rounded />
+        <Tag value={`Cantidad total: ${formatNumber(totals.totalCantidad)}`} severity="warning" rounded />
+      </div>
+
+      <div className="delivery-confirmation-hint">
+        <i className="pi pi-info-circle" />
+        <span>
+          Al confirmar, se guardará la entrega y se intentará abrir automáticamente la impresión.
+        </span>
+      </div>
+
+      <DataTable
+        value={factura.detalle}
+        emptyMessage="No hay productos para entregar"
+        scrollable
+        scrollHeight="250px"
+        size="small"
+        className="delivery-confirmation-table"
+      >
+        <Column field="nombreproductos" header="Producto" />
+        <Column field="referencia" header="Referencia" />
+        <Column
+          field="cantidad_entregar"
+          header="Cant. a entregar"
+          body={(rowData) => <span>{formatNumber(rowData.cantidad_entregar)}</span>}
+        />
+      </DataTable>
+
+      <div className="delivery-confirmation-notes">
+        <span className="p-float-label">
+          <InputTextarea
+            id="notasEntrega"
+            value={notas}
+            onChange={(e) => setNotas(e.target.value)}
+            autoResize
+            className="delivery-confirmation-notes__input"
+          />
+          <label htmlFor="notasEntrega">Notas adicionales para la entrega</label>
+        </span>
       </div>
     </Dialog>
   );

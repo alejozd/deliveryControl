@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import { InputNumber } from "primereact/inputnumber";
 import { Column } from "primereact/column";
 import { DataTable } from "primereact/datatable";
 import { Toast } from "primereact/toast";
-import "./SearchDialogListBox.css";
+import { InputText } from "primereact/inputtext";
+import { IconField } from "primereact/iconfield";
+import { InputIcon } from "primereact/inputicon";
+import "../../styles/quoter/search-dialog-listbox.css";
 
 const ProductSearchDialog = ({
   showDialogProduct,
@@ -19,15 +22,18 @@ const ProductSearchDialog = ({
   const [localProducts, setLocalProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const showRowExpansion = selectedBodega === "-1"; // Múltiples bodegas
+  const [searchTerm, setSearchTerm] = useState("");
   const toast = useRef(null);
+
+  const isMultiBodega = String(selectedBodega) === "-1";
 
   useEffect(() => {
     if (showDialogProduct && products.length > 0) {
       setLoading(true);
+
       const initializedProducts = products.map((product) => {
         const filteredBodegas =
-          selectedBodega > 0
+          Number(selectedBodega) > 0
             ? product.bodegas.filter(
                 (b) => Number(b.codigobodega) === Number(selectedBodega)
               )
@@ -59,7 +65,7 @@ const ProductSearchDialog = ({
           cantidad: cantidadTotal,
           bodegas: bodegasConCantidades,
           existencia_total:
-            selectedBodega > 0
+            Number(selectedBodega) > 0
               ? bodegasConCantidades[0]?.existencia || 0
               : bodegasConCantidades.reduce(
                   (sum, b) => sum + (b.existencia || 0),
@@ -72,12 +78,11 @@ const ProductSearchDialog = ({
       setLocalProducts(initializedProducts);
       setExpandedRows(null);
 
-      // También actualizamos los productos seleccionados para marcarlos
-      const agrupados = {};
+      const grouped = {};
       initialSelectedProducts.forEach((item) => {
         const key = `${item.codigo}-${item.subcodigo}`;
-        if (!agrupados[key]) {
-          agrupados[key] = {
+        if (!grouped[key]) {
+          grouped[key] = {
             ...item,
             cantidad: 0,
             bodegas: [],
@@ -85,153 +90,162 @@ const ProductSearchDialog = ({
           };
         }
 
-        agrupados[key].cantidad += item.cantidad;
-        agrupados[key].bodegas.push({
+        grouped[key].cantidad += item.cantidad;
+        grouped[key].bodegas.push({
           codigobodega: item.codigobodega,
           nombrebodega: item.nombrebodega,
           cantidad: item.cantidad,
           existencia: item.existencia || 0,
         });
       });
-      setSelectedProducts(Object.values(agrupados));
 
+      setSelectedProducts(Object.values(grouped));
       setLoading(false);
     }
-  }, [showDialogProduct]);
+  }, [showDialogProduct, products, selectedBodega, initialSelectedProducts]);
 
-  const handleCantidadChange = (producto, nuevaCantidad) => {
-    const cantidadFinal = Math.min(nuevaCantidad, producto.existencia_total);
 
-    const updatedProducts = localProducts.map((p) => {
-      if (p.uniqueKey === producto.uniqueKey) {
-        return { ...p, cantidad: cantidadFinal };
-      }
-      return p;
+  const showNoStockToast = useCallback((productName) => {
+    toast.current?.show({
+      severity: "warn",
+      summary: "Sin existencia",
+      detail: `El producto ${productName || "seleccionado"} no tiene existencia disponible.`,
+      life: 2800,
     });
+  }, []);
 
-    setLocalProducts(updatedProducts);
+  const filteredProducts = useMemo(() => {
+    const criteria = searchTerm.trim().toLowerCase();
+    if (!criteria) return localProducts;
 
-    // Actualizar productos seleccionados
+    return localProducts.filter((product) =>
+      [product?.nombreproducto, product?.referencia, product?.codigo_barras]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(criteria))
+    );
+  }, [localProducts, searchTerm]);
+
+  const updateSelectedProducts = useCallback((producto, cantidadTotal, updatedBodegas = null) => {
     const alreadySelected = selectedProducts.some(
       (sp) => sp.uniqueKey === producto.uniqueKey
     );
-    let newSelected = [...selectedProducts];
 
-    if (cantidadFinal > 0 && !alreadySelected) {
-      newSelected.push({ ...producto, cantidad: cantidadFinal });
-    } else if (cantidadFinal === 0 && alreadySelected) {
-      newSelected = newSelected.filter(
-        (sp) => sp.uniqueKey !== producto.uniqueKey
-      );
-    } else if (cantidadFinal > 0 && alreadySelected) {
-      newSelected = newSelected.map((sp) =>
+    let next = [...selectedProducts];
+
+    if (cantidadTotal > 0 && !alreadySelected) {
+      next.push({
+        ...producto,
+        cantidad: cantidadTotal,
+        bodegas: updatedBodegas || producto.bodegas,
+      });
+    } else if (cantidadTotal === 0 && alreadySelected) {
+      next = next.filter((sp) => sp.uniqueKey !== producto.uniqueKey);
+    } else if (cantidadTotal > 0 && alreadySelected) {
+      next = next.map((sp) =>
         sp.uniqueKey === producto.uniqueKey
-          ? { ...sp, cantidad: cantidadFinal }
+          ? {
+              ...sp,
+              cantidad: cantidadTotal,
+              bodegas: updatedBodegas || sp.bodegas,
+            }
           : sp
       );
     }
 
-    setSelectedProducts(newSelected);
+    setSelectedProducts(next);
+  }, [selectedProducts]);
+
+  const handleCantidadChange = (producto, nuevaCantidad) => {
+    if ((producto.existencia_total || 0) <= 0) {
+      showNoStockToast(producto?.nombreproducto);
+      return;
+    }
+
+    const cantidadFinal = Math.min(nuevaCantidad || 0, producto.existencia_total || 0);
+
+    const updatedProducts = localProducts.map((p) =>
+      p.uniqueKey === producto.uniqueKey ? { ...p, cantidad: cantidadFinal } : p
+    );
+
+    setLocalProducts(updatedProducts);
+    updateSelectedProducts(producto, cantidadFinal);
   };
 
   const handleCantidadBodegaChange = (producto, bodegaId, nuevaCantidad) => {
+    const targetBodega = producto.bodegas.find((b) => b.codigobodega === bodegaId);
+    if ((targetBodega?.existencia || 0) <= 0) {
+      showNoStockToast(producto?.nombreproducto);
+      return;
+    }
+
     const updatedProducts = localProducts.map((p) => {
       if (p.uniqueKey === producto.uniqueKey) {
-        const updatedBodegas = p.bodegas.map((b) => {
-          if (b.codigobodega === bodegaId) {
-            return { ...b, cantidad: Math.min(nuevaCantidad, b.existencia) };
-          }
-          return b;
-        });
+        const updatedBodegas = p.bodegas.map((b) =>
+          b.codigobodega === bodegaId
+            ? { ...b, cantidad: Math.min(nuevaCantidad || 0, b.existencia || 0) }
+            : b
+        );
 
         const cantidadTotal = updatedBodegas.reduce(
-          (sum, b) => sum + b.cantidad,
+          (sum, b) => sum + (b.cantidad || 0),
           0
         );
 
-        // Actualiza productos seleccionados
-        const alreadySelected = selectedProducts.some(
-          (sp) => sp.uniqueKey === p.uniqueKey
-        );
-        let newSelected = [...selectedProducts];
-
-        if (cantidadTotal > 0 && !alreadySelected) {
-          newSelected.push({
-            ...p,
-            bodegas: updatedBodegas,
-            cantidad: cantidadTotal,
-          });
-        } else if (cantidadTotal === 0 && alreadySelected) {
-          newSelected = newSelected.filter(
-            (sp) => sp.uniqueKey !== p.uniqueKey
-          );
-        } else if (cantidadTotal > 0 && alreadySelected) {
-          newSelected = newSelected.map((sp) =>
-            sp.uniqueKey === p.uniqueKey
-              ? { ...sp, bodegas: updatedBodegas, cantidad: cantidadTotal }
-              : sp
-          );
-        }
-
-        setSelectedProducts(newSelected);
-
+        updateSelectedProducts(p, cantidadTotal, updatedBodegas);
         return { ...p, bodegas: updatedBodegas, cantidad: cantidadTotal };
       }
+
       return p;
     });
 
     setLocalProducts(updatedProducts);
   };
 
-  const rowExpansionTemplate = (product) => {
-    return (
-      <div className="p-3">
-        <h5>Disponibilidad en Bodegas</h5>
-        <DataTable
-          value={product.bodegas}
-          size="small"
-          className="p-datatable-sm"
-          lazy
-        >
-          <Column field="nombrebodega" header="Bodega" />
-          <Column field="existencia" header="Existencia" />
-          <Column
-            header="Cantidad"
-            body={(bodega) => (
-              <InputNumber
-                value={bodega.cantidad}
-                onValueChange={(e) =>
-                  handleCantidadBodegaChange(
-                    product,
-                    bodega.codigobodega,
-                    e.value
-                  )
-                }
-                min={0}
-                max={bodega.existencia}
-                showButtons
-                mode="decimal"
-                locale="en-US"
-                decimalSeparator="."
-                thousandSeparator=","
-                inputStyle={{ width: "60px" }} // Ajusta solo el input interno
-                buttonLayout="horizontal" // Opcional: pone los botones + y - a los lados
-                decrementButtonClassName="p-button-secondary"
-                incrementButtonClassName="p-button-secondary"
-              />
-            )}
-          />
-        </DataTable>
-      </div>
-    );
-  };
+  const rowExpansionTemplate = (product) => (
+    <div className="product-dialog__expanded">
+      <DataTable value={product.bodegas} size="small">
+        <Column field="nombrebodega" header="Bodega" />
+        <Column field="existencia" header="Existencia" />
+        <Column
+          field="cantidad"
+          header="Cantidad"
+          body={(bodega) => (
+            <InputNumber
+              value={bodega.cantidad}
+              onValueChange={(e) =>
+                handleCantidadBodegaChange(
+                  product,
+                  bodega.codigobodega,
+                  e.value
+                )
+              }
+              min={0}
+              max={bodega.existencia || 0}
+              onFocus={() => {
+                if ((bodega.existencia || 0) <= 0) showNoStockToast(product?.nombreproducto);
+              }}
+              showButtons
+              mode="decimal"
+              locale="en-US"
+              inputStyle={{ width: "64px" }}
+              buttonLayout="horizontal"
+              decrementButtonClassName="p-button-secondary"
+              incrementButtonClassName="p-button-secondary"
+            />
+          )}
+        />
+      </DataTable>
+    </div>
+  );
 
   const onHide = () => {
     setShowDialogProduct(false);
+    setSearchTerm("");
   };
 
   const desglosarPorBodega = (productos) => {
     const productosDesglosados = [];
+
     productos.forEach((producto) => {
       producto.bodegas.forEach((bodega) => {
         if (bodega.cantidad > 0) {
@@ -257,109 +271,114 @@ const ProductSearchDialog = ({
   };
 
   const acceptSelection = () => {
-    // Seleccionar los productos con cantidades mayores a 0
-    const selectedProducts = localProducts.filter((product) => {
-      if (selectedBodega === "-1") {
-        // Si es múltiples bodegas, revisar cada bodega
-        return product.bodegas.some((bodega) => bodega.cantidad > 0);
-      } else {
-        // Si es una sola bodega, revisar la cantidad del producto
-        return product.cantidad > 0;
-      }
-    });
+    const validProducts = localProducts.filter((product) =>
+      isMultiBodega
+        ? product.bodegas.some((bodega) => bodega.cantidad > 0)
+        : product.cantidad > 0
+    );
 
-    // Desglosar los productos por bodega utilizando la función desglosarPorBodega
-    let productosDesglosados = [];
-    if (selectedBodega === "-1") {
-      // Múltiples bodegas: desglosar desde el arreglo de bodegas
-      productosDesglosados = desglosarPorBodega(selectedProducts);
-    } else {
-      // Una sola bodega: crear estructura compatible manualmente
-      productosDesglosados = selectedProducts.map((producto) => ({
-        codigo: producto.codigo,
-        subcodigo: producto.subcodigo,
-        nombreproducto: producto.nombreproducto,
-        codigo_barras: producto.codigo_barras,
-        referencia: producto.referencia,
-        precio_fijo: producto.precio_fijo,
-        tarifa_iva: producto.tarifa_iva,
-        existencia_total: producto.existencia_total,
-        cantidad: producto.cantidad,
-        nombrebodega: producto.nombrebodega, // esto lo cargas al seleccionar la bodega
-        codigobodega: selectedBodega,
-        uniqueKey: `${producto.codigo}-${producto.subcodigo}-${selectedBodega}`,
-      }));
-    }
+    const productosDesglosados = isMultiBodega
+      ? desglosarPorBodega(validProducts)
+      : validProducts.map((producto) => ({
+          codigo: producto.codigo,
+          subcodigo: producto.subcodigo,
+          nombreproducto: producto.nombreproducto,
+          codigo_barras: producto.codigo_barras,
+          referencia: producto.referencia,
+          precio_fijo: producto.precio_fijo,
+          tarifa_iva: producto.tarifa_iva,
+          existencia_total: producto.existencia_total,
+          cantidad: producto.cantidad,
+          nombrebodega: producto.nombrebodega,
+          codigobodega: selectedBodega,
+          uniqueKey: `${producto.codigo}-${producto.subcodigo}-${selectedBodega}`,
+        }));
 
-    // Si existen productos desglozados, pasar al evento onAcceptSelection
     if (productosDesglosados.length > 0) {
       onAcceptSelection(productosDesglosados);
-      onHide(); // Cerrar el diálogo
-    } else {
-      alert("Por favor seleccione al menos un producto con cantidad mayor a 0");
+      onHide();
+      return;
     }
+
+    toast.current?.show({
+      severity: "warn",
+      summary: "Sin selección",
+      detail: "Selecciona al menos un producto con cantidad mayor a 0.",
+      life: 3000,
+    });
   };
 
   const handleSelectionChange = (e) => {
     const newSelection = e.value;
 
-    // Detectar productos inválidos
-    const invalidProducts = newSelection.filter((producto) => {
-      return selectedBodega === "-1"
+    const invalidProducts = newSelection.filter((producto) =>
+      isMultiBodega
         ? !producto.bodegas?.some((b) => b.cantidad > 0)
-        : !(producto.cantidad > 0);
-    });
+        : !(producto.cantidad > 0)
+    );
 
     if (invalidProducts.length > 0) {
-      toast.current.show({
+      toast.current?.show({
         severity: "warn",
         summary: "Cantidad requerida",
-        detail: `Debe ingresar una cantidad válida para el producto ${invalidProducts[0].nombreproducto}`,
+        detail: `Debe ingresar una cantidad válida para ${invalidProducts[0].nombreproducto}`,
         life: 3000,
       });
     }
 
-    // Solo seleccionar productos válidos
-    const validSelection = newSelection.filter((producto) => {
-      return selectedBodega === "-1"
+    const validSelection = newSelection.filter((producto) =>
+      isMultiBodega
         ? producto.bodegas?.some((b) => b.cantidad > 0)
-        : producto.cantidad > 0;
-    });
+        : producto.cantidad > 0
+    );
 
     setSelectedProducts(validSelection);
   };
 
+  const footer = (
+    <div className="product-dialog__footer">
+      <small>
+        {selectedProducts.length} producto(s) seleccionado(s)
+      </small>
+      <div className="product-dialog__footer-actions">
+        <Button label="Cancelar" icon="pi pi-times" onClick={onHide} text />
+        <Button label="Agregar" icon="pi pi-check" onClick={acceptSelection} severity="success" />
+      </div>
+    </div>
+  );
+
   return (
     <Dialog
-      header="Selección de Productos"
+      header="Seleccionar productos"
       visible={showDialogProduct}
-      style={{ width: "90vw", maxWidth: "1200px" }}
+      className="product-search-dialog"
       onHide={onHide}
-      footer={
-        <div>
-          <Button
-            label="Aceptar"
-            icon="pi pi-check"
-            onClick={acceptSelection}
-            autoFocus
-            className="p-button-success"
-          />
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            onClick={onHide}
-            className="p-button-secondary"
-          />
-        </div>
-      }
+      footer={footer}
+      draggable={false}
+      modal
     >
       <Toast ref={toast} />
+
+      <div className="product-dialog__toolbar">
+        <IconField iconPosition="left" className="product-dialog__search-field">
+          <InputIcon className="pi pi-search" />
+          <InputText
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por nombre, referencia o código"
+          />
+        </IconField>
+
+        <span className="product-dialog__chip">
+          {isMultiBodega ? "Modo: múltiples bodegas" : "Modo: bodega única"}
+        </span>
+      </div>
+
       <DataTable
-        value={localProducts}
+        value={filteredProducts}
         selection={selectedProducts}
         onSelectionChange={handleSelectionChange}
         onSelectAll={(e) => e.preventDefault()}
-        // selectionMode="checkbox"
         dataKey="uniqueKey"
         rowExpansionTemplate={rowExpansionTemplate}
         expandedRows={expandedRows}
@@ -368,6 +387,10 @@ const ProductSearchDialog = ({
         scrollable
         paginator
         rows={10}
+        rowsPerPageOptions={[10, 20, 50]}
+        responsiveLayout="scroll"
+        className="product-dialog__table"
+        emptyMessage="No hay productos disponibles para mostrar"
       >
         <Column
           selectionMode="multiple"
@@ -376,62 +399,47 @@ const ProductSearchDialog = ({
           headerStyle={{ width: "3em" }}
           bodyStyle={{ textAlign: "center" }}
         />
-        <Column expander style={{ width: "3em" }} hidden={selectedBodega > 0} />
+        <Column expander style={{ width: "3em" }} hidden={Number(selectedBodega) > 0} />
 
-        <Column
-          field="nombreproducto"
-          header="Producto"
-          style={{ minWidth: "200px" }}
-        />
-        <Column
-          field="referencia"
-          header="Referencia"
-          style={{ width: "120px" }}
-        />
-        {selectedBodega > 0 && (
+        <Column field="nombreproducto" header="Producto" style={{ minWidth: "220px" }} />
+        <Column field="referencia" header="Referencia" style={{ width: "140px" }} />
+
+        {Number(selectedBodega) > 0 && (
           <Column
             field="nombrebodega"
             header="Bodega"
-            body={(products) => {
-              // Filtrar la bodega seleccionada por el ID de la bodega
-              const selectedBodegaData = products.bodegas.find(
-                (bodega) =>
-                  Number(bodega.codigobodega) === Number(selectedBodega)
+            body={(product) => {
+              const selectedBodegaData = product.bodegas.find(
+                (bodega) => Number(bodega.codigobodega) === Number(selectedBodega)
               );
-              return (
-                <span>
-                  {selectedBodegaData
-                    ? selectedBodegaData.nombrebodega || "No disponible"
-                    : "No disponible"}
-                </span>
-              );
+              return selectedBodegaData?.nombrebodega || "No disponible";
             }}
-            style={{ width: "150px" }}
+            style={{ width: "180px" }}
           />
         )}
 
         <Column
           field="existencia_total"
-          header={selectedBodega === "-1" ? "Existencia Total" : "Existencia"}
+          header={isMultiBodega ? "Existencia total" : "Existencia"}
           style={{ width: "120px" }}
         />
         <Column
           field="cantidad"
-          header="Cantidad Total"
+          header="Cantidad"
           body={(rowData) => (
             <InputNumber
               value={rowData.cantidad}
               onValueChange={(e) => handleCantidadChange(rowData, e.value)}
-              disabled={selectedBodega === "-1"}
-              // disabled
+              disabled={isMultiBodega}
               min={0}
-              max={rowData.existencia_total}
+              max={rowData.existencia_total || 0}
+              onFocus={() => {
+                if ((rowData.existencia_total || 0) <= 0) showNoStockToast(rowData?.nombreproducto);
+              }}
               showButtons
               mode="decimal"
               locale="en-US"
-              decimalSeparator="."
-              thousandSeparator=","
-              inputStyle={{ width: "60px" }}
+              inputStyle={{ width: "64px" }}
               buttonLayout="horizontal"
               decrementButtonClassName="p-button-secondary"
               incrementButtonClassName="p-button-secondary"

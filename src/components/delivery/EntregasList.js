@@ -1,301 +1,217 @@
-// EntregasList.js
-import React, { useState, useCallback } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import axios from "axios";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { Toast } from "primereact/toast";
 import { Button } from "primereact/button";
 import { Toolbar } from "primereact/toolbar";
 import { InputNumber } from "primereact/inputnumber";
-import { PrintDocument } from "./PrintDocument";
 import { Dialog } from "primereact/dialog";
 import { classNames } from "primereact/utils";
-import debounce from "lodash.debounce";
 import ConfirmationModal from "./ConfirmationModal";
+import { PrintDocument } from "./PrintDocument";
 import Potradatos from "../Potradatos";
 import config from "../../Config";
+import {
+  formatDateForApi,
+  formatDateTimeForApi,
+  getFriendlyErrorMessage,
+  hasDeliverableItems,
+  toNumber,
+} from "./deliveryUtils";
+import "../../styles/modules/delivery.css";
 
-const EntregasList = (props) => {
-  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/GetNumEntrega`;
-  const apiUrlN = `${config.apiUrl}/Datasnap/rest/TServerMethods1/NuevaEntrega`;
+const buildFormattedDetalle = (detalle = [], quantities = {}) =>
+  detalle
+    .filter((item) => toNumber(quantities[item.id]) > 0)
+    .map((item) => ({
+      codigo: item.codigo,
+      subcodigo: item.subcodigo,
+      nombreproductos: item.nombreproductos,
+      consecutivo: item.consecutivo,
+      cantfacturada: item.cantfacturada,
+      cant_entregada: item.cant_entregada,
+      saldo: item.saldo,
+      id: item.id,
+      cantidad_entregar: toNumber(quantities[item.id]),
+    }));
 
-  const [loading, setLoading] = useState(false);
-  const [expandedRows, setExpandedRows] = useState(null);
+const buildEntregaPayload = ({ factura, quantities, numeroEntrega, notas, fecha }) => ({
+  numfactura: factura.numfactura,
+  fechafactura: factura.fechafactura,
+  idcliente: factura.idcliente,
+  nombrecliente: factura.nombrecliente,
+  nit: factura.nit,
+  direccion: factura.direccion,
+  telmovil: factura.telmovil,
+  vendedor: factura.vendedor,
+  numeroentrega: numeroEntrega,
+  fechaEntrega: formatDateTimeForApi(fecha),
+  notas,
+  detalle: buildFormattedDetalle(factura.detalle, quantities),
+});
+
+const formatQuantity = (value) => Number(value || 0).toFixed(2);
+
+const EntregasList = ({
+  handleSearch,
+  toast,
+  products,
+  originalProductsCount = 0,
+  hasSearched = false,
+  onUpdateAceptapotradatos,
+  loading,
+}) => {
+  const getNumEntregaUrl = useMemo(
+    () => `${config.apiUrl}/Datasnap/rest/TServerMethods1/GetNumEntrega`,
+    []
+  );
+  const nuevaEntregaUrl = useMemo(
+    () => `${config.apiUrl}/Datasnap/rest/TServerMethods1/NuevaEntrega`,
+    []
+  );
+
+  const [saving, setSaving] = useState(false);
+  const [expandedRows, setExpandedRows] = useState([]);
   const [cantidadesEntregar, setCantidadesEntregar] = useState({});
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [selectedFactura, setSelectedFactura] = useState(null);
   const [numEntrega, setNumEntrega] = useState(null);
-  const [errorState, setErrorState] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [dialogVisible, setDialogVisible] = useState(false);
+  const [dialogVisibleForClient, setDialogVisibleForClient] = useState(null);
 
-  const { handleSearch, toast, products } = props;
+  const closeErrorDialog = useCallback(() => setErrorMessage(""), []);
 
-  const handleShowAll = (data) => {
-    data.detalle.forEach(handleTodoButtonClick);
-  };
-
-  const handleCloseErrorDialog = () => {
-    setErrorState(false);
-    setErrorMessage("");
-  };
-
-  const GetEntradaNumero = async () => {
-    try {
-      const response = await fetch(apiUrl);
-      if (!response.ok)
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      const data = await response.json();
-      if (data.status === 200) return data.result[0].numero;
-      throw new Error(
-        `Error al obtener el número de entrega. Código de estado: ${data.status}`
-      );
-    } catch (error) {
-      console.error("Error al obtener el número de entrega:", error);
-      throw error;
+  const getEntradaNumero = useCallback(async () => {
+    const response = await axios.get(getNumEntregaUrl);
+    if (response?.data?.status !== 200) {
+      throw new Error("No fue posible obtener el número de entrega.");
     }
-  };
+    return response.data.result?.[0]?.numero;
+  }, [getNumEntregaUrl]);
 
-  const handleShowConfirmationModal = async (factura) => {
-    try {
-      setLoading(true);
-      const numeroEntrega = await GetEntradaNumero();
-      setNumEntrega(numeroEntrega);
+  const markAllDocumentAsDeliverable = useCallback((factura) => {
+    const updates = {};
+    factura.detalle.forEach((item) => {
+      updates[item.id] = item.saldo;
+    });
+    setCantidadesEntregar((prev) => ({ ...prev, ...updates }));
+  }, []);
 
-      const detallesConCantidad = factura.detalle.filter((detalle) => {
-        const cantidadEntregar =
-          parseFloat(cantidadesEntregar[detalle.id]) || 0;
-        return cantidadEntregar > 0;
-      });
-
-      const formattedFactura = buildFormattedFactura(
-        factura,
-        detallesConCantidad
-      );
-      setSelectedFactura(formattedFactura);
-      setShowConfirmationModal(true);
-    } catch (error) {
-      console.error("Error al mostrar el modal de confirmación:", error);
-      setErrorState(true);
-      setErrorMessage(
-        error.message.includes("Failed to fetch")
-          ? "No se pudo conectar con el servidor. Por favor, verifica tu conexión e inténtalo de nuevo más tarde."
-          : "Ocurrió un error. Por favor, inténtalo de nuevo más tarde."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const buildFormattedFactura = (
-    factura,
-    detallesConCantidad,
-    numEntrega,
-    fechaEntrega,
-    notas
-  ) => ({
-    numfactura: factura.numfactura,
-    fechafactura: factura.fechafactura,
-    idcliente: factura.idcliente,
-    nombrecliente: factura.nombrecliente,
-    numeroentrega: numEntrega,
-    fechaEntrega: fechaEntrega,
-    nit: factura.nit,
-    direccion: factura.direccion,
-    telmovil: factura.telmovil,
-    vendedor: factura.vendedor,
-    notas: notas,
-    detalle: buildFormattedDetalle(detallesConCantidad),
-  });
-
-  const buildFormattedDetalle = (detallesConCantidad) =>
-    detallesConCantidad.map((detalle) => ({
-      codigo: detalle.codigo,
-      subcodigo: detalle.subcodigo,
-      nombreproductos: detalle.nombreproductos,
-      consecutivo: detalle.consecutivo,
-      cantfacturada: detalle.cantfacturada,
-      cant_entregada: detalle.cant_entregada,
-      saldo: detalle.saldo,
-      id: detalle.id,
-      cantidad_entregar: parseFloat(cantidadesEntregar[detalle.id]) || 0,
+  const handleTodoButtonClick = useCallback((rowData) => {
+    setCantidadesEntregar((prev) => ({
+      ...prev,
+      [rowData.id]: rowData.saldo,
     }));
+  }, []);
 
-  const handleConfirmEntrega = async (numEntrega, notas) => {
-    products.forEach((product) => {
-      if (product.detalle) handleTodoButtonClick(product.detalle);
+  const handleCantidadEntregarInput = useCallback(
+    (e, rowData) => {
+      const rawValue = e?.originalEvent?.target?.value;
+      const saldo = toNumber(rowData.saldo);
+      const parsedFromEvent = toNumber(e.value);
+      const parsedFromRaw = toNumber(String(rawValue || "").replace(",", "."));
+      const parsedIncoming = parsedFromRaw > 0 ? parsedFromRaw : parsedFromEvent;
+
+      if (!rawValue || parsedIncoming <= 0) {
+        setCantidadesEntregar((prev) => ({ ...prev, [rowData.id]: null }));
+        return;
+      }
+
+      if (parsedIncoming > saldo) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Cantidad excede saldo",
+          detail: `El valor supera el saldo disponible (${saldo}).`,
+          life: 2500,
+        });
+        setCantidadesEntregar((prev) => ({
+          ...prev,
+          [rowData.id]: Number(saldo.toFixed(2)),
+        }));
+        return;
+      }
+
+      setCantidadesEntregar((prev) => ({
+        ...prev,
+        [rowData.id]: Number(parsedIncoming.toFixed(2)),
+      }));
+    },
+    [toast]
+  );
+
+  const openConfirmationModal = useCallback(
+    async (factura) => {
+      try {
+        setSaving(true);
+        const numero = await getEntradaNumero();
+        setNumEntrega(numero);
+        setSelectedFactura(factura);
+        setShowConfirmationModal(true);
+      } catch (error) {
+        setErrorMessage(getFriendlyErrorMessage(error));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [getEntradaNumero]
+  );
+
+  const handleConfirmEntrega = async (numeroEntrega, notas) => {
+    if (!selectedFactura) return { success: false };
+
+    const now = new Date();
+    const payload = buildEntregaPayload({
+      factura: selectedFactura,
+      quantities: cantidadesEntregar,
+      numeroEntrega,
+      notas,
+      fecha: now,
     });
-    setShowConfirmationModal(false);
 
-    const fechaActual = new Date();
-    const options = {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      timeZone: "America/Bogota",
-    };
-    const fechaEntrega = fechaActual
-      .toLocaleString("es-CO", options)
-      .replace(", ", "T")
-      .replace(/\./g, "");
-
-    const detallesConCantidad = selectedFactura.detalle.filter((detalle) => {
-      const cantidadEntregar = parseFloat(cantidadesEntregar[detalle.id]) || 0;
-      return cantidadEntregar > 0;
-    });
-
-    const entregaData = buildFormattedFactura(
-      selectedFactura,
-      detallesConCantidad,
-      numEntrega,
-      fechaEntrega,
-      notas
-    );
+    if (!payload.detalle.length) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Sin productos",
+        detail: "Debes ingresar al menos una cantidad a entregar.",
+        life: 2500,
+      });
+      return { success: false };
+    }
 
     try {
-      const response = await fetch(apiUrlN, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(entregaData),
+      setSaving(true);
+      await axios.put(nuevaEntregaUrl, payload, {
+        headers: { "Content-Type": "application/json" },
       });
 
-      if (response.status === 201 || response.status === 200) {
-        entregaData.fechaEntrega = fechaActual.toLocaleDateString("es-CO", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        });
-        PrintDocument({ factura: entregaData, isConfirmationModal: true });
-        handleSearch();
-        return numEntrega;
-      } else {
-        console.error("Error al confirmar la entrega:", response.status);
-      }
+      PrintDocument({
+        factura: {
+          ...payload,
+          fechaEntrega: formatDateForApi(now),
+        },
+        isConfirmationModal: true,
+      });
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Entrega registrada",
+        detail: `Entrega #${numeroEntrega} generada correctamente.`,
+        life: 2800,
+      });
+
+      setShowConfirmationModal(false);
+      await handleSearch();
+      return { success: true, numeroEntrega };
     } catch (error) {
-      console.error("Error al confirmar la entrega:", error);
+      setErrorMessage(getFriendlyErrorMessage(error));
+      return { success: false };
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleCancelEntrega = () => {
-    setShowConfirmationModal(false);
-  };
-
-  const rowExpansionTemplate = (data) => {
-    const acceptIconClassName = classNames({
-      "text-green-500 pi pi-check-circle": data.aceptapotradatos === 1,
-      "text-red-500 pi pi-times-circle": data.aceptapotradatos === 0,
-    });
-
-    const handleAcceptPotradatos = () => {
-      props.onUpdateAceptapotradatos(data.idcliente, true);
-    };
-
-    const handleIconClick = () => {
-      setDialogVisible(true);
-    };
-
-    const handleClosePotradatos = (accepted) => {
-      setDialogVisible(false);
-      data.aceptapotradatos = accepted ? 1 : 0;
-    };
-
-    const isButtonDisabled = (factura) => {
-      const todosEntregados = factura.detalle.every(
-        (detalle) => detalle.saldo === 0
-      );
-      const noCantidadesAEntregar = Object.values(cantidadesEntregar).every(
-        (cantidad) => parseFloat(cantidad) === 0 || isNaN(cantidad)
-      );
-      return todosEntregados || noCantidadesAEntregar;
-    };
-
-    return (
-      <div className="p-3">
-        <Toolbar
-          start={<h3>Productos de {data.numfactura}</h3>}
-          center={
-            <Button
-              label="Tratamiento de datos"
-              size="small"
-              icon={acceptIconClassName}
-              outlined
-              onClick={handleIconClick}
-            />
-          }
-          end={
-            <>
-              <Button
-                className="mr-2"
-                icon="pi pi-check"
-                severity="warning"
-                size="small"
-                label="Marcar todo el documento"
-                outlined
-                onClick={() => handleShowAll(data)}
-              />
-              <Button
-                className="p-button-success mr-2"
-                icon="pi pi-check"
-                severity="success"
-                size="small"
-                label="Entregar"
-                outlined
-                loading={loading}
-                disabled={isButtonDisabled(data)}
-                onClick={() => handleShowConfirmationModal(data)}
-              />
-            </>
-          }
-          style={{ padding: "2px", height: "auto" }}
-        />
-        <DataTable value={data.detalle} dataKey="id">
-          <Column
-            field="nombreproductos"
-            header="Nombre de Producto"
-            sortable
-          />
-          <Column field="referencia" header="Referencia" sortable />
-          <Column
-            field="cantfacturada"
-            header="Cant. Facturada"
-            sortable
-            body={(rowData) => rowData.cantfacturada.toFixed(2)}
-          />
-          <Column
-            field="cant_entregada"
-            header="Cant. Entregada"
-            sortable
-            body={(rowData) => rowData.cant_entregada.toFixed(2)}
-          />
-          <Column
-            field="saldo"
-            header="Saldo"
-            sortable
-            body={(rowData) => rowData.saldo.toFixed(2)}
-          />
-          <Column
-            header="Todo"
-            style={{ width: "3rem" }}
-            body={renderTodoButton}
-          />
-          <Column header="Cant. Entregar" body={renderCantidadEntregar} />
-        </DataTable>
-        {dialogVisible && (
-          <Potradatos
-            visible={true}
-            onHide={() => handleClosePotradatos(false)}
-            idCliente={data.idcliente}
-            aceptaTratamiento={data.aceptapotradatos}
-            onAccept={handleAcceptPotradatos}
-          />
-        )}
-      </div>
-    );
-  };
+  const allowExpansion = (rowData) =>
+    Array.isArray(rowData.detalle) && rowData.detalle.length > 0;
 
   const renderTodoButton = (rowData) => (
     <Button
@@ -303,172 +219,153 @@ const EntregasList = (props) => {
       onClick={() => handleTodoButtonClick(rowData)}
       outlined
       size="small"
-      className="mr-2"
-      disabled={rowData.saldo === 0}
+      disabled={toNumber(rowData.saldo) <= 0}
     />
   );
 
-  const handleTodoButtonClick = (rowData) => {
-    if (rowData && rowData.saldo !== undefined) {
-      const saldo = rowData.saldo.toString();
-      setCantidadesEntregar((prev) => ({
-        ...prev,
-        [rowData.id]: saldo,
-      }));
-    }
-  };
-
-  const handleCantidadEntregarInputDebounced = useCallback(
-    debounce((e, rowData) => {
-      const inputValue = e.value || "";
-      const saldo = rowData.saldo || 0;
-
-      if (inputValue > saldo) {
-        toast.current.show({
-          severity: "warn",
-          summary: "Cantidad excede el saldo",
-          detail: `El valor ingresado supera el saldo disponible de ${saldo}`,
-          life: 3000,
-        });
-        setCantidadesEntregar((prev) => ({
-          ...prev,
-          [rowData.id]: saldo,
-        }));
-      } else {
-        setCantidadesEntregar((prev) => ({
-          ...prev,
-          [rowData.id]: inputValue,
-        }));
-      }
-    }, 300),
-    [toast, setCantidadesEntregar]
-  );
-
-  const handleCantidadEntregarInput = (e, rowData) => {
-    handleCantidadEntregarInputDebounced(e, rowData);
-  };
-
   const renderCantidadEntregar = (rowData) => {
-    const saldo = rowData.saldo || 0;
-    const isReadOnly = saldo === 0;
-    const inputValue = cantidadesEntregar[rowData.id] || "";
-    const max = rowData.saldo;
+    const saldo = toNumber(rowData.saldo);
 
     return (
       <InputNumber
-        readOnly={isReadOnly}
-        value={inputValue}
-        // min={0.01}
-        min={0.0}
-        max={max}
-        onChange={(e) => handleCantidadEntregarInput(e, rowData)}
+        readOnly={saldo <= 0}
+        value={Math.min(toNumber(cantidadesEntregar[rowData.id]), saldo) || null}
+        min={0.01}
+        onValueChange={(e) => handleCantidadEntregarInput(e, rowData)}
         minFractionDigits={2}
+        maxFractionDigits={2}
         locale="en-US"
-        style={{ width: "8rem" }}
-        inputStyle={{ minWidth: "4rem" }}
+        inputClassName="delivery-quantity-input"
+        useGrouping={false}
       />
     );
   };
 
-  const allowExpansion = (rowData) =>
-    rowData.detalle && rowData.detalle.length > 0;
-
-  const expandAll = () => {
-    setExpandedRows(products.map((product) => product));
-  };
-
-  const collapseAll = () => {
-    setExpandedRows([]);
-  };
-
   const header = (
-    <div className="flex flex-wrap justify-content-end gap-2">
-      <Button
-        icon="pi pi-plus"
-        label="Expandir Todo"
-        onClick={expandAll}
-        text
-      />
-      <Button
-        icon="pi pi-minus"
-        label="Contraer Todo"
-        onClick={collapseAll}
-        text
-      />
+    <div className="delivery-expand-controls">
+      <small className="delivery-results-counter">
+        Mostrando {products.length} de {originalProductsCount} facturas
+      </small>
+      <Button icon="pi pi-plus" label="Expandir" onClick={() => setExpandedRows(products)} text />
+      <Button icon="pi pi-minus" label="Contraer" onClick={() => setExpandedRows([])} text />
     </div>
   );
 
+  const rowExpansionTemplate = (factura) => {
+    const acceptIconClassName = classNames({
+      "text-green-500 pi pi-check-circle": factura.aceptapotradatos === 1,
+      "text-red-500 pi pi-times-circle": factura.aceptapotradatos === 0,
+    });
+
+    const deliverDisabled =
+      factura.detalle.every((detalle) => toNumber(detalle.saldo) <= 0) ||
+      !hasDeliverableItems(factura.detalle, cantidadesEntregar);
+
+    return (
+      <div className="p-3 delivery-detail-card">
+        <Toolbar
+          start={<h3 className="delivery-title">Productos de {factura.numfactura}</h3>}
+          center={
+            <Button
+              label="Tratamiento de datos"
+              size="small"
+              icon={acceptIconClassName}
+              outlined
+              onClick={() => setDialogVisibleForClient(factura.idcliente)}
+            />
+          }
+          end={
+            <div className="delivery-toolbar-actions">
+              <Button
+                icon="pi pi-check"
+                severity="warning"
+                size="small"
+                label="Marcar todo"
+                outlined
+                onClick={() => markAllDocumentAsDeliverable(factura)}
+              />
+              <Button
+                icon="pi pi-send"
+                severity="success"
+                size="small"
+                label="Entregar"
+                outlined
+                loading={saving}
+                disabled={deliverDisabled}
+                onClick={() => openConfirmationModal(factura)}
+              />
+            </div>
+          }
+        />
+
+        <DataTable value={factura.detalle} dataKey="id" size="small">
+          <Column field="nombreproductos" header="Producto" sortable />
+          <Column field="referencia" header="Referencia" sortable />
+          <Column field="cantfacturada" header="Facturada" sortable body={(row) => formatQuantity(row.cantfacturada)} />
+          <Column field="cant_entregada" header="Entregada" sortable body={(row) => formatQuantity(row.cant_entregada)} />
+          <Column field="saldo" header="Saldo" sortable body={(row) => formatQuantity(row.saldo)} />
+          <Column header="Todo" style={{ width: "6rem" }} body={renderTodoButton} />
+          <Column header="Cant. entregar" body={renderCantidadEntregar} />
+        </DataTable>
+
+        {dialogVisibleForClient === factura.idcliente && (
+          <Potradatos
+            visible
+            onHide={() => setDialogVisibleForClient(null)}
+            idCliente={factura.idcliente}
+            aceptaTratamiento={factura.aceptapotradatos}
+            onAccept={() => onUpdateAceptapotradatos(factura.idcliente, true)}
+          />
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div style={{ paddingTop: "5px" }}>
-      <Toast ref={toast} />
+    <div className="delivery-list-wrapper">
       <DataTable
         value={products}
         expandedRows={expandedRows}
         onRowToggle={(e) => setExpandedRows(e.data)}
-        onRowExpand={(e) => onRowExpand(e, toast)}
-        onRowCollapse={(e) => onRowCollapse(e, toast)}
         rowExpansionTemplate={rowExpansionTemplate}
         header={header}
-        emptyMessage="No se han encontrado resultados"
+        emptyMessage={hasSearched ? "No se encontraron facturas para los filtros seleccionados." : "Selecciona filtros y presiona Buscar para consultar facturas."}
         stripedRows
-        responsive="true"
-        loading={props.loading}
-        dataKey={(rowData) => `${rowData.numfactura}-${rowData.detalle[0].id}`}
+        loading={loading}
+        dataKey="numfactura"
       >
-        <Column expander={allowExpansion} style={{ width: "5rem" }} />
-        <Column field="numfactura" header="Número de Factura" sortable />
-        <Column field="fechafactura" header="Fecha de Factura" sortable />
-        <Column field="nombrecliente" header="Nombre del Cliente" sortable />
+        <Column expander={allowExpansion} style={{ width: "4rem" }} />
+        <Column field="numfactura" header="Factura" sortable />
+        <Column field="fechafactura" header="Fecha" sortable />
+        <Column field="nombrecliente" header="Cliente" sortable />
       </DataTable>
-      {showConfirmationModal && (
+
+      {showConfirmationModal && selectedFactura && (
         <ConfirmationModal
-          factura={selectedFactura}
+          factura={{
+            ...selectedFactura,
+            detalle: buildFormattedDetalle(selectedFactura.detalle, cantidadesEntregar),
+          }}
           onConfirm={handleConfirmEntrega}
-          onCancel={handleCancelEntrega}
+          onCancel={() => setShowConfirmationModal(false)}
           visible={showConfirmationModal}
           numEntrega={numEntrega}
+          loading={saving}
         />
       )}
+
       <Dialog
-        visible={errorState}
-        onHide={handleCloseErrorDialog}
+        visible={Boolean(errorMessage)}
+        onHide={closeErrorDialog}
         header="Error"
         modal
-        style={{ width: "300px" }}
+        style={{ width: "25rem" }}
       >
-        <div>
-          <p>{errorMessage}</p>
-          <Button
-            label="Cerrar"
-            icon="pi pi-times"
-            severity="danger"
-            text
-            style={{ marginTop: "10px" }}
-            size="small"
-            onClick={handleCloseErrorDialog}
-          />
-        </div>
+        <p>{errorMessage}</p>
+        <Button label="Cerrar" icon="pi pi-times" severity="danger" text onClick={closeErrorDialog} />
       </Dialog>
     </div>
   );
-};
-
-const onRowExpand = (event, toast) => {
-  toast.current.show({
-    severity: "info",
-    summary: "Abriendo Factura",
-    detail: event.data.numfactura,
-    life: 3000,
-  });
-};
-
-const onRowCollapse = (event, toast) => {
-  toast.current.show({
-    severity: "success",
-    summary: "Cerrando Factura",
-    detail: event.data.numfactura,
-    life: 3000,
-  });
 };
 
 export default EntregasList;

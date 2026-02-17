@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import config from "../Config";
 import { Panel } from "primereact/panel";
 import { DataTable } from "primereact/datatable";
@@ -6,6 +6,7 @@ import { Column } from "primereact/column";
 import { Toolbar } from "primereact/toolbar";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
+import { Dialog } from "primereact/dialog";
 import { classNames } from "primereact/utils";
 import { useLocation } from "react-router-dom";
 import ClientCreation from "./ClientCreation";
@@ -13,6 +14,31 @@ import Potradatos from "./Potradatos";
 import translations from "../config/localeConfig";
 import axios from "axios";
 import { debounce } from "lodash";
+import "../styles/modules/clientes.css";
+
+const INITIAL_LAZY_STATE = {
+  first: 0,
+  rows: 10,
+  page: 1,
+  sortField: null,
+  sortOrder: null,
+  filters: {
+    nombrecliente: { value: "", matchMode: "contains" },
+    identidad: { value: "", matchMode: "startsWith" },
+    direccion: { value: "", matchMode: "contains" },
+    telmovil: { value: "", matchMode: "startsWith" },
+  },
+};
+
+const getFriendlyErrorMessage = (error) => {
+  const rawMessage = String(error?.message || error || "");
+
+  if (rawMessage.includes("Network Error") || rawMessage.includes("Failed to fetch")) {
+    return "No se pudo conectar con el servidor. Verifica tu conexión e inténtalo de nuevo.";
+  }
+
+  return "Ocurrió un error al procesar la solicitud. Inténtalo nuevamente en unos minutos.";
+};
 
 const Clientes = () => {
   const location = useLocation();
@@ -22,75 +48,82 @@ const Clientes = () => {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState("");
   const [errorState, setErrorState] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [dialogVisible, setDialogVisible] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [editDialogVisible, setEditDialogVisible] = useState(false);
-  const [totalRecords, setTotalRecords] = useState(0); // Total de registros
-  const [lazyState, setLazyState] = useState({
-    first: 0,
-    rows: 10,
-    page: 1,
-    sortField: null,
-    sortOrder: null,
-    filters: {
-      nombrecliente: { value: "", matchMode: "contains" },
-      identidad: { value: "", matchMode: "startsWith" },
-      direccion: { value: "", matchMode: "contains" },
-      telmovil: { value: "", matchMode: "startsWith" },
-    },
-  });
-  translations();
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [lazyState, setLazyState] = useState(INITIAL_LAZY_STATE);
 
   useEffect(() => {
-    loadLazyData();
-  }, [lazyState]);
+    translations();
+  }, []);
 
-  const loadLazyData = async () => {
+  const loadLazyData = useCallback(async () => {
     setLoading(true);
     try {
       const requestData = {
-        criterio: searchTerm,
+        criterio: appliedSearchTerm,
         limit: lazyState.rows,
         offset: lazyState.first,
         sortField: lazyState.sortField,
         sortOrder: lazyState.sortOrder,
         filters: lazyState.filters,
       };
-      // console.log("Request Data:", requestData);
+
       const response = await axios.put(apiUrl, requestData);
-      // console.log("Response:", response.data);
-      if (response.data.status === 200) {
-        setClientes(response.data.data);
-        setTotalRecords(response.data.totalRecords); // Establecer el total de registros
-        // console.log("Total Records:", response.data.totalRecords);
-        // Actualizar selectedCliente si es necesario
-        if (selectedCliente) {
-          const updatedCliente = response.data.data.find(
-            (cliente) => cliente.idcliente === selectedCliente.idcliente
+
+      if (response.data?.status === 200) {
+        const records = Array.isArray(response.data.data) ? response.data.data : [];
+        setClientes(records);
+        setTotalRecords(response.data.totalRecords || 0);
+
+        setSelectedCliente((prevSelected) => {
+          if (!prevSelected) {
+            return prevSelected;
+          }
+
+          const updatedCliente = records.find(
+            (cliente) => cliente.idcliente === prevSelected.idcliente
           );
-          setSelectedCliente(updatedCliente);
-        }
-      } else {
-        console.error("Error en la respuesta:", response.data.error);
-        setErrorMessage(response.data.error);
+
+          return updatedCliente || null;
+        });
+        return;
       }
+
+      setErrorState(true);
+      setErrorMessage(
+        response.data?.error || "No fue posible obtener el listado de clientes."
+      );
     } catch (error) {
-      if (error.message === "Network Error") {
-        setErrorState(true);
-        setErrorMessage(
-          "Error de red: No se puede conectar al servidor. Por favor, verifica tu conexión a Internet o inténtalo más tarde."
-        );
-      } else {
-        setErrorState(true);
-        setErrorMessage(`Error al realizar la solicitud: ${error.message}`);
-      }
-      console.error("Error al realizar la solicitud:", error.message);
+      setErrorState(true);
+      setErrorMessage(getFriendlyErrorMessage(error));
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiUrl, appliedSearchTerm, lazyState]);
+
+  useEffect(() => {
+    loadLazyData();
+  }, [loadLazyData]);
+
+  const debouncedFilter = useMemo(
+    () =>
+      debounce((filters) => {
+        setLazyState((prevState) => ({
+          ...prevState,
+          first: 0,
+          page: 1,
+          filters,
+        }));
+      }, 350),
+    []
+  );
+
+  useEffect(() => () => debouncedFilter.cancel(), [debouncedFilter]);
 
   const handleAcceptTreatment = (cliente) => {
     setSelectedCliente(cliente);
@@ -98,13 +131,18 @@ const Clientes = () => {
   };
 
   const handleCreateCustomer = () => {
-    setSelectedCliente(null); // Limpiar cliente seleccionado para creación
+    setSelectedCliente(null);
     setEditDialogVisible(true);
   };
 
   const handleEditCustomer = (cliente) => {
-    setSelectedCliente(cliente); // Establecer cliente seleccionado para edición
+    setSelectedCliente(cliente);
     setEditDialogVisible(true);
+  };
+
+  const handleSearch = () => {
+    setLazyState((prevState) => ({ ...prevState, first: 0, page: 1 }));
+    setAppliedSearchTerm(searchTerm.trim());
   };
 
   const onPage = (event) => {
@@ -112,6 +150,7 @@ const Clientes = () => {
       ...prevState,
       first: event.first,
       rows: event.rows,
+      page: event.page + 1,
     }));
   };
 
@@ -123,46 +162,22 @@ const Clientes = () => {
     }));
   };
 
-  const debouncedFilter = useCallback(
-    debounce((filters) => {
-      setLazyState((prevState) => ({
-        ...prevState,
-        first: 0,
-        filters: filters,
-      }));
-    }, 500),
-    []
+  const onFilter = (event) => {
+    debouncedFilter(event.filters);
+  };
+
+  const verifiedBodyTemplate = (rowData) => (
+    <i
+      className={classNames("pi", {
+        "text-green-500 pi-check-circle": rowData.aceptapotradatos,
+        "text-red-500 pi-times-circle": !rowData.aceptapotradatos,
+      })}
+      onClick={() => rowData.aceptapotradatos === 0 && handleAcceptTreatment(rowData)}
+      style={{ cursor: rowData.aceptapotradatos === 0 ? "pointer" : "default" }}
+    />
   );
 
-  const onFilter = (event) => {
-    const filters = event.filters;
-    debouncedFilter(filters);
-  };
-
-  const onSelectionChange = (event) => {
-    const value = event.value;
-    setSelectedCliente(value);
-  };
-
-  const verifiedBodyTemplate = (rowData) => {
-    return (
-      <i
-        className={classNames("pi", {
-          "text-green-500 pi-check-circle": rowData.aceptapotradatos,
-          "text-red-500 pi-times-circle": !rowData.aceptapotradatos,
-        })}
-        onClick={() => {
-          // console.log("Selected row:", rowData);
-          if (rowData.aceptapotradatos === 0) {
-            handleAcceptTreatment(rowData);
-          }
-        }}
-        style={{ cursor: "pointer" }}
-      ></i>
-    );
-  };
-
-  const handleCustomerCreated = (newCustomer) => {
+  const handleCustomerCreated = () => {
     loadLazyData();
   };
 
@@ -172,30 +187,35 @@ const Clientes = () => {
     { label: "Igual", value: "equals" },
   ];
 
+  const handleCloseErrorDialog = () => {
+    setErrorState(false);
+    setErrorMessage("");
+  };
+
   return (
-    <div>
-      <h1>Clientes</h1>
-      <Panel header="Listado de Clientes" toggleable>
+    <div className="clientes-page">
+      <div className="clientes-header">
+        <h1 className="clientes-title">Clientes</h1>
+        <span className="clientes-counter">{totalRecords} registros</span>
+      </div>
+
+      <Panel header="Listado de Clientes" toggleable className="clientes-panel">
         <Toolbar
+          className="clientes-toolbar"
           start={
-            <>
-              {/* <InputText
-                placeholder="Buscar cliente..."
+            <div className="clientes-search-group">
+              <InputText
+                placeholder="Buscar por nombre o identificación"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    loadLazyData();
-                  }
-                }}
-                tooltip="Buscar cliente por nombre o identificación"
-                tooltipOptions={{ position: "top" }}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="clientes-search-input"
               />
-              <Button icon="pi pi-search" onClick={loadLazyData} /> */}
-            </>
+              <Button icon="pi pi-search" label="Buscar" onClick={handleSearch} />
+            </div>
           }
           end={
-            <div style={{ display: "flex", gap: "0.5rem" }}>
+            <div className="clientes-actions">
               <Button
                 label="Nuevo"
                 icon="pi pi-plus"
@@ -213,9 +233,19 @@ const Clientes = () => {
               />
             </div>
           }
-        ></Toolbar>
+        />
+
+        {selectedCliente ? (
+          <div className="clientes-selected">
+            <i className="pi pi-user" />
+            <span>
+              Seleccionado: <strong>{selectedCliente.nombrecliente}</strong>
+            </span>
+          </div>
+        ) : null}
       </Panel>
-      <div className="card">
+
+      <div className="card clientes-table-wrapper">
         <DataTable
           value={clientes}
           lazy
@@ -238,7 +268,8 @@ const Clientes = () => {
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
           rowsPerPageOptions={[10, 20, 50]}
           selection={selectedCliente}
-          onSelectionChange={onSelectionChange}
+          onSelectionChange={(event) => setSelectedCliente(event.value)}
+          responsiveLayout="scroll"
         >
           <Column selectionMode="single" headerStyle={{ width: "3rem" }} />
           <Column hidden field="idcliente" header="ID Cliente" />
@@ -278,26 +309,20 @@ const Clientes = () => {
             field="aceptapotradatos"
             header="Acepta Política de tratamiento de datos"
             bodyClassName="text-center"
-            style={{
-              width: "10rem",
-              wordWrap: "break-word",
-              textAlign: "center",
-            }}
+            style={{ width: "10rem", wordWrap: "break-word", textAlign: "center" }}
             body={verifiedBodyTemplate}
           />
         </DataTable>
       </div>
+
       <Potradatos
         visible={dialogVisible}
         onHide={() => setDialogVisible(false)}
         idCliente={selectedCliente ? selectedCliente.idcliente : null}
-        aceptaTratamiento={
-          selectedCliente ? selectedCliente.aceptapotradatos : null
-        }
-        onAccept={() => {
-          loadLazyData(); // Refrescar la grilla después de aceptar el tratamiento
-        }}
+        aceptaTratamiento={selectedCliente ? selectedCliente.aceptapotradatos : null}
+        onAccept={loadLazyData}
       />
+
       {editDialogVisible && (
         <ClientCreation
           visible={editDialogVisible}
@@ -307,6 +332,23 @@ const Clientes = () => {
           user={user}
         />
       )}
+
+      <Dialog
+        visible={errorState}
+        onHide={handleCloseErrorDialog}
+        header="Error"
+        modal
+        style={{ width: "320px" }}
+      >
+        <p>{errorMessage}</p>
+        <Button
+          label="Cerrar"
+          icon="pi pi-times"
+          text
+          severity="danger"
+          onClick={handleCloseErrorDialog}
+        />
+      </Dialog>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
@@ -12,6 +12,8 @@ import { Toast } from "primereact/toast";
 import { InputTextarea } from "primereact/inputtextarea";
 import { FloatLabel } from "primereact/floatlabel";
 import { Dropdown } from "primereact/dropdown";
+import { IconField } from "primereact/iconfield";
+import { InputIcon } from "primereact/inputicon";
 import ProductSearchDialog from "./ProductSearchDialog";
 import CustomerSearchDialog from "./CustomerSearchDialog";
 import { Calendar } from "primereact/calendar";
@@ -20,7 +22,7 @@ import AdditionalContacts from "./AdditionalContacts";
 import config from "../../Config";
 import axios from "axios";
 import ClientCreation from "../ClientCreation";
-import "./Quoter.css";
+import "../../styles/quoter/quoter.css";
 
 const Quoter = ({ onSave, quotationData, user }) => {
   let emptyProduct = {
@@ -91,6 +93,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
   const MIN_SEARCH_LENGTH = 4; //Minimo de caracteres para realizar la busqueda
   const [notas, setNotas] = useState(selectedCustomer?.notas || "");
   const [emptyFields, setEmptyFields] = useState({});
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
 
   const handleEditClient = () => {
     // console.log("handleEditClient-selectedCustomer", selectedCustomer);
@@ -863,33 +866,6 @@ const Quoter = ({ onSave, quotationData, user }) => {
     setSelectedProducts(_products);
   };
 
-  // Define una función para verificar si se pueden guardar los datos
-  const canSaveQuotation = () => {
-    // Verifica si se ha seleccionado un cliente y al menos un artículo
-    // Además, verifica que los campos necesarios del cliente estén completos
-    const {
-      nombrecliente,
-      identidad,
-      telefonoFijo,
-      telmovil,
-      direccion,
-      email,
-      identidadve,
-      idsegmento,
-    } = selectedCustomer;
-    return (
-      nombrecliente !== "" &&
-      identidad !== "" &&
-      (telefonoFijo !== "" || telmovil !== "") &&
-      direccion !== "" &&
-      email !== "" &&
-      identidadve !== "" &&
-      idsegmento !== null &&
-      selectedBodega !== null &&
-      selectedProducts.length > 0
-    );
-  };
-
   // const handleDiscountValueChange = (e, rowData) => {
   //   const vrdescuento = e.value || 0;
   //   const pordescuento =
@@ -1134,6 +1110,66 @@ const Quoter = ({ onSave, quotationData, user }) => {
     setEmptyFields(newEmptyFields);
   }, [selectedCustomer]);
 
+  useEffect(() => {
+    if (selectedCustomer?.idcliente || selectedProducts.length) {
+      setShowValidationErrors(false);
+    }
+  }, [selectedCustomer?.idcliente, selectedProducts.length]);
+
+
+  const shouldShowFieldError = useCallback(
+    (field) => {
+      const hasLoadedCustomer = Boolean(selectedCustomer?.idcliente);
+      return (showValidationErrors || hasLoadedCustomer) && Boolean(emptyFields[field]);
+    },
+    [emptyFields, selectedCustomer?.idcliente, showValidationErrors]
+  );
+
+  const missingRequiredFields = useMemo(() => {
+    const missing = [];
+    if (emptyFields.nombrecliente) missing.push("Nombre del cliente");
+    if (emptyFields.identidad) missing.push("Identificación");
+    if (emptyFields.codigoclaseidentidad) missing.push("Tipo de identidad");
+    if (emptyFields.telefonoFijo && emptyFields.telmovil) missing.push("Teléfono fijo o móvil");
+    if (emptyFields.direccion) missing.push("Dirección");
+    if (emptyFields.email) missing.push("Correo electrónico");
+    if (emptyFields.identidadve) missing.push("Vendedor");
+    if (emptyFields.idsegmento) missing.push("Segmento");
+    if (!selectedBodega && selectedBodega !== "-1") missing.push("Bodega");
+    if (!selectedProducts.length) missing.push("Al menos un producto");
+    return missing;
+  }, [emptyFields, selectedBodega, selectedProducts.length]);
+
+  const canOpenSaveDialog = useCallback(
+    () => Boolean(selectedCustomer?.idcliente) && Boolean(selectedBodega || selectedBodega === "-1") && selectedProducts.length > 0,
+    [selectedBodega, selectedCustomer?.idcliente, selectedProducts.length]
+  );
+
+  const handleOpenSaveDialog = () => {
+    setShowValidationErrors(true);
+
+    if (!canOpenSaveDialog()) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Datos mínimos pendientes",
+        detail: "Selecciona cliente, bodega y al menos un producto para continuar.",
+        life: 3200,
+      });
+      return;
+    }
+
+    if (missingRequiredFields.length > 0) {
+      toast.current?.show({
+        severity: "info",
+        summary: "Cliente con datos incompletos",
+        detail: "La cotización se puede guardar con información parcial del cliente, como en el flujo original.",
+        life: 3600,
+      });
+    }
+
+    setShowDialog(true);
+  };
+
   const deleteProductDialogFooter = (
     <React.Fragment>
       <Button
@@ -1168,21 +1204,35 @@ const Quoter = ({ onSave, quotationData, user }) => {
     </React.Fragment>
   );
 
+  const saveDialogHeader = (
+    <div className="quoter-save-dialog__header">
+      <div className="quoter-save-dialog__icon">
+        <i className="pi pi-save" />
+      </div>
+      <div>
+        <h3 className="quoter-save-dialog__title">Confirmar guardado</h3>
+        <p className="quoter-save-dialog__subtitle">
+          Revisa el resumen y confirma para guardar la cotización.
+        </p>
+      </div>
+    </div>
+  );
+
   const footerContent = (
-    <div>
+    <div className="quoter-save-dialog__footer">
       <Button
-        label="No"
+        label="Cancelar"
         icon="pi pi-times"
         onClick={() => setShowDialog(false)}
-        severity="danger"
-        text
-        raised
+        outlined
+        className="quoter-save-dialog__btn-cancel"
       />
       <Button
-        label="Si"
+        label="Guardar cotización"
         icon="pi pi-check"
         onClick={saveQuotation}
         severity="success"
+        className="quoter-save-dialog__btn-confirm"
         autoFocus
       />
     </div>
@@ -1203,9 +1253,11 @@ const Quoter = ({ onSave, quotationData, user }) => {
   );
 
   const startContent = (
-    <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+    <div className="quoter-product-toolbar">
       {/* Buscar producto */}
-      <div className="p-inputgroup inputtext" style={{ flexGrow: 1 }}>
+      <div className="quoter-product-toolbar__search">
+        <IconField iconPosition="left" className="quoter-product-toolbar__search-field">
+        <InputIcon className="pi pi-search" />
         <InputText
           placeholder="Buscar producto..."
           // size={"45"}
@@ -1218,16 +1270,18 @@ const Quoter = ({ onSave, quotationData, user }) => {
           }}
           tooltip="Buscar producto por nombre o referencia"
           tooltipOptions={{ position: "top" }}
-          style={{ width: "100%", minWidth: "4rem" }}
+          className="quoter-product-toolbar__search-input"
         />
-        <Button
-          icon="pi pi-search"
-          severity="warning"
-          onClick={searchProducts}
-        />
-      </div>
+      </IconField>
+      <Button
+        label="Buscar"
+        icon="pi pi-search"
+        severity="warning"
+        onClick={searchProducts}
+      />
+    </div>
       {/* Dropdown de bodegas */}
-      <div>
+      <div className="quoter-product-toolbar__bodega">
         <Dropdown
           className="inputtext"
           disabled={selectedProducts.length > 0} // Deshabilita si hay productos
@@ -1245,9 +1299,9 @@ const Quoter = ({ onSave, quotationData, user }) => {
   );
 
   const endContent = (
-    <div className="p-inputgroup inputtext">
+    <div className="quoter-product-toolbar__actions">
       <Button
-        label="Delete"
+        label="Eliminar selección"
         icon="pi pi-trash"
         severity="danger"
         onClick={confirmDeleteSelected}
@@ -1262,19 +1316,13 @@ const Quoter = ({ onSave, quotationData, user }) => {
       {/* Sección para buscar cliente */}
       <div className="grid">
         <div className="col-12">
-          <div className="card">
-            <h3
-              style={{
-                textAlign: "center",
-                marginTop: "-9px",
-                marginBottom: "5px",
-              }}
-            >
-              Busqueda de Cliente
-            </h3>
+          <div className="card quoter-section-card">
+            <h3 className="quoter-section-title">Busqueda de Cliente</h3>
             <div className="customer-search-container">
               <div className="search-group">
-                <InputText
+                <IconField iconPosition="left" className="quoter-customer-search-field">
+                  <InputIcon className="pi pi-search" />
+                  <InputText
                   placeholder="Buscar cliente..."
                   value={searchTextCustomer || ""}
                   onChange={(e) => setSearchTextCustomer(e.target.value)}
@@ -1285,8 +1333,11 @@ const Quoter = ({ onSave, quotationData, user }) => {
                   }}
                   tooltip="Buscar cliente por nombre o identificación"
                   tooltipOptions={{ position: "top" }}
+                  className="quoter-customer-search-input"
                 />
+                </IconField>
                 <Button
+                  label="Buscar"
                   icon="pi pi-search"
                   severity="warning"
                   onClick={searchCustomers}
@@ -1329,21 +1380,18 @@ const Quoter = ({ onSave, quotationData, user }) => {
       <div className="grid">
         {/* Sección para el cliente */}
         <div className="col-12 md:col-6">
-          <div className="card p-fluid ">
-            <h3
-              style={{
-                textAlign: "center",
-                marginTop: "-5px",
-                marginBottom: "5px",
-              }}
-            >
-              Información del cliente
-            </h3>
+          <div className="card p-fluid quoter-section-card">
+            <h3 className="quoter-section-title">Información del cliente</h3>
+            {showValidationErrors && Boolean(missingRequiredFields.length) && (
+              <div className="quoter-validation-banner">
+                Completa los campos obligatorios para guardar la cotización.
+              </div>
+            )}
             <div className="labelinput">
               <label htmlFor="nombrecliente">Nombre</label>
               <InputText
                 className={`inputtext ${
-                  emptyFields.nombrecliente ? "inputtext-empty" : ""
+                  shouldShowFieldError("nombrecliente") ? "quoter-field-warning" : ""
                 }`}
                 id="nombrecliente"
                 value={selectedCustomer.nombrecliente || ""}
@@ -1356,7 +1404,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
                 <label htmlFor="identidad">Identificación</label>
                 <InputText
                   className={`inputtext ${
-                    emptyFields.identidad ? "inputtext-empty" : ""
+                    shouldShowFieldError("identidad") ? "quoter-field-warning" : ""
                   }`}
                   id="identidad"
                   value={selectedCustomer.identidad || ""}
@@ -1368,7 +1416,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
                 <label htmlFor="codigoclaseidentidad">Tipo de Identidad</label>
                 <Dropdown
                   className={`inputtext ${
-                    emptyFields.codigoclaseidentidad ? "inputtext-empty" : ""
+                    shouldShowFieldError("codigoclaseidentidad") ? "quoter-field-warning" : ""
                   }`}
                   id="codigoclaseidentidad"
                   value={selectedCustomer.codigoclaseidentidad || ""}
@@ -1380,12 +1428,12 @@ const Quoter = ({ onSave, quotationData, user }) => {
                 />
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "row" }}>
+            <div className="quoter-customer-phone-row">
               <div className="labelinput">
                 <label htmlFor="telefonoFijo">Teléfono fijo</label>
                 <InputText
                   className={`inputtext ${
-                    emptyFields.telefonoFijo ? "inputtext-empty" : ""
+                    shouldShowFieldError("telefonoFijo") ? "quoter-field-warning" : ""
                   }`}
                   id="telefonoFijo"
                   value={selectedCustomer.telefonoFijo || ""}
@@ -1397,7 +1445,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
                 <label htmlFor="telmovil">Teléfono móvil</label>
                 <InputText
                   className={`inputtext ${
-                    emptyFields.telmovil ? "inputtext-empty" : ""
+                    shouldShowFieldError("telmovil") ? "quoter-field-warning" : ""
                   }`}
                   id="telmovil"
                   value={selectedCustomer.telmovil || ""}
@@ -1410,7 +1458,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
               <label htmlFor="direccion">Dirección</label>
               <InputText
                 className={`inputtext ${
-                  emptyFields.direccion ? "inputtext-empty" : ""
+                  shouldShowFieldError("direccion") ? "quoter-field-warning" : ""
                 }`}
                 id="direccion"
                 value={selectedCustomer.direccion || ""}
@@ -1422,7 +1470,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
               <label htmlFor="email">Correo electrónico</label>
               <InputText
                 className={`inputtext ${
-                  emptyFields.email ? "inputtext-empty" : ""
+                  shouldShowFieldError("email") ? "quoter-field-warning" : ""
                 }`}
                 id="email"
                 value={selectedCustomer.email || ""}
@@ -1434,7 +1482,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
               <label htmlFor="identidadve">Vendedor</label>
               <Dropdown
                 className={`inputtext ${
-                  emptyFields.identidadve ? "inputtext-empty" : ""
+                  shouldShowFieldError("identidadve") ? "quoter-field-warning" : ""
                 }`}
                 id="identidadve"
                 value={selectedCustomer.identidadve || null}
@@ -1449,7 +1497,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
               <label htmlFor="idsegmento">Segmento</label>
               <Dropdown
                 className={`inputtext ${
-                  emptyFields.idsegmento ? "inputtext-empty" : ""
+                  shouldShowFieldError("idsegmento") ? "quoter-field-warning" : ""
                 }`}
                 id="idsegmento"
                 value={selectedCustomer.idsegmento || null}
@@ -1476,16 +1524,8 @@ const Quoter = ({ onSave, quotationData, user }) => {
 
         {/* Sección para el contacto adicional */}
         <div className="col-12 md:col-6">
-          <div className="card p-fluid">
-            <h3
-              style={{
-                textAlign: "center",
-                marginTop: "-5px",
-                marginBottom: "5px",
-              }}
-            >
-              Contacto adicional
-            </h3>
+          <div className="card p-fluid quoter-section-card">
+            <h3 className="quoter-section-title">Contacto adicional</h3>
             {selectedCustomer && selectedCustomer.idcliente && (
               <AdditionalContacts
                 contacts={additionalContacts}
@@ -1502,19 +1542,11 @@ const Quoter = ({ onSave, quotationData, user }) => {
       {/* Sección para buscar productos */}
       <div className="grid">
         <div className="col-12 md:col-12">
-          <div className="card p-fluid">
-            <h3
-              style={{
-                textAlign: "center",
-                marginTop: "-9px",
-                marginBottom: "5px",
-              }}
-            >
-              Productos
-            </h3>
+          <div className="card p-fluid quoter-section-card">
+            <h3 className="quoter-section-title">Productos</h3>
             <Toolbar
+              className="quoter-products-toolbar"
               start={startContent}
-              style={{ margin: "-5px" }}
               end={endContent}
             />
           </div>
@@ -1522,7 +1554,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
       </div>
 
       {/* Lista de productos */}
-      <div className="p-col-12">
+      <div className="p-col-12 quoter-products-table-wrapper">
         <DataTable
           value={selectedProducts}
           showGridlines
@@ -1596,7 +1628,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
         </DataTable>
       </div>
 
-      <div className="p-col-12" style={{ marginTop: "20px" }}>
+      <div className="p-col-12 quoter-notes-section">
         <FloatLabel>
           <InputTextarea
             id="notas"
@@ -1612,15 +1644,15 @@ const Quoter = ({ onSave, quotationData, user }) => {
       </div>
 
       {/* Botón para guardar la cotización */}
-      <div className="p-col-12" style={{ marginTop: "10px" }}>
+      <div className="p-col-12 quoter-footer-toolbar">
         <Toolbar
           start={
             <Button
               label="Guardar"
               icon="pi pi-save"
-              onClick={() => setShowDialog(true)}
+              onClick={handleOpenSaveDialog}
               severity="success"
-              disabled={!canSaveQuotation()}
+              disabled={loading}
             />
           }
           end={
@@ -1661,16 +1693,32 @@ const Quoter = ({ onSave, quotationData, user }) => {
         visible={showDialog}
         onHide={() => setShowDialog(false)}
         footer={footerContent}
-        header="Confirmación"
+        header={saveDialogHeader}
+        className="quoter-save-dialog"
+        style={{ width: "34rem", maxWidth: "95vw" }}
         closeOnEscape={false}
       >
-        <p className="m-0">
-          <i
-            className="pi pi-exclamation-triangle mr-2"
-            style={{ fontSize: "2rem" }}
-          ></i>
-          ¿Desea guardar la cotización?
-        </p>
+        <div className="quoter-save-dialog__content">
+          <div className="quoter-save-dialog__summary-grid">
+            <div className="quoter-save-dialog__summary-item">
+              <span>Cliente</span>
+              <strong>{selectedCustomer?.nombrecliente || "Sin seleccionar"}</strong>
+            </div>
+            <div className="quoter-save-dialog__summary-item">
+              <span>Productos</span>
+              <strong>{selectedProducts.length}</strong>
+            </div>
+            <div className="quoter-save-dialog__summary-item">
+              <span>Bodega</span>
+              <strong>{selectedBodega || "No definida"}</strong>
+            </div>
+            <div className="quoter-save-dialog__summary-item">
+              <span>Total</span>
+              <strong>{formatCurrency(calculateTotalPrice())}</strong>
+            </div>
+          </div>
+          <p className="quoter-save-dialog__question">¿Desea guardar la cotización con esta información?</p>
+        </div>
       </Dialog>
 
       <Dialog

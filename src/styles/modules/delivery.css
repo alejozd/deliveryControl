@@ -1,0 +1,229 @@
+.delivery-page,
+.delivery-list-wrapper {
+  padding-top: 0.5rem;
+}
+
+.delivery-searchbar {
+  border: 0;
+  padding: 0;
+  gap: 0.75rem;
+}
+
+.delivery-searchbar__left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.delivery-searchbar__actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.delivery-searchbar__input {
+  width: min(420px, 60vw);
+}
+
+.delivery-filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.92rem;
+  color: #334155;
+}
+
+.delivery-inline-error {
+  color: #dc2626;
+  margin-top: 0.6rem;
+  display: inline-block;
+}
+
+.delivery-detail-card {
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.delivery-title {
+  margin: 0;
+}
+
+.delivery-toolbar-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.delivery-quantity-input {
+  width: 8rem;
+}
+
+.delivery-expand-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.delivery-results-counter {
+  margin-right: auto;
+  color: #475569;
+}
+
+@media (max-width: 768px) {
+  .delivery-searchbar__actions {
+    flex-wrap: wrap;
+  }
+
+  .delivery-searchbar__input {
+    width: 100%;
+  }
+
+  .delivery-toolbar-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+.delivery-confirmation-modal .p-dialog-content {
+  padding-top: 0.6rem;
+}
+
+.delivery-confirmation-summary {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr auto auto;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  background: #f8fbff;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  padding: 0.7rem;
+}
+
+.delivery-confirmation-summary small {
+  display: block;
+  color: #64748b;
+}
+
+.delivery-confirmation-summary strong {
+  color: #0f172a;
+}
+
+.delivery-confirmation-table {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.delivery-confirmation-notes {
+  margin-top: 0.9rem;
+}
+
+.delivery-confirmation-notes__input {
+  width: 100%;
+  min-height: 92px;
+}
+
+.delivery-confirmation-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+@media (max-width: 900px) {
+  .delivery-confirmation-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+.delivery-confirmation-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
+  color: #475569;
+  font-size: 0.88rem;
+}
+
+.consulta-entregas-toolbar {
+  border: 0;
+  padding: 0;
+}
+
+.consulta-entregas-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.consulta-entregas-quickranges {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .consulta-entregas-filters {
+    width: 100%;
+  }
+}
+
+.delivery-detail {
+  min-width: min(70rem, 92vw);
+}
+
+.delivery-detail__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.delivery-detail__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.delivery-detail__summary {
+  display: flex;
+  gap: 1rem;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+.delivery-detail__summary strong {
+  color: #0f172a;
+}
+
+.delivery-detail__error {
+  margin-bottom: 0.75rem;
+}
+
+.delivery-detail__loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 8rem;
+}
+
+.delivery-detail__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+
+@media (max-width: 768px) {
+  .delivery-detail {
+    min-width: 0;
+  }
+
+  .delivery-detail__summary {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

@@ -1,0 +1,49 @@
+.client-creation-dialog .p-dialog-content {
+  padding-top: 0.6rem;
+}
+
+.client-creation-content {
+  padding: 0.65rem 0.4rem 0.2rem;
+}
+
+.client-creation-steps {
+  display: flex;
+  margin-bottom: 0.65rem;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.client-creation-footer {
+  margin-top: 0.8rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.client-creation-helper {
+  display: block;
+  margin-bottom: 0.6rem;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.client-creation-dialog .inputtext-empty,
+.client-creation-dialog .inputtext-empty.p-inputtext,
+.client-creation-dialog .inputtext-empty .p-inputtext,
+.client-creation-dialog .inputtext-empty.p-dropdown {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 0.12rem rgba(245, 158, 11, 0.18);
+  background: #fffaf0;
+}
+
+@media (max-width: 768px) {
+  .client-creation-steps {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .client-creation-footer {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}

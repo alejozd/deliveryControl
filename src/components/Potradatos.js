@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import config from "../Config";
 import axios from "axios";
+import "../styles/modules/potradatos.css";
 
 const Potradatos = ({
   visible,
@@ -13,6 +14,37 @@ const Potradatos = ({
 }) => {
   const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/PoTraDatos`;
   const [loading, setLoading] = useState(false);
+  const [hasReachedBottom, setHasReachedBottom] = useState(false);
+  const contentRef = useRef(null);
+
+  const isDialogVisible = visible && aceptaTratamiento === 0;
+
+  const evaluateScrollPosition = useCallback(() => {
+    const element = contentRef.current;
+    if (!element) {
+      return;
+    }
+
+    const isAtBottom =
+      element.scrollTop + element.clientHeight >= element.scrollHeight - 4;
+
+    if (isAtBottom) {
+      setHasReachedBottom(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isDialogVisible) {
+      return;
+    }
+
+    setHasReachedBottom(false);
+    const timer = setTimeout(() => {
+      evaluateScrollPosition();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [evaluateScrollPosition, isDialogVisible]);
   const handleAccept = async () => {
     try {
       setLoading(true);
@@ -41,12 +73,13 @@ const Potradatos = ({
   return (
     <div className="card flex justify-content-center">
       <Dialog
-        visible={visible && aceptaTratamiento === 0} // Mostrar solo si no ha aceptado
+        visible={isDialogVisible} // Mostrar solo si no ha aceptado
         onHide={onHide}
         header="Política de Tratamiento de Datos Personales"
-        style={{ width: "50vw" }}
+        className="potradatos-dialog"
+        style={{ width: "min(56rem, 92vw)" }}
         footer={
-          <div>
+          <div className="potradatos-footer">
             <Button
               label="No Acepto"
               icon="pi pi-times"
@@ -57,12 +90,23 @@ const Potradatos = ({
               label="Acepto"
               icon="pi pi-check"
               onClick={handleAccept}
-              disabled={loading}
+              disabled={loading || !hasReachedBottom}
+              tooltip={
+                hasReachedBottom
+                  ? undefined
+                  : "Debes leer hasta el final para habilitar este botón"
+              }
+              tooltipOptions={{ position: "top" }}
             />
           </div>
         }
         closeOnEscape={false}
       >
+        <div
+          ref={contentRef}
+          className="potradatos-content"
+          onScroll={evaluateScrollPosition}
+        >
         <p className="m-0">
           <b>1- Objeto de esta Política</b>
           <p className="mb-5">
@@ -275,6 +319,7 @@ const Potradatos = ({
             cualquier momento y de forma unilateral por parte de Metroceramicas.
           </p>
         </p>
+        </div>
       </Dialog>
     </div>
   );

@@ -1,111 +1,150 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import { Message } from "primereact/message";
+import { ProgressSpinner } from "primereact/progressspinner";
 import { PrintDocument } from "./PrintDocument";
 import config from "../../Config";
 import axios from "axios";
+import { getFriendlyErrorMessage, toNumber } from "./deliveryUtils";
+import "../../styles/modules/delivery.css";
 
 const DetalleEntrega = ({ idEntrega, onClose, entregaData }) => {
   const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DetalleEntrega`;
+
   const [detalleEntrega, setDetalleEntrega] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const fetchDetalleEntrega = useCallback(async () => {
+    if (!idEntrega) {
+      setDetalleEntrega([]);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setErrorMessage("");
+
+      const response = await axios.put(apiUrl, { idEntrega });
+      if (response.data?.status === 200) {
+        setDetalleEntrega(Array.isArray(response.data.data) ? response.data.data : []);
+        return;
+      }
+
+      setDetalleEntrega([]);
+      setErrorMessage(
+        response.data?.error || "No fue posible consultar el detalle de la entrega."
+      );
+    } catch (error) {
+      setDetalleEntrega([]);
+      setErrorMessage(getFriendlyErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [apiUrl, idEntrega]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.put(apiUrl, { idEntrega });
-        if (response.data.status === 200) {
-          setDetalleEntrega(response.data.data);
-        } else {
-          console.error("Error en la respuesta:", response.data.error);
-        }
-      } catch (error) {
-        console.error("Error al realizar la solicitud:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    fetchDetalleEntrega();
+  }, [fetchDetalleEntrega]);
 
-    fetchData();
-  }, [idEntrega, apiUrl]);
-
-  const buildFormattedFactura = (entregaData, detalleEntrega) => ({
-    numfactura: entregaData.numfactura,
-    fechafactura: entregaData.fechafactura,
-    idcliente: entregaData.idcliente,
-    nombrecliente: entregaData.nombrecliente,
-    nit: entregaData.nit,
-    direccion: entregaData.direccion,
-    telmovil: entregaData.telmovil,
-    vendedor: entregaData.vendedor,
-    numeroentrega: entregaData.numentrega,
-    fechaEntrega: entregaData.fechaentrega,
-    notas: entregaData.notas,
-    detalle: buildFormattedDetalle(detalleEntrega),
-  });
-
-  const buildFormattedDetalle = (detalleEntrega) =>
-    detalleEntrega.map((detalle) => ({
-      codigo: detalle.codigo,
-      subcodigo: detalle.subcodigo,
-      nombreproductos: detalle.nombreproductos,
-      cantfacturada: detalle.cantfacturada,
-      cant_entregada: detalle.cantentregada,
-      saldo: detalle.saldo,
-      id: detalle.id,
-      cantidad_entregar: parseFloat(detalle.cantentregada) || 0,
+  const buildFormattedDetalle = (detalle = []) =>
+    detalle.map((item) => ({
+      codigo: item.codigo,
+      subcodigo: item.subcodigo,
+      nombreproductos: item.nombreproductos,
+      cantfacturada: item.cantfacturada,
+      cant_entregada: item.cantentregada,
+      saldo: item.saldo,
+      id: item.id,
+      cantidad_entregar: toNumber(item.cantentregada),
     }));
 
   const handlePrint = () => {
-    const entregaFull = buildFormattedFactura(entregaData, detalleEntrega);
-    PrintDocument({ factura: entregaFull, isConfirmationModal: false });
+    const factura = {
+      numfactura: entregaData?.numfactura,
+      fechafactura: entregaData?.fechafactura,
+      idcliente: entregaData?.idcliente,
+      nombrecliente: entregaData?.nombrecliente,
+      nit: entregaData?.nit,
+      direccion: entregaData?.direccion,
+      telmovil: entregaData?.telmovil,
+      vendedor: entregaData?.vendedor,
+      numeroentrega: entregaData?.numentrega,
+      fechaEntrega: entregaData?.fechaentrega,
+      notas: entregaData?.notas,
+      detalle: buildFormattedDetalle(detalleEntrega),
+    };
+
+    PrintDocument({ factura, isConfirmationModal: false });
   };
 
+  const totalEntregado = useMemo(
+    () => detalleEntrega.reduce((acc, row) => acc + toNumber(row.cantentregada), 0),
+    [detalleEntrega]
+  );
+
+  const totalPendiente = useMemo(
+    () => detalleEntrega.reduce((acc, row) => acc + toNumber(row.saldo), 0),
+    [detalleEntrega]
+  );
+
+  const numberTemplate = (value) => <span>{toNumber(value).toFixed(2)}</span>;
+
   return (
-    <div>
-      <h2>Productos</h2>
+    <div className="delivery-detail">
+      <div className="delivery-detail__header">
+        <h3 className="delivery-detail__title">Productos entregados</h3>
+        <div className="delivery-detail__summary">
+          <span>
+            Total entregado: <strong>{totalEntregado.toFixed(2)}</strong>
+          </span>
+          <span>
+            Pendiente: <strong>{totalPendiente.toFixed(2)}</strong>
+          </span>
+        </div>
+      </div>
+
+      {errorMessage ? (
+        <Message severity="error" text={errorMessage} className="delivery-detail__error" />
+      ) : null}
+
       {loading ? (
-        <div>Cargando...</div>
+        <div className="delivery-detail__loading">
+          <ProgressSpinner style={{ width: "40px", height: "40px" }} strokeWidth="6" />
+        </div>
       ) : (
         <DataTable
           value={detalleEntrega}
           showGridlines
           stripedRows
-          emptyMessage="No se han encontrado resultados"
-          className="p-datatable-sm"
+          responsiveLayout="scroll"
+          emptyMessage="No se encontraron productos para esta entrega"
+          className="p-datatable-sm delivery-detail__table"
         >
           <Column field="nombreproductos" header="Nombre Producto" />
           <Column field="referencia" header="Referencia" />
           <Column
             field="cantentregada"
             header="Cant. Entregada"
-            body={(rowData) => (
-              <span>{parseFloat(rowData.cantentregada).toFixed(2)}</span>
-            )}
+            body={(rowData) => numberTemplate(rowData.cantentregada)}
           />
           <Column
             field="saldo"
             header="Cant. Pendiente"
-            body={(rowData) => (
-              <span>{parseFloat(rowData.saldo).toFixed(2)}</span>
-            )}
+            body={(rowData) => numberTemplate(rowData.saldo)}
           />
         </DataTable>
       )}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          marginTop: "20px",
-        }}
-      >
+
+      <div className="delivery-detail__actions">
         <Button
           label="Imprimir"
           icon="pi pi-print"
           onClick={handlePrint}
-          className="p-button-secondary p-button-text p-mt-2"
+          className="p-button-secondary p-button-text"
+          disabled={loading || !detalleEntrega.length}
         />
         <Button
           label="Cerrar"

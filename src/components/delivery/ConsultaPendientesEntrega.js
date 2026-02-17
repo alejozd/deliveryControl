@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Panel } from "primereact/panel";
@@ -15,28 +15,80 @@ import { InputIcon } from "primereact/inputicon";
 import { InputSwitch } from "primereact/inputswitch";
 import config from "../../Config";
 import axios from "axios";
-import setupLocale from "../../config/localeConfig"; // Importar el locale
+import setupLocale from "../../config/localeConfig";
 import useExcelExport from "../hooks/useExcelExport";
+import { formatDateForApi, getFriendlyErrorMessage, toNumber } from "./deliveryUtils";
+import "../../styles/modules/delivery.css";
+
+const QUICK_RANGES = [15, 30, 60];
+
+const getDateRange = (days) => {
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+
+  const start = new Date(end);
+  start.setDate(start.getDate() - (days - 1));
+  start.setHours(0, 0, 0, 0);
+
+  return [start, end];
+};
+
+const createInitialFilters = () => ({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  numfactura: {
+    operator: FilterOperator.AND,
+    constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+  },
+  referencia: {
+    operator: FilterOperator.AND,
+    constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+  },
+  nombreproducto: {
+    operator: FilterOperator.AND,
+    constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+  },
+  nombrecliente: {
+    operator: FilterOperator.AND,
+    constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+  },
+  vendedor: {
+    operator: FilterOperator.AND,
+    constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+  },
+  saldo: {
+    operator: FilterOperator.AND,
+    constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+  },
+  identidad: {
+    operator: FilterOperator.AND,
+    constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+  },
+});
 
 const ConsultaPendientesEntrega = () => {
   const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaRefEntregar`;
+  const toast = useRef(null);
+  const dt = useRef(null);
+  const uniqueIdCounter = useRef(0);
+
+  const defaultRange = useMemo(() => getDateRange(15), []);
+
   const [pendientes, setPendientes] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [dates, setDates] = useState([new Date(), new Date()]);
-  const [fechaIni, setFechaIni] = useState(dates[0]);
-  const [fechaFin, setFechaFin] = useState(dates[1]);
+  const [dates, setDates] = useState(defaultRange);
+  const [fechaIni, setFechaIni] = useState(defaultRange[0]);
+  const [fechaFin, setFechaFin] = useState(defaultRange[1]);
+  const [activeQuickRange, setActiveQuickRange] = useState(15);
+
   const [errorState, setErrorState] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const uniqueIdCounter = useRef(0);
-  const [filters, setFilters] = useState(null);
+
+  const [filters, setFilters] = useState(createInitialFilters);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [exportAllColumns, setExportAllColumns] = useState(false);
-  const toast = useRef(null);
-  const dt = useRef(null); // Referencia al DataTable
   const { exportToExcel } = useExcelExport("pendientes_entrega");
 
-  // Definir los títulos de columna personalizados
   const columnTitles = {
     numfactura: "Documento",
     referencia: "Referencia",
@@ -48,17 +100,83 @@ const ConsultaPendientesEntrega = () => {
   };
 
   useEffect(() => {
-    setupLocale(); // Llamar la configuración del locale
-    if (fechaIni && !fechaFin) {
-      setFechaFin(fechaIni);
-    } else if (!fechaIni && fechaFin) {
-      setFechaIni(fechaFin);
+    setupLocale();
+  }, []);
+
+  const generateUniqueId = useCallback(() => {
+    uniqueIdCounter.current += 1;
+    return `unique-id-${uniqueIdCounter.current}`;
+  }, []);
+
+  const handleCloseErrorDialog = () => {
+    setErrorState(false);
+    setErrorMessage("");
+  };
+
+  const handleSearch = useCallback(async () => {
+    try {
+      setLoading(true);
+      const fechaInicio = fechaIni || new Date();
+      const fechaFinal = fechaFin || fechaInicio;
+
+      const response = await axios.put(apiUrl, {
+        fechaIni: formatDateForApi(fechaInicio),
+        fechaFin: formatDateForApi(fechaFinal),
+      });
+
+      if (response.data?.status === 200) {
+        const data = Array.isArray(response.data.data) ? response.data.data : [];
+        const dataWithIds = data.map((item) => ({
+          ...item,
+          id: generateUniqueId(),
+        }));
+        setPendientes(dataWithIds);
+        return;
+      }
+
+      setErrorState(true);
+      setErrorMessage(
+        response.data?.error ||
+          "No fue posible consultar referencias pendientes con este rango de fechas."
+      );
+    } catch (error) {
+      setErrorState(true);
+      setErrorMessage(getFriendlyErrorMessage(error));
+    } finally {
+      setLoading(false);
     }
-    initFilters();
-  }, [fechaIni, fechaFin]);
+  }, [apiUrl, fechaFin, fechaIni, generateUniqueId]);
+
+  useEffect(() => {
+    handleSearch();
+  }, [handleSearch]);
+
+  const handleDateChange = (e) => {
+    const selectedDates = e.value || [];
+    setDates(selectedDates);
+
+    if (!selectedDates.length) {
+      setFechaIni(null);
+      setFechaFin(null);
+      setActiveQuickRange(null);
+      return;
+    }
+
+    const [startDate, endDate] = selectedDates;
+    setFechaIni(startDate || null);
+    setFechaFin(endDate || startDate || null);
+    setActiveQuickRange(null);
+  };
+
+  const applyQuickRange = (days) => {
+    const newRange = getDateRange(days);
+    setActiveQuickRange(days);
+    setDates(newRange);
+    setFechaIni(newRange[0]);
+    setFechaFin(newRange[1]);
+  };
 
   const handleExportExcel = () => {
-    // Obtener las columnas del DataTable
     const columns = React.Children.toArray(dt.current?.props.children)
       .filter((col) => col.props.field)
       .map((col) => ({
@@ -66,77 +184,16 @@ const ConsultaPendientesEntrega = () => {
         hidden: col.props.hidden,
       }));
 
-    exportToExcel(dt.current.filteredValue || pendientes, columns, {
+    exportToExcel(dt.current?.filteredValue || pendientes, columns, {
       columnTitles,
       exportAllColumns,
-      hiddenColumns: ["id"], // Excluir la columna id generada internamente
+      hiddenColumns: ["id"],
     });
   };
 
-  const handleCloseErrorDialog = () => {
-    setErrorState(false);
-    setErrorMessage("");
-  };
-
-  const handleSearch = async () => {
-    try {
-      setLoading(true);
-      const fechaInicio = fechaIni || new Date();
-      const fechaFinal = fechaFin || new Date();
-      const requestData = {
-        fechaIni: fechaInicio.toLocaleDateString("es-CO", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }),
-        fechaFin: fechaFinal.toLocaleDateString("es-CO", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }),
-      };
-
-      const response = await axios.put(apiUrl, requestData);
-
-      if (response.data.status === 200) {
-        const dataWithIds = response.data.data.map((item) => ({
-          ...item,
-          id: generateUniqueId(),
-        }));
-        setPendientes(dataWithIds);
-      } else {
-        setErrorMessage(response.data.error);
-      }
-    } catch (error) {
-      setErrorState(true);
-      setErrorMessage(
-        error.message === "Network Error"
-          ? "Error de red: No se puede conectar al servidor. Por favor, verifica tu conexión a Internet o inténtalo más tarde."
-          : `Error al realizar la solicitud: ${error.message}`
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDateChange = (e) => {
-    setDates(e.value);
-    if (e.value && e.value.length > 0) {
-      setFechaIni(e.value[0]);
-      setFechaFin(e.value.length === 2 ? e.value[1] : e.value[0]);
-    } else {
-      setFechaIni(null);
-      setFechaFin(null);
-    }
-  };
-
-  const generateUniqueId = () => {
-    uniqueIdCounter.current += 1;
-    return `unique-id-${uniqueIdCounter.current}`;
-  };
-
   const clearFilter = () => {
-    initFilters();
+    setFilters(createInitialFilters());
+    setGlobalFilterValue("");
   };
 
   const onGlobalFilterChange = (e) => {
@@ -148,68 +205,32 @@ const ConsultaPendientesEntrega = () => {
     setGlobalFilterValue(value);
   };
 
-  const initFilters = () => {
-    setFilters({
-      global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-      numfactura: {
-        operator: FilterOperator.AND,
-        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
-      },
-      referencia: {
-        operator: FilterOperator.AND,
-        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
-      },
-      nombreproducto: {
-        operator: FilterOperator.AND,
-        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
-      },
-      nombrecliente: {
-        operator: FilterOperator.AND,
-        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
-      },
-      vendedor: {
-        operator: FilterOperator.AND,
-        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
-      },
-      saldo: {
-        operator: FilterOperator.AND,
-        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
-      },
-      identidad: {
-        operator: FilterOperator.AND,
-        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
-      },
-    });
-  };
-
   const onRowSelect = (event) => {
-    toast.current.show({
+    toast.current?.show({
       severity: "info",
-      summary: "Producto Seleccionado",
+      summary: "Producto seleccionado",
       detail: event.data.nombreproducto,
-      life: 3000,
+      life: 2500,
     });
   };
 
   const stockBodyTemplate = (rowData) => {
+    const saldo = toNumber(rowData.saldo);
+
     const stockClassName = classNames(
       "border-circle w-4rem h-2rem inline-flex font-bold justify-content-center align-items-center text-sm",
       {
-        "bg-teal-100 text-teal-900": rowData.saldo > 1 && rowData.saldo < 10,
-        "bg-blue-100 text-blue-900": rowData.saldo > 10 && rowData.saldo < 20,
-        "bg-red-100 text-red-900": rowData.saldo > 20,
+        "bg-teal-100 text-teal-900": saldo > 1 && saldo < 10,
+        "bg-blue-100 text-blue-900": saldo >= 10 && saldo < 20,
+        "bg-red-100 text-red-900": saldo >= 20,
       }
     );
 
-    return (
-      <div className={stockClassName}>
-        {parseFloat(rowData.saldo).toFixed(2)}
-      </div>
-    );
+    return <div className={stockClassName}>{saldo.toFixed(2)}</div>;
   };
 
   const header = (
-    <div className="flex justify-content-between align-items-center">
+    <div className="flex justify-content-between align-items-center gap-2 flex-wrap">
       <Button
         type="button"
         icon="pi pi-filter-slash"
@@ -217,16 +238,14 @@ const ConsultaPendientesEntrega = () => {
         outlined
         onClick={clearFilter}
       />
-      <div className="flex align-items-center gap-2">
+      <div className="flex align-items-center gap-2 flex-wrap">
         <div className="flex align-items-center gap-1">
           <InputSwitch
             checked={exportAllColumns}
             onChange={(e) => setExportAllColumns(e.value)}
             tooltip="Exportar todas las columnas"
           />
-          <label className="text-sm">
-            {exportAllColumns ? "Todas" : "Visibles"}
-          </label>
+          <label className="text-sm">{exportAllColumns ? "Todas" : "Visibles"}</label>
         </div>
         <Button
           icon="pi pi-file-excel"
@@ -237,49 +256,67 @@ const ConsultaPendientesEntrega = () => {
           raised
           onClick={handleExportExcel}
         />
-        <span className="p-input-icon-right">
-          <IconField iconPosition="left">
-            <InputIcon className="pi pi-search" />
-            <InputText
-              value={globalFilterValue}
-              onChange={onGlobalFilterChange}
-              placeholder="Palabra clave"
-            />
-          </IconField>
-        </span>
+        <IconField iconPosition="left">
+          <InputIcon className="pi pi-search" />
+          <InputText
+            value={globalFilterValue}
+            onChange={onGlobalFilterChange}
+            placeholder="Buscar por documento, artículo, cliente..."
+          />
+        </IconField>
       </div>
     </div>
   );
 
   return (
-    <div style={{ paddingTop: "5px" }}>
+    <div className="delivery-page">
       <Panel header="Consulta Referencias Pendientes por Entregar" toggleable>
         <Toolbar
+          className="consulta-entregas-toolbar"
           start={
-            <Calendar
-              value={dates}
-              onChange={handleDateChange}
-              selectionMode="range"
-              showIcon
-              readOnlyInput
-              dateFormat="dd/mm/yy"
-              numberOfMonths={2}
-              hideOnRangeSelection
-            />
+            <div className="consulta-entregas-filters">
+              <div className="consulta-entregas-quickranges" role="group">
+                {QUICK_RANGES.map((days) => (
+                  <Button
+                    key={days}
+                    type="button"
+                    label={`${days} días`}
+                    size="small"
+                    className={
+                      activeQuickRange === days ? "p-button-primary" : "p-button-outlined"
+                    }
+                    onClick={() => applyQuickRange(days)}
+                  />
+                ))}
+              </div>
+
+              <Calendar
+                value={dates}
+                onChange={handleDateChange}
+                selectionMode="range"
+                showIcon
+                readOnlyInput
+                dateFormat="dd/mm/yy"
+                numberOfMonths={2}
+                hideOnRangeSelection
+                placeholder="Selecciona un rango"
+              />
+            </div>
           }
           end={
             <Button
               label="Buscar"
               icon="pi pi-search"
-              className="p-mt-2"
               loading={loading}
               onClick={handleSearch}
             />
           }
         />
       </Panel>
+
       <Toast ref={toast} />
-      <div style={{ paddingTop: "5px" }}>
+
+      <div className="delivery-list-wrapper">
         <DataTable
           ref={dt}
           value={pendientes}
@@ -359,7 +396,7 @@ const ConsultaPendientesEntrega = () => {
             filterField="saldo"
             sortable
             body={stockBodyTemplate}
-            align={"center"}
+            align="center"
           />
           <Column
             field="nombrecliente"
@@ -379,6 +416,7 @@ const ConsultaPendientesEntrega = () => {
           />
         </DataTable>
       </div>
+
       <Dialog
         visible={errorState}
         onHide={handleCloseErrorDialog}
