@@ -189,8 +189,12 @@ const Clientes = () => {
 
   return (
     <div className="clientes-page">
-      <h1 className="clientes-title">Clientes</h1>
-      <Panel header="Listado de Clientes" toggleable>
+      <div className="clientes-header">
+        <h1 className="clientes-title">Clientes</h1>
+        <span className="clientes-counter">{totalRecords} registros</span>
+      </div>
+
+      <Panel header="Listado de Clientes" toggleable className="clientes-panel">
         <Toolbar
           className="clientes-toolbar"
           start={
@@ -225,6 +229,15 @@ const Clientes = () => {
             </div>
           }
         />
+
+        {selectedCliente ? (
+          <div className="clientes-selected">
+            <i className="pi pi-user" />
+            <span>
+              Seleccionado: <strong>{selectedCliente.nombrecliente}</strong>
+            </span>
+          </div>
+        ) : null}
       </Panel>
 
       <div className="card clientes-table-wrapper">
