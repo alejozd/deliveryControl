@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { InputText } from "primereact/inputtext";
@@ -10,28 +10,36 @@ import { Calendar } from "primereact/calendar";
 import { FloatLabel } from "primereact/floatlabel";
 import { useLocation } from "react-router-dom";
 import { Toast } from "primereact/toast";
-import PrintQuote from "./PrintQuote";
-import config from "../../Config";
 import axios from "axios";
+import config from "../../Config";
+import setupLocale from "../../config/localeConfig";
+import PrintQuote from "./PrintQuote";
 import Quoter from "./Quoter";
 import WhatsAppDialog from "./WhatsAppDialog";
 import EmailDialog from "./EmailDialog";
-import setupLocale from "./../../config/localeConfig";
 import ComprobantePDF from "./ComprobantePDF";
+import "./QuoterList.css";
+
+const formatDateForApi = (date) =>
+  date?.toLocaleDateString("es-CO", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 
 const QuoterList = () => {
   const location = useLocation();
   const toast = useRef(null);
   const { user } = location.state || {};
+
   const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaCotizaciones`;
   const apiUrlDelCotizacion = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DeleteCotizacionByID`;
   const apiUrlCotizacionByID = `${config.apiUrl}/Datasnap/rest/TServerMethods1/CotizacionByID`;
   const apiUrlDocumentoUsado = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DocUsado`;
+
   const [selectedQuotation, setSelectedQuotation] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const [fechaIni, setFechaIni] = useState(new Date());
-  const [fechaFin, setFechaFin] = useState(new Date());
   const [dates, setDates] = useState([new Date(), new Date()]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -42,233 +50,63 @@ const QuoterList = () => {
   const [isEmailModalVisible, setIsEmailModalVisible] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [showComprobante, setShowComprobante] = useState(null);
-  const [autoGeneratePDF, setAutoGeneratePDF] = useState(false); // Estado para auto-generar PDF
-
-  setupLocale();
 
   useEffect(() => {
-    // Si solo se selecciona una fecha, asignarla tanto como fecha inicial como fecha final
-    if (fechaIni && !fechaFin) {
-      setFechaFin(fechaIni);
-    } else if (!fechaIni && fechaFin) {
-      setFechaIni(fechaFin);
-    }
-  }, [fechaIni, fechaFin]);
+    setupLocale();
+  }, []);
 
-  // Función para abrir el diálogo para crear una nueva cotización
-  const openCreateDialog = () => {
-    setSelectedQuotation(null);
-    setShowDialog(true);
+  const fechaIni = dates?.[0] || null;
+  const fechaFin = dates?.[1] || dates?.[0] || null;
+
+  const showErrorToast = (message) => {
+    setErrorMessage(message);
+    toast.current?.show({
+      severity: "error",
+      summary: "Error",
+      detail: message,
+      life: 3200,
+    });
   };
+
+  const filteredQuoters = useMemo(() => {
+    const criteria = searchText.trim().toLowerCase();
+    if (!criteria) return quoters;
+
+    return quoters.filter((item) =>
+      [item.numerocotizacion, item.nit, item.nombrecliente]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(criteria))
+    );
+  }, [quoters, searchText]);
 
   const handleSearch = async () => {
+    if (!fechaIni || !fechaFin) {
+      showErrorToast("Debes seleccionar un rango de fechas válido.");
+      return;
+    }
+
     try {
       setLoading(true);
-      const requestData = {
-        fechaIni: fechaIni.toLocaleDateString("es-CO", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }),
-        fechaFin: fechaFin.toLocaleDateString("es-CO", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }),
-      };
-      // console.log('JSON enviado al backend:', requestData);
-      const response = await axios.put(apiUrl, requestData);
-
-      if (response.data.status === 200) {
-        setQuoters(response.data.data);
-        // console.log("Cotizaciones:", response.data.data);
-      } else {
-        console.error(
-          "[QuoterList] - Error en la respuesta:",
-          response.data.error
-        );
-        setErrorMessage(response.data.error);
-      }
-    } catch (error) {
-      if (error.message === "Network Error") {
-        setErrorMessage(
-          "No se puede conectar al servidor. Por favor, verifica tu conexión a Internet o inténtalo más tarde."
-        );
-        console.error("Error de red:", error.message + " " + errorMessage);
-      } else {
-        setErrorMessage(`Error al realizar la solicitud: ${error.message}`);
-        console.error(errorMessage);
-      }
-      console.error("Error al realizar la solicitud:", error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const confirmDelete = async () => {
-    try {
-      // console.log(quotationToDelete);
-      const requestData = {
-        idcotizacion: quotationToDelete.idcotizacion,
-      };
-      const response = await axios.put(apiUrlDelCotizacion, requestData);
-      if (response.data.status === 200) {
-        // Actualizar la lista de cotizaciones después de la eliminación
-        setQuoters(
-          quoters.filter(
-            (quotation) =>
-              quotation.idcotizacion !== quotationToDelete.idcotizacion
-          )
-        );
-        setDeleteDialogVisible(false);
-        setQuotationToDelete(null);
-      } else {
-        console.error("Error al borrar la cotización:", response.data.error);
-      }
-    } catch (error) {
-      console.error("Error al realizar la solicitud:", error);
-    }
-  };
-
-  const handleDateChange = (e) => {
-    setDates(e.value);
-
-    if (e.value && e.value.length > 0) {
-      setFechaIni(e.value[0]);
-      if (e.value.length === 2) {
-        setFechaFin(e.value[1]);
-      } else {
-        setFechaFin(e.value[0]);
-      }
-    } else {
-      setFechaIni(null);
-      setFechaFin(null);
-    }
-  };
-
-  const editQuotation = async (rowData) => {
-    try {
-      // Realizar la solicitud al endpoint usando axios
-      const requestData = {
-        documento: rowData.docufull,
-        fecha: rowData.fechacotizacion,
-      };
-      // console.log("JSON enviado al backend:", requestData);
-      const response = await axios.put(apiUrlDocumentoUsado, requestData);
-
-      // Aquí se asume que `response.data` contiene el JSON con `docusado` y `status`
-      const { docusado, status } = response.data;
-
-      if (status === 200) {
-        if (docusado === 0) {
-          // Si docusado es 0, permitir la edición
-          setSelectedQuotation(rowData);
-          setShowDialog(true);
-        } else if (docusado === 1) {
-          // Si docusado es 1, mostrar mensaje de advertencia
-          toast.current.show({
-            severity: "warn",
-            summary: "Advertencia",
-            detail: `El documento ${rowData.docufull} ya ha sido usado y no se puede modificar.`,
-            life: 3500,
-          });
-        }
-      } else {
-        // Manejo de un posible error en el status
-        toast.current.show({
-          severity: "error",
-          summary: "Error",
-          detail:
-            "Hubo un problema al verificar el documento. Inténtalo de nuevo más tarde.",
-          life: 3000,
-        });
-      }
-    } catch (error) {
-      // Manejo de errores de red o del servidor
-      toast.current.show({
-        severity: "error",
-        summary: "Error",
-        detail:
-          "Error al comunicarse con el servidor. Revisa tu conexión e inténtalo de nuevo.",
-        life: 3000,
+      const response = await axios.put(apiUrl, {
+        fechaIni: formatDateForApi(fechaIni),
+        fechaFin: formatDateForApi(fechaFin),
       });
-      console.error("Error al verificar el documento usado:", error);
-    }
-  };
 
-  const deleteQuotation = (rowData) => {
-    setQuotationToDelete(rowData);
-    setDeleteDialogVisible(true);
-  };
-
-  const printQuotation = async (rowData) => {
-    try {
-      setLoading(true);
-      const idcotizacion = rowData.idcotizacion;
-      const response = await axios.put(apiUrlCotizacionByID, { idcotizacion });
-      // console.log("response:", response.data);
-      if (response.data.status === 200) {
-        const { cliente, productos } = response.data;
-
-        const quotation = {
-          numerocotizacion: cliente.numerocotizacion || "",
-          fecha: cliente.fechacotizacion || "",
-          nombrecliente: cliente.nombrecliente || "",
-          identidad: cliente.identidad || "",
-          direccion: cliente.direccion || "",
-          telmovil: cliente.telmovil || "",
-          email: cliente.email || "",
-          notas: cliente.notas || "",
-          productos: productos.map((productos) => ({
-            nombreproductos: productos.nombreproductos,
-            referencia: productos.referencia,
-            precio: productos.precio,
-            cantidad: productos.cantidad,
-            total: productos.total,
-          })),
-        };
-        // console.log("quotation:", quotation);
-        setTimeout(() => {
-          PrintQuote({ quoteData: quotation });
-        }, 100); // Se añade un pequeño retraso para asegurar que el estado se actualice antes de imprimir
-      } else {
-        setErrorMessage(response.data.error || "Error en la respuesta");
+      if (response?.data?.status === 200) {
+        setQuoters(response.data.data || []);
+        return;
       }
+
+      showErrorToast(response?.data?.error || "No fue posible cargar cotizaciones.");
     } catch (error) {
-      setErrorMessage("Error al realizar la solicitud: " + error.message);
+      showErrorToast(
+        error.message === "Network Error"
+          ? "No se puede conectar al servidor. Verifica tu conexión e inténtalo más tarde."
+          : `Error al consultar cotizaciones: ${error.message}`
+      );
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSaveQuotation = () => {
-    setShowDialog(false);
-    setSelectedQuotation(null); // Limpiar la selección de la cotización
-    handleSearch();
-  };
-
-  const openWhatsAppModal = async (quote) => {
-    setLoading(true);
-    const { success, quotation, errorMessage } = await fetchQuotation(quote);
-    if (success) {
-      setSelectedQuote(quotation);
-      setIsWhatsAppModalVisible(true);
-    } else {
-      setErrorMessage(errorMessage);
-    }
-    setLoading(false);
-  };
-
-  const openEmailModal = async (quote) => {
-    setLoading(true);
-    const { success, quotation, errorMessage } = await fetchQuotation(quote);
-    if (success) {
-      setSelectedQuote(quotation);
-      setIsEmailModalVisible(true);
-    } else {
-      setErrorMessage(errorMessage);
-    }
-    setLoading(false);
   };
 
   const fetchQuotation = async (rowData) => {
@@ -276,9 +114,18 @@ const QuoterList = () => {
       const response = await axios.put(apiUrlCotizacionByID, {
         idcotizacion: rowData.idcotizacion,
       });
-      if (response.data.status === 200) {
-        const { cliente, productos } = response.data;
-        const quotation = {
+
+      if (response?.data?.status !== 200) {
+        return {
+          success: false,
+          errorMessage: response?.data?.error || "Error al consultar la cotización.",
+        };
+      }
+
+      const { cliente, productos } = response.data;
+      return {
+        success: true,
+        quotation: {
           numerocotizacion: cliente.numerocotizacion || "",
           fecha: cliente.fechacotizacion || "",
           cliente: {
@@ -290,7 +137,7 @@ const QuoterList = () => {
             email: cliente.email || "",
             notas: cliente.notas || "",
           },
-          productos: productos.map((producto) => ({
+          productos: (productos || []).map((producto) => ({
             nombre: producto.nombreproductos,
             referencia: producto.referencia,
             precio: producto.precio,
@@ -298,233 +145,264 @@ const QuoterList = () => {
             total: producto.total,
           })),
           total: rowData.total || 0,
-        };
-        return { success: true, quotation };
-      } else {
-        return {
-          success: false,
-          errorMessage: response.data.error || "Error en la respuesta",
-        };
-      }
+        },
+      };
     } catch (error) {
       return {
         success: false,
-        errorMessage: "Error al realizar la solicitud: " + error.message,
+        errorMessage: `Error al consultar la cotización: ${error.message}`,
       };
     }
   };
 
-  const handleShowComprobante = async (rowData, autoGenerate = false) => {
-    // console.log("handleShowComprobante:", rowData);
+  const handleSaveQuotation = () => {
+    setShowDialog(false);
+    setSelectedQuotation(null);
+    handleSearch();
+  };
+
+  const openCreateDialog = () => {
+    setSelectedQuotation(null);
+    setShowDialog(true);
+  };
+
+  const editQuotation = async (rowData) => {
+    try {
+      const response = await axios.put(apiUrlDocumentoUsado, {
+        documento: rowData.docufull,
+        fecha: rowData.fechacotizacion,
+      });
+
+      const { docusado, status } = response.data || {};
+      if (status !== 200) {
+        showErrorToast("No fue posible verificar el estado del documento.");
+        return;
+      }
+
+      if (docusado === 0) {
+        setSelectedQuotation(rowData);
+        setShowDialog(true);
+        return;
+      }
+
+      toast.current?.show({
+        severity: "warn",
+        summary: "Documento bloqueado",
+        detail: `La cotización ${rowData.docufull} ya fue usada y no se puede editar.`,
+        life: 3400,
+      });
+    } catch (error) {
+      showErrorToast(`Error al validar el documento: ${error.message}`);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!quotationToDelete) return;
+
+    try {
+      const response = await axios.put(apiUrlDelCotizacion, {
+        idcotizacion: quotationToDelete.idcotizacion,
+      });
+
+      if (response?.data?.status === 200) {
+        setQuoters((current) =>
+          current.filter((item) => item.idcotizacion !== quotationToDelete.idcotizacion)
+        );
+        setDeleteDialogVisible(false);
+        setQuotationToDelete(null);
+        toast.current?.show({
+          severity: "success",
+          summary: "Eliminada",
+          detail: "Cotización eliminada correctamente.",
+          life: 2400,
+        });
+        return;
+      }
+
+      showErrorToast(response?.data?.error || "No fue posible eliminar la cotización.");
+    } catch (error) {
+      showErrorToast(`Error al eliminar la cotización: ${error.message}`);
+    }
+  };
+
+  const deleteQuotation = (rowData) => {
+    setQuotationToDelete(rowData);
+    setDeleteDialogVisible(true);
+  };
+
+  const printQuotation = async (rowData) => {
     try {
       setLoading(true);
-      const { success, quotation, errorMessage } = await fetchQuotation(
-        rowData
-      );
+      const response = await axios.put(apiUrlCotizacionByID, {
+        idcotizacion: rowData.idcotizacion,
+      });
 
-      if (success) {
-        // Restablecer el estado antes de actualizarlo
-        setAutoGeneratePDF(false);
-        setShowComprobante(null);
-
-        // Usar un timeout para asegurar que el estado se restablezca antes de actualizarlo
-        setTimeout(() => {
-          setAutoGeneratePDF(autoGenerate);
-          setShowComprobante(quotation);
-        }, 0);
-      } else {
-        setErrorMessage(errorMessage);
+      if (response?.data?.status !== 200) {
+        showErrorToast(response?.data?.error || "No fue posible imprimir la cotización.");
+        return;
       }
+
+      const { cliente, productos } = response.data;
+      PrintQuote({
+        quoteData: {
+          numerocotizacion: cliente.numerocotizacion || "",
+          fecha: cliente.fechacotizacion || "",
+          nombrecliente: cliente.nombrecliente || "",
+          identidad: cliente.identidad || "",
+          direccion: cliente.direccion || "",
+          telmovil: cliente.telmovil || "",
+          email: cliente.email || "",
+          notas: cliente.notas || "",
+          productos: (productos || []).map((item) => ({
+            nombreproductos: item.nombreproductos,
+            referencia: item.referencia,
+            precio: item.precio,
+            cantidad: item.cantidad,
+            total: item.total,
+          })),
+        },
+      });
     } catch (error) {
-      setErrorMessage("Error al realizar la solicitud: " + error.message);
+      showErrorToast(`Error al imprimir la cotización: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (autoGeneratePDF && showComprobante) {
-      // Aquí puedes manejar la lógica para generar el PDF automáticamente
-      // Por ejemplo, llamar a una función en ComprobantePDF para generar el PDF
-    }
-  }, [autoGeneratePDF, showComprobante]);
+  const openWhatsAppModal = async (quote) => {
+    setLoading(true);
+    const { success, quotation, errorMessage: fetchError } = await fetchQuotation(quote);
+    setLoading(false);
 
-  const actionbodyTemplate = (rowData) => {
-    return (
-      <React.Fragment>
-        <Button
-          icon="pi pi-whatsapp"
-          severity="success"
-          rounded
-          text
-          onClick={() => openWhatsAppModal(rowData)}
-        />
-        <Button
-          icon="pi pi-envelope"
-          severity="secondary"
-          rounded
-          text
-          onClick={() => openEmailModal(rowData)}
-        />
-        <Button
-          icon="pi pi-file-pdf"
-          rounded
-          text
-          severity="danger"
-          onClick={() => handleShowComprobante(rowData)}
-        />
-      </React.Fragment>
-    );
+    if (!success) {
+      showErrorToast(fetchError);
+      return;
+    }
+
+    setSelectedQuote(quotation);
+    setIsWhatsAppModalVisible(true);
   };
 
-  const formatCurrency = (value) => {
-    return value.toLocaleString("es-CO", {
+  const openEmailModal = async (quote) => {
+    setLoading(true);
+    const { success, quotation, errorMessage: fetchError } = await fetchQuotation(quote);
+    setLoading(false);
+
+    if (!success) {
+      showErrorToast(fetchError);
+      return;
+    }
+
+    setSelectedQuote(quotation);
+    setIsEmailModalVisible(true);
+  };
+
+  const handleShowComprobante = async (rowData) => {
+    setLoading(true);
+    const { success, quotation, errorMessage: fetchError } = await fetchQuotation(rowData);
+    setLoading(false);
+
+    if (!success) {
+      showErrorToast(fetchError);
+      return;
+    }
+
+    setShowComprobante(quotation);
+  };
+
+  const formatCurrency = (value = 0) =>
+    Number(value).toLocaleString("es-CO", {
       style: "currency",
       currency: "COP",
     });
-  };
 
-  const totalBodyTemplate = (quoters) => {
-    return formatCurrency(quoters.total);
-  };
+  const actionbodyTemplate = (rowData) => (
+    <div className="quoter-actions">
+      <Button icon="pi pi-whatsapp" severity="success" rounded text onClick={() => openWhatsAppModal(rowData)} />
+      <Button icon="pi pi-envelope" severity="secondary" rounded text onClick={() => openEmailModal(rowData)} />
+      <Button icon="pi pi-file-pdf" severity="danger" rounded text onClick={() => handleShowComprobante(rowData)} />
+    </div>
+  );
 
   return (
-    <div className="p-grid">
+    <div className="quoter-list-page">
       <Toast ref={toast} />
-      {/* Barra de búsqueda */}
-      <div>
-        <Panel header="Cotizaciones" toggleable>
-          <Toolbar
-            start={
-              <div style={{ marginTop: "10px" }}>
-                <FloatLabel>
-                  <Calendar
-                    id="fechaCotizaciones"
-                    style={{ marginTop: "10px" }}
-                    value={dates}
-                    onChange={handleDateChange}
-                    selectionMode="range"
-                    showIcon
-                    readOnlyInput
-                    dateFormat="dd/mm/yy"
-                    hideOnRangeSelection
-                    placeholder="Rango de fechas"
-                  />
-                  <label htmlFor="fechaCotizaciones">Rango de fechas</label>
-                </FloatLabel>
-              </div>
-            }
-            end={
-              <div style={{ marginTop: "13px" }}>
-                <FloatLabel>
-                  <InputText
-                    style={{ width: "320px" }}
-                    id="searchCriteria"
-                    // placeholder="Cotización, cédula/nit o nombre cliente"
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    className="mobile-input"
-                  />
-                  <label htmlFor="searchCriteria">
-                    Cotización, cédula/nit o nombre cliente
-                  </label>
-                  <Button
-                    label="Buscar"
-                    icon="pi pi-search"
-                    className="p-mt-2"
-                    loading={loading}
-                    onClick={handleSearch}
-                    style={{ marginLeft: "5px" }}
-                  />
-                </FloatLabel>
-              </div>
-            }
-          />
-        </Panel>
-        <div className="p-col-12" style={{ marginTop: "5px" }}>
-          <Panel>
-            <Toolbar
-              end={
-                <div className="flex align-items-center gap-2">
-                  <Button
-                    label="Nueva"
-                    icon="pi pi-plus"
-                    severity="success"
-                    onClick={openCreateDialog}
-                    // className="p-button-raised p-button-primary"
-                    raised
-                    // rounded
-                    style={{ marginTop: "-10px", marginBottom: "-10px" }}
-                  />
-                  <Button
-                    label="Editar"
-                    icon="pi pi-pencil"
-                    disabled={!selectedQuotation}
-                    onClick={() => editQuotation(selectedQuotation)}
-                  />
-                  <Button
-                    label="Eliminar"
-                    icon="pi pi-trash"
-                    severity="danger"
-                    disabled={!selectedQuotation}
-                    onClick={() => deleteQuotation(selectedQuotation)}
-                  />
-                  <Button
-                    label="Imprimir"
-                    icon="pi pi-print"
-                    severity="help"
-                    disabled={!selectedQuotation}
-                    onClick={() => printQuotation(selectedQuotation)}
-                  />
-                </div>
-              }
-            />
-          </Panel>
-        </div>
-      </div>
 
-      {/* Grilla de cotizaciones */}
-      <div className="p-col-12">
+      <Panel header="Cotizaciones" toggleable>
+        <Toolbar
+          className="quoter-toolbar"
+          start={
+            <FloatLabel>
+              <Calendar
+                id="fechaCotizaciones"
+                value={dates}
+                onChange={(e) => setDates(e.value)}
+                selectionMode="range"
+                showIcon
+                readOnlyInput
+                dateFormat="dd/mm/yy"
+                hideOnRangeSelection
+                placeholder="Rango de fechas"
+              />
+              <label htmlFor="fechaCotizaciones">Rango de fechas</label>
+            </FloatLabel>
+          }
+          end={
+            <div className="quoter-toolbar__search">
+              <span className="p-input-icon-left">
+                <i className="pi pi-search" />
+                <InputText
+                  id="searchCriteria"
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  placeholder="Cotización, cédula/nit o nombre"
+                />
+              </span>
+              <Button label="Buscar" icon="pi pi-sync" loading={loading} onClick={handleSearch} />
+            </div>
+          }
+        />
+      </Panel>
+
+      <Panel className="quoter-list-panel">
+        <Toolbar
+          end={
+            <div className="quoter-main-actions">
+              <Button label="Nueva" icon="pi pi-plus" severity="success" onClick={openCreateDialog} raised />
+              <Button label="Editar" icon="pi pi-pencil" disabled={!selectedQuotation} onClick={() => editQuotation(selectedQuotation)} />
+              <Button label="Eliminar" icon="pi pi-trash" severity="danger" disabled={!selectedQuotation} onClick={() => deleteQuotation(selectedQuotation)} />
+              <Button label="Imprimir" icon="pi pi-print" severity="help" disabled={!selectedQuotation} onClick={() => printQuotation(selectedQuotation)} />
+            </div>
+          }
+        />
+
         <DataTable
-          value={quoters}
+          value={filteredQuoters}
           selectionMode="single"
           selection={selectedQuotation}
           onSelectionChange={(e) => setSelectedQuotation(e.value)}
           scrollable
           paginator
           rows={10}
+          loading={loading}
           rowsPerPageOptions={[5, 10, 25]}
           emptyMessage="No hay cotizaciones disponibles"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+          className="quoter-table"
         >
           <Column field="idcotizacion" header="ID" hidden />
-          <Column
-            field="numerocotizacion"
-            header="Número de Cotización"
-            sortable
-            style={{ width: "124px", minWidth: "124px" }}
-          />
+          <Column field="numerocotizacion" header="Número" sortable style={{ width: "8.5rem" }} />
           <Column field="fechacotizacion" header="Fecha" sortable />
           <Column field="nit" header="Identificación" sortable />
-          <Column field="nombrecliente" header="Nombre del Cliente" sortable />
-          <Column
-            field="total"
-            header="Total"
-            body={totalBodyTemplate}
-            sortable
-            align={"right"}
-          />
-          <Column
-            body={actionbodyTemplate}
-            style={{ minWidth: "10rem" }}
-            alignFrozen="right"
-            frozen={true}
-          />
+          <Column field="nombrecliente" header="Cliente" sortable />
+          <Column field="total" header="Total" body={(row) => formatCurrency(row.total)} sortable align="right" />
+          <Column body={actionbodyTemplate} style={{ minWidth: "9rem" }} alignFrozen="right" frozen />
         </DataTable>
-      </div>
 
-      {/* Diálogo para crear una nueva cotización */}
+        {errorMessage && <small className="quoter-inline-error">{errorMessage}</small>}
+      </Panel>
+
       <Dialog
         visible={showDialog}
         onHide={() => setShowDialog(false)}
@@ -537,81 +415,48 @@ const QuoterList = () => {
         style={{ width: "80vw" }}
         closeOnEscape={false}
       >
-        <Quoter
-          onSave={handleSaveQuotation}
-          quotationData={selectedQuotation}
-          user={user}
-        />
+        <Quoter onSave={handleSaveQuotation} quotationData={selectedQuotation} user={user} />
       </Dialog>
 
-      {/* Diálogo de confirmación */}
       <Dialog
         visible={deleteDialogVisible}
         onHide={() => setDeleteDialogVisible(false)}
         footer={
           <div>
-            <Button
-              label="No"
-              icon="pi pi-times"
-              className="p-button-text"
-              onClick={() => setDeleteDialogVisible(false)}
-            />
-            <Button
-              label="Sí"
-              icon="pi pi-check"
-              onClick={confirmDelete}
-              severity="danger"
-            />
+            <Button label="No" icon="pi pi-times" text onClick={() => setDeleteDialogVisible(false)} />
+            <Button label="Sí" icon="pi pi-check" onClick={confirmDelete} severity="danger" />
           </div>
         }
         header="Confirmar Eliminación"
         closeOnEscape={false}
       >
         <p className="m-0">
-          <i
-            className="pi pi-exclamation-triangle mr-2"
-            style={{ fontSize: "2rem" }}
-          ></i>
-          ¿Está seguro de que desea eliminar esta cotización{" "}
-          <strong>No.</strong>{" "}
-          <strong>
-            {selectedQuotation ? selectedQuotation.numerocotizacion : ""}?
-          </strong>
+          <i className="pi pi-exclamation-triangle mr-2" style={{ fontSize: "2rem" }}></i>
+          ¿Está seguro de eliminar la cotización N° <strong>{selectedQuotation?.numerocotizacion || ""}</strong>?
         </p>
       </Dialog>
+
       <WhatsAppDialog
         visible={isWhatsAppModalVisible}
         onHide={() => setIsWhatsAppModalVisible(false)}
         selectedQuote={selectedQuote}
       />
+
       <EmailDialog
         visible={isEmailModalVisible}
         onHide={() => setIsEmailModalVisible(false)}
         selectedQuote={selectedQuote}
       />
-      {/* Diálogo para mostrar el comprobante */}
+
       <Dialog
-        visible={!!showComprobante && !autoGeneratePDF}
+        visible={Boolean(showComprobante)}
         onHide={() => setShowComprobante(null)}
         maximizable
         style={{ width: "80vw", minHeight: "60vh" }}
         closeOnEscape={false}
       >
-        {showComprobante && (
-          <ComprobantePDF
-            datos={showComprobante}
-            autoGenerate={autoGeneratePDF}
-          />
-        )}
+        {showComprobante && <ComprobantePDF datos={showComprobante} autoGenerate={false} />}
       </Dialog>
-
-      {/* Componente oculto para generar PDF automáticamente */}
-      {autoGeneratePDF && (
-        <ComprobantePDF
-          datos={showComprobante}
-          autoGenerate={autoGeneratePDF}
-        />
-      )}
     </div>
   );
 };

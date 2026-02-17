@@ -1,0 +1,56 @@
+.quoter-list-page {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.quoter-toolbar {
+  border: 0;
+  padding: 0;
+}
+
+.quoter-toolbar__search {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.quoter-toolbar__search .p-inputtext {
+  width: min(22rem, 58vw);
+}
+
+.quoter-list-panel .p-panel-content {
+  padding-top: 0.5rem;
+}
+
+.quoter-main-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.quoter-table {
+  margin-top: 0.5rem;
+}
+
+.quoter-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.1rem;
+}
+
+.quoter-inline-error {
+  display: inline-block;
+  margin-top: 0.5rem;
+  color: #dc2626;
+}
+
+@media (max-width: 768px) {
+  .quoter-toolbar__search {
+    width: 100%;
+  }
+
+  .quoter-toolbar__search .p-inputtext {
+    width: 100%;
+  }
+}
