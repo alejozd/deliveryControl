@@ -188,3 +188,126 @@
     justify-content: flex-end;
   }
 }
+
+.contact-search-dialog {
+  width: min(640px, 96vw);
+}
+
+.contact-search-dialog .p-dialog-content {
+  height: min(68vh, 760px);
+  display: flex;
+  flex-direction: column;
+}
+
+.contact-dialog__content {
+  display: grid;
+  gap: 0.55rem;
+  height: 100%;
+  min-height: 0;
+}
+
+.contact-dialog__search {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  padding-bottom: 0.2rem;
+}
+
+.contact-dialog__search-field,
+.contact-dialog__search-field .p-inputtext {
+  width: 100%;
+}
+
+.contact-dialog__meta {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.contact-dialog__listbox {
+  min-height: 0;
+  height: 100%;
+}
+
+.contact-dialog__listbox .p-listbox-list-wrapper {
+  max-height: 100% !important;
+  overflow-x: hidden;
+}
+
+.contact-dialog__listbox .p-listbox-list {
+  padding: 0.2rem;
+}
+
+.contact-dialog__listbox .p-listbox-item {
+  padding: 0.12rem !important;
+  margin: 0 !important;
+}
+
+.contact-dialog-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.35rem 0.55rem;
+  background: #ffffff;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.contact-dialog-item__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.contact-dialog-item__name {
+  display: block;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.contact-dialog-item__id {
+  color: #475569;
+  flex-shrink: 0;
+}
+
+.contact-dialog__listbox .p-listbox-item.p-highlight .contact-dialog-item {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.contact-dialog__listbox .p-listbox-item.p-highlight .contact-dialog-item__name,
+.contact-dialog__listbox .p-listbox-item.p-highlight .contact-dialog-item__id {
+  color: #1d4ed8;
+}
+
+.contact-dialog__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.contact-dialog__footer-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .contact-search-dialog .p-dialog-content {
+    height: min(72vh, 760px);
+  }
+
+  .contact-dialog__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .contact-dialog__footer-actions {
+    justify-content: flex-end;
+  }
+}
