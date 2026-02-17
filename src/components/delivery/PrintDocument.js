@@ -1,126 +1,320 @@
+// ImpresionUtils.js
 import logo from "../../resources/images/logo-metro.png";
 
-const formatSafe = (value) => String(value ?? "");
+export const PrintDocument = ({ factura, isConfirmationModal }) => {
+  if (!factura) {
+    console.error("No se puede imprimir: datos de entrega no válidos.");
+    return;
+  }
 
-const buildNotasHtml = (notas = "") =>
-  formatSafe(notas)
-    .split("\n")
-    .map((line) => `<label>${line}</label>`)
-    .join("<br>");
+  // Crear una nueva imagen
+  const img = new Image();
+  // Asignar la ruta de la imagen
+  img.src = logo;
+  // Escuchar el evento 'load' para asegurarse de que la imagen esté completamente cargada
+  img.onload = () => {
+    const cantidadHeader = isConfirmationModal
+      ? "Cant. a Entregar"
+      : "Cant. Entregada";
 
-const buildDetalleRows = (detalle = [], isConfirmationModal) =>
-  detalle
-    .map(
-      (item) => `
+    // Construir las notas con saltos de línea
+    let notasHtml = "";
+    factura.notas.split("\n").forEach((linea, index) => {
+      notasHtml += `<label>${linea}</label>`;
+      if (index !== factura.notas.split("\n").length - 1) {
+        notasHtml += "<br>"; // Agregar un salto de línea después de cada línea, excepto la última
+      }
+    });
+
+    const cantidadContent = factura.detalle
+      .map(
+        (detalle) => `
   <tr>
-    <td class="producto-content">${formatSafe(item.nombreproductos)}</td>
-    <td class="cantidad-content">${Number(item.cantfacturada || 0).toFixed(2)}</td>
+    <td class="producto-content">${detalle.nombreproductos}</td>
+    <td class="cantidad-content">${detalle.cantfacturada.toFixed(
+      2
+    )}</td> <!-- Aquí se formatea a dos decimales -->
     <td class="cantidad-content">${
       isConfirmationModal
-        ? Number(item.cantidad_entregar || 0).toFixed(2)
-        : Number(item.cant_entregada || 0).toFixed(2)
-    }</td>
+        ? detalle.cantidad_entregar.toFixed(2)
+        : detalle.cant_entregada.toFixed(2)
+    }</td> <!-- Aquí se formatea a dos decimales -->
   </tr>
   `
-    )
-    .join("");
+      )
+      .join("");
 
-const buildHtml = ({ factura, isConfirmationModal }) => {
-  const cantidadHeader = isConfirmationModal
-    ? "Cant. a Entregar"
-    : "Cant. Entregada";
-
-  return `
+    // Lógica para generar el formato HTML personalizado
+    const htmlString = `
   <html lang="es">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Entrega de Mercancía - ${formatSafe(factura.numeroentrega)}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrega de Mercancía - ${factura.numeroentrega}</title>
     <style>
-      body { font-family: Arial, sans-serif; margin: 20px; color: #1f2937; }
-      .container { max-width: 820px; margin: auto; border: 1px solid #111; padding: 14px; }
-      .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-      .title { text-align: center; font-weight: 700; font-size: 20px; }
-      table { border-collapse: collapse; width: 100%; }
-      .meta td, .meta th, .table-product td, .table-product th { border: 1px solid #111; padding: 6px; font-size: 12px; }
-      .meta th { text-align: left; width: 160px; background: #f8fafc; }
-      .table-product th { background: #f8fafc; text-align: left; }
-      .notas { border: 1px solid #111; min-height: 80px; padding: 6px; margin-top: 8px; font-size: 12px; }
-      .firmas { margin-top: 10px; }
-      .firmas td { border: 1px solid #111; height: 56px; text-align: center; font-size: 11px; }
-      .footer { text-align: center; margin-top: 8px; font-size: 12px; }
+      body {
+        font-family: 'Arial', sans-serif;
+        margin: 20px;
+        background-color: #f7f7f7;
+        color: #333333;
+      }
+      .container {
+        max-width: 800px;
+        min-width: auto;
+        margin: auto;
+        background-color: #ffffff;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        border-radius: 5px;
+        border-color: black;
+        border: 1px solid black;
+      }
+      .section {
+        margin-bottom: 10px;
+      }
+      .header {
+        display: flex;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .header-column {
+        flex: 1;
+        text-align: center;
+      }
+      .customer-section {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 5px; /* Espacio entre las columnas */  
+        width: 800px;      
+      }
+      .customer-section-l {                    
+        grid-template-columns: repeat(1, 1fr);
+        gap: 5px; /* Espacio entre las columnas */
+        width: 450px;          
+        
+      }
+      .customer-section-r {        
+        grid-template-columns: repeat(1, 1fr);
+        gap: 5px; /* Espacio entre las columnas */
+        width: 345px;
+                
+      }
+      .table-customer {
+        border-collapse: collapse;        
+        width: 100%;
+        border: none; /* Establecer borde transparente para la tabla */        
+        margin-bottom: 1px;
+      }
+      .customer-info {
+        display: flex;
+        align-items: start;
+      }
+      .label-l {
+        font-weight: bold;
+        font-size: small;
+        min-width: 105px; /* Ancho mínimo para las etiquetas */
+        max-width: 438px;
+        width: 105px;
+        text-align: left;
+      }
+      .label-r {
+        font-weight: bold;
+        font-size: small;
+        min-width: 110px; /* Ancho mínimo para las etiquetas */
+        width: 145px;
+        text-align: left;
+        overflow-wrap: break-word;
+      }
+      .data {
+        font-size: small;
+      }      
+      .data-r {
+        font-size: small;
+      }
+      h1 {
+        color: #333333;
+      }
+      p {
+        margin: 5px 0;
+      }
+      .table-product {
+        width: 100%;
+        border-collapse: collapse;
+        border: black 1px solid;
+        margin-top: 20px;
+      }      
+      th.producto {
+        min-width: 300px;     
+        border: 1px solid #dddddd;
+        padding: 8px; /* Reducido el padding para hacer las celdas más estrechas */
+        text-align: left;
+        background-color: #f5f5f5;
+        border: black 1px solid;
+      }
+      th.cantidad, td.cantidad {
+        border: 1px solid #dddddd;
+        padding: 2px;
+        min-width: 50px; /* Reducido el ancho mínimo de las columnas de cantidad */
+        text-align: left;
+        background-color: #f5f5f5;
+        border: black 1px solid;
+      }
+      td.producto-content {
+        min-width: 300px;
+        border: black 1px solid;        
+      }
+      td.cantidad-content, td.cantidad-content {
+        min-width: 50px; /* Reducido el ancho mínimo de las columnas de cantidad */
+        border: black 1px solid;
+      }      
+
+      .multiline {
+        max-width: 150px;        
+      }
+      .line-break {
+        white-space: pre-line;
+      }
+      .notas {
+        margin-top: 5px;
+        border: black 1px solid; 
+        height: 100px;        
+      }
+      .footer {
+        margin-top: 15px;
+        text-align: center;
+        color: #777777;                
+      }      
+      .firmas-section {
+        margin-top: 8px;
+        height: 90px;              
+      }
+      .table-firmas {
+        width: 100%;
+        border-collapse: collapse;
+        border: black 1px solid;        
+        text-align: center;        
+      }
+      .td-firmas {
+        border: black 1px solid;
+        height: 70px;
+      }
+      td.firmas-text  {
+        border: black 1px solid;
+        height: 20px;
+        width: 33.33%;
+      }
     </style>
   </head>
   <body>
     <div class="container">
-      <div class="header">
-        <img src="${logo}" alt="Logo" width="105" height="55" />
-        <div class="title">Entrega de Mercancía</div>
-        <div><strong># ${formatSafe(factura.numeroentrega)}</strong></div>
+      <div class="section">
+        <!-- Sección A: Datos de la Empresa -->
+        <div class="header">
+          <div style="width: 200px;">
+            <!-- Contenido para A1 aquí -->
+            <img src="${logo}" alt="Logo de la empresa" />            
+          </div>
+          <div class="header-column">
+            <!-- Contenido para A2 aquí -->
+            <p>DISTRIBUIDORA METROCERAMICAS S.A.S.</p>
+            <p>830.112.333-1</p>
+            <p>AUTOPISTA NORTE 138 83, BOGOTÁ</p>
+            <p>PBX 601 6192221</p>              
+          </div>
+          <div style="width: 180px; border: #333333 1px solid;">
+            <!-- Contenido para A3 aquí -->
+            <h4 style="border-bottom: #333333 1px solid;">ORDEN DE ENTREGA</h4>
+            <p><span style="color: red;">N°</span> ${factura.numeroentrega}</p>            
+          </div>
+        </div>
       </div>
-
-      <table class="meta">
-        <tr><th>NÚMERO FACTURA</th><td>${formatSafe(factura.numfactura)}</td></tr>
-        <tr><th>FECHA FACTURA</th><td>${formatSafe(factura.fechafactura)}</td></tr>
-        <tr><th>FECHA ENTREGA</th><td>${formatSafe(factura.fechaEntrega)}</td></tr>
-        <tr><th>CLIENTE</th><td>${formatSafe(factura.nombrecliente)}</td></tr>
-        <tr><th>IDENTIFICACIÓN</th><td>${formatSafe(factura.nit)}</td></tr>
-        <tr><th>DIRECCIÓN</th><td>${formatSafe(factura.direccion)}</td></tr>
-        <tr><th>CELULAR</th><td>${formatSafe(factura.telmovil)}</td></tr>
-        <tr><th>ASESOR COMERCIAL</th><td>${formatSafe(factura.vendedor)}</td></tr>
-      </table>
-
-      <table class="table-product" style="margin-top:8px;">
+      <div class="customer-section">
+        <!-- Sección B: Datos del Cliente -->
+        <div class="customer-section-l">
+          <table class="table-customer">
+              <tr>
+                  <th class="label-l">FECHA Y HORA:</th>
+                  <td class="data">${factura.fechaEntrega}</td>
+              </tr>
+              <tr>
+                  <th class="label-l">NOMBRE:</th>
+                  <td class="data">${factura.nombrecliente}</td>
+              </tr>
+              <tr>
+                  <th class="label-l">NIT:</th>
+                  <td class="data">${factura.nit}</td>
+              </tr>
+              <tr>
+                  <th class="label-l">DIRECCIÓN:</th>
+                  <td class="data">${factura.direccion}</td>
+              </tr>
+          </table>
+      </div>
+      <!-- Sección B: Datos del Cliente -->
+      <div class="customer-section-r">
+          <table class="table-customer">
+              <tr>
+                  <th class="label-r">DOCUMENTO ORIGEN:</th>
+                  <td class="data-r">Dato documento</td>
+              </tr>
+              <tr>
+                  <th class="label-r">CELULAR:</th>
+                  <td class="data-r">${factura.telmovil}</td>
+              </tr>
+              <tr>
+                  <th class="label-r">ASESOR COMERCIAL:</th>
+                  <td class="data-r">${factura.vendedor}</td>
+              </tr>
+          </table>
+      </div>
+      </div>      
+      <table class="table-product">
         <thead>
           <tr>
-            <th>Producto</th>
-            <th>Cant. Facturada</th>
-            <th>${cantidadHeader}</th>
+            <th class="producto">Producto</th>
+            <th class="cantidad">Cant. Facturada</th>                        
+            <th class="cantidad">${cantidadHeader}</th>
           </tr>
         </thead>
-        <tbody>${buildDetalleRows(factura.detalle, isConfirmationModal)}</tbody>
-      </table>
+        <tbody>
+          ${cantidadContent}
+        </tbody>
+      </table>      
+      <!-- Sección D: Notas -->
+      <div class="notas">
+        ${notasHtml}
+      </div>              
+      <div class="firmas-section">
+        <table class="table-firmas">
+          <tr>    
+            <td class="td-firmas"></td>
+            <td class="td-firmas"></td>
+            <td class="td-firmas"></td>    
+          </tr>
+          <tr>    
+            <td class="firmas-text ">RECIBIDO POR</td>
+            <td class="firmas-text ">TRANSPORTADO POR</td>
+            <td class="firmas-text ">DESPACHADO POR</td>
+          </tr>
+        </table>         
+      </div>
+        <div class="footer">
+          <p>¡Gracias por elegirnos!</p>
+        </div>
+      </div>
+    </body>
+</html>
+  `;
 
-      <div class="notas">${buildNotasHtml(factura.notas)}</div>
-
-      <table class="firmas">
-        <tr><td></td><td></td><td></td></tr>
-        <tr><td>RECIBIDO POR</td><td>TRANSPORTADO POR</td><td>DESPACHADO POR</td></tr>
-      </table>
-
-      <div class="footer">¡Gracias por elegirnos!</div>
-    </div>
-  </body>
-  </html>`;
-};
-
-export const PrintDocument = ({ factura, isConfirmationModal }) =>
-  new Promise((resolve, reject) => {
-    if (!factura) {
-      reject(new Error("No se puede imprimir: datos de entrega no válidos."));
-      return;
-    }
-
+    // Abrir una nueva ventana con el documento HTML
     const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      reject(new Error("El navegador bloqueó la ventana de impresión."));
-      return;
-    }
+    printWindow.document.write(htmlString);
 
-    printWindow.document.open();
-    printWindow.document.write(buildHtml({ factura, isConfirmationModal }));
-    printWindow.document.close();
-
-    const tryPrint = () => {
-      try {
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
-        resolve(true);
-      } catch (error) {
-        reject(error);
-      }
-    };
-
-    setTimeout(tryPrint, 350);
-  });
+    setTimeout(() => {
+      // Enviar a imprimir
+      printWindow.print();
+      // Cerrar la ventana de impresión después de imprimir
+      printWindow.close();
+    }, 1000); // Cambia este valor según sea necesario
+  };
+};

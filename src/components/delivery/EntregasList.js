@@ -106,10 +106,16 @@ const EntregasList = ({
 
   const handleCantidadEntregarInput = useCallback(
     (e, rowData) => {
-      const incoming = toNumber(e.value);
+      const incoming = e.value;
+      const parsedIncoming = toNumber(incoming);
       const saldo = toNumber(rowData.saldo);
 
-      if (incoming > saldo) {
+      if (!incoming) {
+        setCantidadesEntregar((prev) => ({ ...prev, [rowData.id]: null }));
+        return;
+      }
+
+      if (parsedIncoming > saldo) {
         toast.current?.show({
           severity: "warn",
           summary: "Cantidad excede saldo",
@@ -122,7 +128,7 @@ const EntregasList = ({
 
       setCantidadesEntregar((prev) => ({
         ...prev,
-        [rowData.id]: incoming,
+        [rowData.id]: parsedIncoming,
       }));
     },
     [toast]
@@ -173,23 +179,13 @@ const EntregasList = ({
         headers: { "Content-Type": "application/json" },
       });
 
-      try {
-        await PrintDocument({
-          factura: {
-            ...payload,
-            fechaEntrega: formatDateForApi(now),
-          },
-          isConfirmationModal: true,
-        });
-      } catch (printError) {
-        toast.current?.show({
-          severity: "warn",
-          summary: "Entrega guardada",
-          detail:
-            "La entrega se guardó, pero no se pudo abrir la impresión automática.",
-          life: 3200,
-        });
-      }
+      PrintDocument({
+        factura: {
+          ...payload,
+          fechaEntrega: formatDateForApi(now),
+        },
+        isConfirmationModal: true,
+      });
 
       toast.current?.show({
         severity: "success",
@@ -228,11 +224,12 @@ const EntregasList = ({
     return (
       <InputNumber
         readOnly={saldo <= 0}
-        value={cantidadesEntregar[rowData.id] ?? 0}
-        min={0}
+        value={cantidadesEntregar[rowData.id] ?? null}
+        min={0.01}
         max={saldo}
         onValueChange={(e) => handleCantidadEntregarInput(e, rowData)}
         minFractionDigits={2}
+        maxFractionDigits={2}
         locale="es-CO"
         inputClassName="delivery-quantity-input"
       />
