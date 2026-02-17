@@ -169,3 +169,61 @@
     width: 100%;
   }
 }
+
+.delivery-detail {
+  min-width: min(70rem, 92vw);
+}
+
+.delivery-detail__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.delivery-detail__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.delivery-detail__summary {
+  display: flex;
+  gap: 1rem;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+.delivery-detail__summary strong {
+  color: #0f172a;
+}
+
+.delivery-detail__error {
+  margin-bottom: 0.75rem;
+}
+
+.delivery-detail__loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 8rem;
+}
+
+.delivery-detail__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+
+@media (max-width: 768px) {
+  .delivery-detail {
+    min-width: 0;
+  }
+
+  .delivery-detail__summary {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
