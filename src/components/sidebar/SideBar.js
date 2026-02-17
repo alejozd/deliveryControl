@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Sidebar } from "primereact/sidebar";
 import { PanelMenu } from "primereact/panelmenu";
 import { useNavigate } from "react-router-dom";
@@ -20,156 +20,125 @@ import "./SideBar.css";
 const SideBar = ({ sidebarVisible, user, onLogout }) => {
   const navigate = useNavigate();
   const [visible, setVisible] = useState(false);
-  const version = "Versión: " + packageJson.version;
-
-  const toggleSidebar = () => {
-    setVisible(true);
-  };
+  const version = `Versión ${packageJson.version}`;
 
   useEffect(() => {
-    toggleSidebar();
+    setVisible(Boolean(sidebarVisible));
   }, [sidebarVisible]);
 
-  const isAllowedUser = () => {
+  const isAllowedUser = useMemo(() => {
     const allowedUsers = ["ADMINISTRADOR", "SISTEMAS"];
     return user && allowedUsers.includes(user.name);
+  }, [user]);
+
+  const goTo = (path, options) => {
+    setVisible(false);
+    navigate(path, options);
   };
 
   const items = [
-    {
-      label: "Gestión",
-      items: [
-        {
-          label: "Entregas",
-          icon: <FaTruck className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/entregas");
+      {
+        label: "Gestión",
+        items: [
+          {
+            label: "Entregas",
+            icon: <FaTruck className="custom-icon" />,
+            command: () => goTo("/entregas"),
           },
-        },
-        {
-          label: "Productos",
-          icon: <FaBox className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/productos");
+          {
+            label: "Productos",
+            icon: <FaBox className="custom-icon" />,
+            command: () => goTo("/productos"),
           },
-        },
-      ],
-    },
-    {
-      label: "Consultas",
-      items: [
-        {
-          label: "Consulta Entregas",
-          icon: <FaBriefcase className="custom-icon" />,
-          command: async () => {
-            setVisible(false);
-            await navigate("/consultaentregas");
-          },
-        },
-        {
-          label: "Pendientes por Entregar",
-          icon: <FaClock className="custom-icon" />,
-          command: async () => {
-            setVisible(false);
-            await navigate("/consultapendientes");
-          },
-        },
-      ],
-    },
-    {
-      label: "Reportes",
-      icon: "pi pi-chart-bar",
-      items: [
-        {
-          label: "Dashboard Ventas",
-          icon: "pi pi-chart-line",
-          command: async () => {
-            setVisible(false);
-            await navigate("/salesdashboard");
-          },
-        },
-      ],
-    },
-    {
-      label: "Administración",
-      items: [
-        {
-          label: "Clientes",
-          icon: <FaUsers className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/clientes", { state: { user } });
-          },
-          // visible: isAllowedUser(),
-        },
-        {
-          label: "Contactos",
-          icon: <FaAddressBook className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/contactoadicional");
-          },
-          // visible: isAllowedUser(),
-        },
-        {
-          label: "Asociar Clientes y Contactos",
-          icon: <FaUserFriends className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/clientcontactassociation");
-          },
-          // visible: isAllowedUser(),
-        },
-        {
-          label: "Cotizaciones",
-          icon: <FaFileAlt className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/quoterlist", { state: { user } });
-          },
-          // visible: isAllowedUser(),
-        },
-      ],
-    },
-    {
-      label: "Configuración", // Nuevo grupo
-      items: [
-        {
-          label: "Permisos de usuario",
-          icon: <FaKey className="custom-icon" />,
-          command: () => {
-            setVisible(false);
-            navigate("/userpermission");
-          },
-          visible: isAllowedUser(),
-        },
-      ],
-    },
-    {
-      label: "Cerrar Sesión",
-      icon: <FaSignOutAlt className="custom-icon" />,
-      command: () => {
-        setVisible(false);
-        onLogout(); // Llama a la función de logout pasada por las props
+        ],
       },
-    },
-  ];
+      {
+        label: "Consultas",
+        items: [
+          {
+            label: "Consulta Entregas",
+            icon: <FaBriefcase className="custom-icon" />,
+            command: () => goTo("/consultaentregas"),
+          },
+          {
+            label: "Pendientes por Entregar",
+            icon: <FaClock className="custom-icon" />,
+            command: () => goTo("/consultapendientes"),
+          },
+        ],
+      },
+      {
+        label: "Reportes",
+        icon: "pi pi-chart-bar",
+        items: [
+          {
+            label: "Dashboard Ventas",
+            icon: "pi pi-chart-line",
+            command: () => goTo("/salesdashboard"),
+          },
+        ],
+      },
+      {
+        label: "Administración",
+        items: [
+          {
+            label: "Clientes",
+            icon: <FaUsers className="custom-icon" />,
+            command: () => goTo("/clientes", { state: { user } }),
+          },
+          {
+            label: "Contactos",
+            icon: <FaAddressBook className="custom-icon" />,
+            command: () => goTo("/contactoadicional"),
+          },
+          {
+            label: "Asociar Clientes y Contactos",
+            icon: <FaUserFriends className="custom-icon" />,
+            command: () => goTo("/clientcontactassociation"),
+          },
+          {
+            label: "Cotizaciones",
+            icon: <FaFileAlt className="custom-icon" />,
+            command: () => goTo("/quoterlist", { state: { user } }),
+          },
+        ],
+      },
+      {
+        label: "Configuración",
+        items: [
+          {
+            label: "Permisos de usuario",
+            icon: <FaKey className="custom-icon" />,
+            command: () => goTo("/userpermission"),
+            visible: isAllowedUser,
+          },
+        ],
+      },
+      {
+        label: "Cerrar Sesión",
+        icon: <FaSignOutAlt className="custom-icon" />,
+        command: () => {
+          setVisible(false);
+          onLogout();
+        },
+      },
+    ];
 
   return (
-    <div className="card flex justify-content-left">
+    <div className="sidebar-wrapper">
       <Sidebar
         visible={visible}
         position="left"
         onHide={() => setVisible(false)}
-        header={version}
-        closeIcon="pi pi-times"
+        className="app-sidebar"
+        header={
+          <div className="app-sidebar__header">
+            <span className="app-sidebar__title">Control de Entregas</span>
+            <small>{version}</small>
+          </div>
+        }
       >
-        <h2>Control de Entregas</h2>
-        <div className="card flex justify-content-center">
-          <PanelMenu model={items} className="w-full md:w-15rem" />
-        </div>
+        <PanelMenu model={items} className="app-panelmenu" />
       </Sidebar>
     </div>
   );

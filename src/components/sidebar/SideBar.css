@@ -1,21 +1,58 @@
+.sidebar-wrapper {
+  display: contents;
+}
+
 .custom-icon {
-  color: #42A5F5; /* Cambia este color al que desees */
-  font-size: 1.2em; /* Ajusta el tamaño del icono */
-  margin-right: 0.5em; /* Espacio entre el icono y el texto */
-}
-
-/* Estilo adicional para el Sidebar y PanelMenu */
-.p-panelmenu .p-panelmenu-header .p-menuitem-link .p-menuitem-text,
-.p-panelmenu .p-panelmenu-content .p-menuitem-link .p-menuitem-text {
+  color: #1d79b7;
   font-size: 1rem;
-  color: #333; /* Cambia este color al que desees */
+  margin-right: 0.55rem;
 }
 
-.p-sidebar .p-sidebar-header {
-  background-color: #42A5F5; /* Cambia este color al que desees */
-  color: white;
+.app-sidebar {
+  width: min(24rem, 92vw);
 }
 
-.p-sidebar .p-sidebar-content {
-  background-color: #f9f9f9; /* Cambia este color al que desees */
+.app-sidebar .p-sidebar-header {
+  background: linear-gradient(120deg, #0f3d68 0%, #1766a1 100%);
+  color: #fff;
+  padding: 1rem;
+}
+
+.app-sidebar__header {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.app-sidebar__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.app-sidebar .p-sidebar-content {
+  background: #f5f9fc;
+  padding: 0.8rem;
+}
+
+.app-panelmenu {
+  border: none;
+}
+
+.app-panelmenu .p-panelmenu-header > .p-panelmenu-header-content {
+  border-radius: 10px;
+  border: 1px solid #dceaf6;
+  margin-bottom: 0.35rem;
+}
+
+.app-panelmenu .p-menuitem-link {
+  padding: 0.65rem 0.75rem;
+}
+
+.app-panelmenu .p-menuitem-text {
+  font-size: 0.96rem;
+  color: #25445e;
+}
+
+.app-panelmenu .p-menuitem-link:hover {
+  background: #e9f3fb;
 }

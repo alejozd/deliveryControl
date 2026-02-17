@@ -1,61 +1,53 @@
 import React from "react";
 import { Button } from "primereact/button";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUserCircle } from "@fortawesome/free-solid-svg-icons";
 import { Toolbar } from "primereact/toolbar";
-import { Image } from "primereact/image";
+import { Avatar } from "primereact/avatar";
+import { Tag } from "primereact/tag";
 import logo from "../../resources/images/logo-metro.png";
+import "./Navbar.css";
 
 function NavBar({ setSidebarVisible, user, empresa }) {
-  // Estado para controlar si el Sidebar está abierto o cerrado
   const handleSidebarToggle = () => {
-    // console.log('Button clicked');
     setSidebarVisible((prev) => !prev);
   };
 
-  const userIconStyle = {
-    fontSize: "32px",
-    marginRight: "5px",
-  };
-
-  const toolbarStyle = {
-    position: "sticky",
-    top: 0, // Ajusta el valor según sea necesario
-    zIndex: 1000, // Ajusta el valor según sea necesario
-  };
-
-  const logoStyle = {
-    marginLeft: "50px",
-    marginTop: "-40px",
-  };
-
   const start = (
-    <span>
+    <div className="app-navbar__start">
       <Button
         icon="pi pi-bars"
-        // className="p-button-text"
+        rounded
+        text
+        aria-label="Mostrar menú lateral"
         onClick={handleSidebarToggle}
       />
-      <div style={logoStyle}>
-        <Image src={logo} alt="Image" width="70" height="37" />
+      <img src={logo} alt="Metro" className="app-navbar__logo" />
+      <div className="app-navbar__title-wrap">
+        <span className="app-navbar__title">Control de Entregas</span>
       </div>
-    </span>
+    </div>
   );
 
   const center = (
-    <span style={{ marginRight: "10px" }}>
-      {empresa.nombre} ({empresa.codigo})
-    </span>
+    <Tag
+      severity="info"
+      value={`${empresa?.nombre || "Empresa"} (${empresa?.codigo || "---"})`}
+      className="app-navbar__company"
+    />
   );
 
   const end = (
-    <>
-      <span style={{ marginRight: "5px" }}>Usuario: </span>
-      <span style={{ marginRight: "10px" }}>{user.name}</span>
-      <span style={userIconStyle}>
-        <FontAwesomeIcon icon={faUserCircle} />
-      </span>
-    </>
+    <div className="app-navbar__end">
+      <div className="app-navbar__user-info">
+        <small>Usuario</small>
+        <strong>{user?.name || "Invitado"}</strong>
+      </div>
+      <Avatar
+        icon="pi pi-user"
+        shape="circle"
+        size="large"
+        className="app-navbar__avatar"
+      />
+    </div>
   );
 
   return (
@@ -63,8 +55,7 @@ function NavBar({ setSidebarVisible, user, empresa }) {
       start={start}
       center={center}
       end={end}
-      // style={{ padding: "1px" }}
-      style={{ ...toolbarStyle, padding: "1px", backgroundColor: "#f0f0f0" }}
+      className="app-navbar"
     />
   );
 }
