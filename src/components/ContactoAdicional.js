@@ -257,11 +257,12 @@ const ContactoAdicional = () => {
                 onClick={handleExportExcel}
                 className="custom-excel-button"
               />
-              <div className="contacto-adicional-export-toggle">
+              <div className="contacto-adicional-export-toggle" title="Define si exportar todas las columnas o solo las visibles">
                 <InputSwitch
                   checked={exportAllColumns}
                   onChange={(e) => setExportAllColumns(e.value)}
                   tooltip="Exportar todas las columnas"
+                  tooltipOptions={{ position: "top" }}
                 />
                 <label>{exportAllColumns ? "Todas" : "Visibles"}</label>
               </div>
