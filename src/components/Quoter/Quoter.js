@@ -1204,21 +1204,35 @@ const Quoter = ({ onSave, quotationData, user }) => {
     </React.Fragment>
   );
 
+  const saveDialogHeader = (
+    <div className="quoter-save-dialog__header">
+      <div className="quoter-save-dialog__icon">
+        <i className="pi pi-save" />
+      </div>
+      <div>
+        <h3 className="quoter-save-dialog__title">Confirmar guardado</h3>
+        <p className="quoter-save-dialog__subtitle">
+          Revisa el resumen y confirma para guardar la cotización.
+        </p>
+      </div>
+    </div>
+  );
+
   const footerContent = (
-    <div>
+    <div className="quoter-save-dialog__footer">
       <Button
-        label="No"
+        label="Cancelar"
         icon="pi pi-times"
         onClick={() => setShowDialog(false)}
-        severity="danger"
-        text
-        raised
+        outlined
+        className="quoter-save-dialog__btn-cancel"
       />
       <Button
-        label="Si"
+        label="Guardar cotización"
         icon="pi pi-check"
         onClick={saveQuotation}
         severity="success"
+        className="quoter-save-dialog__btn-confirm"
         autoFocus
       />
     </div>
@@ -1679,16 +1693,32 @@ const Quoter = ({ onSave, quotationData, user }) => {
         visible={showDialog}
         onHide={() => setShowDialog(false)}
         footer={footerContent}
-        header="Confirmación"
+        header={saveDialogHeader}
+        className="quoter-save-dialog"
+        style={{ width: "34rem", maxWidth: "95vw" }}
         closeOnEscape={false}
       >
-        <p className="m-0">
-          <i
-            className="pi pi-exclamation-triangle mr-2"
-            style={{ fontSize: "2rem" }}
-          ></i>
-          ¿Desea guardar la cotización?
-        </p>
+        <div className="quoter-save-dialog__content">
+          <div className="quoter-save-dialog__summary-grid">
+            <div className="quoter-save-dialog__summary-item">
+              <span>Cliente</span>
+              <strong>{selectedCustomer?.nombrecliente || "Sin seleccionar"}</strong>
+            </div>
+            <div className="quoter-save-dialog__summary-item">
+              <span>Productos</span>
+              <strong>{selectedProducts.length}</strong>
+            </div>
+            <div className="quoter-save-dialog__summary-item">
+              <span>Bodega</span>
+              <strong>{selectedBodega || "No definida"}</strong>
+            </div>
+            <div className="quoter-save-dialog__summary-item">
+              <span>Total</span>
+              <strong>{formatCurrency(calculateTotalPrice())}</strong>
+            </div>
+          </div>
+          <p className="quoter-save-dialog__question">¿Desea guardar la cotización con esta información?</p>
+        </div>
       </Dialog>
 
       <Dialog
