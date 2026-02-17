@@ -1,5 +1,4 @@
-// src/components/ClientContactAssociation.js
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { PickList } from "primereact/picklist";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
@@ -8,327 +7,284 @@ import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
 import { FloatLabel } from "primereact/floatlabel";
 import { Toast } from "primereact/toast";
-import config from "../Config";
 import axios from "axios";
+import config from "../Config";
+import "../styles/modules/client-contact-association.css";
 
 const ClientContactAssociation = () => {
   const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClientes`;
   const apiUrlContactosCliente = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DataContactosCliente`;
   const apiUrlListaContactos = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaContactos`;
   const apiUrlGuardarAsociaciones = `${config.apiUrl}/Datasnap/rest/TServerMethods1/AsociarContacto`;
+
   const [clientes, setClientes] = useState([]);
   const [selectedCliente, setSelectedCliente] = useState(null);
-  const [contactos, setContactos] = useState([]);
-  const [contactosAsociados, setContactosAsociados] = useState([]);
-  const [searchTerm, setSearchTerm] = useState(""); //Cliente para buscar
-  const [loading, setLoading] = useState(false);
+  const [selectedClienteLabel, setSelectedClienteLabel] = useState("");
+  const [sourceContactos, setSourceContactos] = useState([]);
+  const [targetContactos, setTargetContactos] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loadingClientes, setLoadingClientes] = useState(false);
+  const [loadingContactos, setLoadingContactos] = useState(false);
+  const [saving, setSaving] = useState(false);
   const toast = useRef(null);
+
+  const getFriendlyErrorMessage = useCallback((error, fallbackMessage) => {
+    if (error?.response?.data?.message) return error.response.data.message;
+    if (error?.response?.data?.error) return error.response.data.error;
+    if (typeof error?.response?.data === "string") return error.response.data;
+    if (error?.message) return error.message;
+    return fallbackMessage;
+  }, []);
+
+  const showToast = useCallback((severity, summary, detail) => {
+    toast.current?.show({ severity, summary, detail, life: 3200 });
+  }, []);
 
   const fetchClientes = useCallback(
     async (term) => {
-      setLoading(true);
+      setLoadingClientes(true);
       try {
-        const requestData = { criterio: term };
-        const response = await axios.put(apiUrl, requestData);
-        const formattedClientes = response.data.data.map((cliente) => ({
+        const response = await axios.put(apiUrl, { criterio: term });
+        const formattedClientes = (response?.data?.data || []).map((cliente) => ({
           label: `${cliente.nombrecliente} (${cliente.identidad})`,
           value: cliente.idcliente,
         }));
         setClientes(formattedClientes);
       } catch (error) {
-        console.error("Error fetching clientes:", error);
-        toast.current.show({
-          severity: "error",
-          summary: "Error",
-          detail: "Error al obtener clientes",
-          life: 3000,
-        });
+        showToast(
+          "error",
+          "Error",
+          getFriendlyErrorMessage(error, "No se pudieron cargar los clientes.")
+        );
       } finally {
-        setLoading(false);
+        setLoadingClientes(false);
       }
     },
-    [apiUrl]
+    [apiUrl, getFriendlyErrorMessage, showToast]
   );
 
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      if (searchTerm.length > 0) {
-        fetchClientes(searchTerm);
+    const debounceTimeout = setTimeout(() => {
+      if (searchTerm.trim().length > 1) {
+        fetchClientes(searchTerm.trim());
       } else {
         setClientes([]);
       }
-    }, 300); // 300 ms de espera
+    }, 350);
 
-    return () => clearTimeout(delayDebounceFn); // Limpiar el timeout si el usuario sigue escribiendo
+    return () => clearTimeout(debounceTimeout);
   }, [searchTerm, fetchClientes]);
 
-  const onClienteChange = async (e) => {
-    const clienteId = e.value;
-    setSelectedCliente(clienteId);
+  const resetContactLists = useCallback(() => {
+    setSourceContactos([]);
+    setTargetContactos([]);
+  }, []);
 
-    try {
-      // Cargar los contactos disponibles
-      const responseContactos = await axios.put(apiUrlListaContactos, {
-        criterio: "",
-      });
+  const onClienteChange = useCallback(
+    async (e) => {
+      const clienteId = e.value;
+      setSelectedCliente(clienteId);
 
-      // Asegúrate de que responseContactos.data es un array
-      const contactosDisponibles = Array.isArray(responseContactos.data.data)
-        ? responseContactos.data.data
-        : [];
+      const selectedOption = clientes.find((item) => item.value === clienteId);
+      setSelectedClienteLabel(selectedOption?.label || "");
 
-      // Cargar los contactos asociados
-      const responseContactosAsociados = await axios.put(
-        apiUrlContactosCliente,
-        {
-          idcliente: clienteId,
-        }
-      );
-
-      const contactosAsociados =
-        responseContactosAsociados.data.contactos || [];
-
-      // Obtener los IDs de los contactos asociados
-      const contactosAsociadosIds = contactosAsociados.map(
-        (contacto) => contacto.idcontacto
-      );
-
-      // Filtrar los contactos disponibles para excluir los ya asociados
-      const contactosFiltrados = contactosDisponibles.filter(
-        (contacto) => !contactosAsociadosIds.includes(contacto.idcontacto)
-      );
-
-      // Actualizar los estados
-      setContactos(contactosFiltrados); // Contactos no asociados al cliente
-      setContactosAsociados(contactosAsociados); // Solo los contactos asociados
-    } catch (error) {
-      console.error("Error fetching contactos:", error);
-      toast.current.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al obtener contactos",
-        life: 3000,
-      });
-    }
-  };
-
-  const onMoveToTarget = (event) => {
-    // console.log("Event object:", event);
-    if (!event || !event.value) {
-      console.error("Event object or its properties are undefined:", event);
-      return;
-    }
-
-    const movedItems = event.value; // Obtener los elementos movidos
-    const updatedContactos = contactos.filter(
-      (item) =>
-        !movedItems.some(
-          (movedItem) => movedItem.idcontacto === item.idcontacto
-        )
-    );
-    const updatedContactosAsociados = [...contactosAsociados, ...movedItems];
-
-    setContactos(updatedContactos);
-    setContactosAsociados(updatedContactosAsociados);
-  };
-
-  const onMoveToSource = (event) => {
-    // console.log("Event object:", event);
-    if (!event || !event.value) {
-      console.error("Event object or its properties are undefined:", event);
-      return;
-    }
-
-    const movedItems = event.value; // Obtener los elementos movidos
-    const updatedContactos = [...contactos, ...movedItems];
-    const updatedContactosAsociados = contactosAsociados.filter(
-      (item) =>
-        !movedItems.some(
-          (movedItem) => movedItem.idcontacto === item.idcontacto
-        )
-    );
-
-    setContactos(updatedContactos);
-    setContactosAsociados(updatedContactosAsociados);
-  };
-
-  const handleSave = async () => {
-    if (!selectedCliente) {
-      alert("Por favor, seleccione un cliente.");
-      return;
-    }
-
-    // Extraer los IDs de los contactos asociados
-    const contactosAsociadosIds = contactosAsociados.map(
-      (contacto) => contacto.idcontacto
-    );
-
-    const contactosAsociadosData = contactosAsociadosIds.map((id) => {
-      return { idcontacto: id };
-    });
-
-    // console.log("contactosAsociadosData", contactosAsociadosData);
-
-    try {
-      // Enviar los datos al backend
-      const response = await axios.put(apiUrlGuardarAsociaciones, {
-        idcliente: selectedCliente,
-        contactos: contactosAsociadosData,
-      });
-
-      // console.log("response", response);
-
-      if (response.data.status === 200) {
-        // console.log("Asociaciones guardadas:", response.data);
-        toast.current.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Contacto asociado correctamente",
-          life: 3000,
-        });
-      } else {
-        console.error("Error al guardar las asociaciones:", response.data);
-        toast.current.show({
-          severity: "error",
-          summary: "Error",
-          detail: "No se pudo agregar el contacto",
-          life: 3000,
-        });
+      if (!clienteId) {
+        resetContactLists();
+        return;
       }
-    } catch (error) {
-      console.error("Error guardando asociaciones:", error);
-      toast.current.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al guardar las asociaciones",
-        life: 3000,
-      });
-    }
-  };
 
-  const itemTemplate = (item) => {
-    return (
-      <Card>
-        <div className="p-grid p-nogutter">
-          <div
-            className="p-col-12"
-            style={{ display: "flex", justifyContent: "space-between" }}
-          >
-            <div style={{ fontSize: "0.8em" }}>
-              <strong>Nombre:</strong> {item.nombreCa}
-            </div>
-            <div style={{ fontSize: "0.8em" }}>
-              <strong>Identidad:</strong> {item.identificacionCa}
-            </div>
-          </div>
-          <div
-            className="p-col-12"
-            style={{ display: "flex", justifyContent: "space-between" }}
-          >
-            <div style={{ fontSize: "0.8em" }}>
-              <strong>Correo:</strong> {item.correoCa}
-            </div>
-            <div style={{ fontSize: "0.8em" }}>
-              <strong>Teléfono:</strong> {item.telmovilCa}
-            </div>
-          </div>
+      setLoadingContactos(true);
+      try {
+        const [responseContactos, responseContactosAsociados] = await Promise.all([
+          axios.put(apiUrlListaContactos, { criterio: "" }),
+          axios.put(apiUrlContactosCliente, { idcliente: clienteId }),
+        ]);
+
+        const contactosDisponibles = Array.isArray(responseContactos?.data?.data)
+          ? responseContactos.data.data
+          : [];
+
+        const asociados = Array.isArray(responseContactosAsociados?.data?.contactos)
+          ? responseContactosAsociados.data.contactos
+          : [];
+
+        const asociadosIds = new Set(asociados.map((contacto) => contacto.idcontacto));
+        const disponiblesFiltrados = contactosDisponibles.filter(
+          (contacto) => !asociadosIds.has(contacto.idcontacto)
+        );
+
+        setSourceContactos(disponiblesFiltrados);
+        setTargetContactos(asociados);
+      } catch (error) {
+        resetContactLists();
+        showToast(
+          "error",
+          "Error",
+          getFriendlyErrorMessage(error, "No se pudieron cargar los contactos del cliente.")
+        );
+      } finally {
+        setLoadingContactos(false);
+      }
+    },
+    [
+      apiUrlContactosCliente,
+      apiUrlListaContactos,
+      clientes,
+      getFriendlyErrorMessage,
+      resetContactLists,
+      showToast,
+    ]
+  );
+
+  const handleSave = useCallback(async () => {
+    if (!selectedCliente) {
+      showToast("warn", "Cliente requerido", "Selecciona un cliente antes de guardar.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        idcliente: selectedCliente,
+        contactos: targetContactos.map((contacto) => ({ idcontacto: contacto.idcontacto })),
+      };
+
+      const response = await axios.put(apiUrlGuardarAsociaciones, payload);
+
+      if (response?.data?.status === 200) {
+        showToast("success", "Éxito", "Contactos asociados correctamente.");
+        return;
+      }
+
+      throw new Error(response?.data?.message || "No se pudieron guardar las asociaciones.");
+    } catch (error) {
+      showToast(
+        "error",
+        "Error",
+        getFriendlyErrorMessage(error, "Ocurrió un error al guardar las asociaciones.")
+      );
+    } finally {
+      setSaving(false);
+    }
+  }, [
+    apiUrlGuardarAsociaciones,
+    getFriendlyErrorMessage,
+    selectedCliente,
+    showToast,
+    targetContactos,
+  ]);
+
+  const itemTemplate = useCallback(
+    (item) => (
+      <div className="association-contact-card">
+        <div className="association-contact-card__row">
+          <span className="association-contact-card__name">{item.nombreCa || "Sin nombre"}</span>
+          <span className="association-contact-card__id">{item.identificacionCa || "Sin ID"}</span>
         </div>
-      </Card>
-    );
-  };
+        <div className="association-contact-card__row">
+          <span>{item.correoCa || "Sin correo"}</span>
+          <span>{item.telmovilCa || "Sin teléfono"}</span>
+        </div>
+      </div>
+    ),
+    []
+  );
+
+  const selectedClienteText = useMemo(
+    () => selectedClienteLabel || "Aún no has seleccionado un cliente.",
+    [selectedClienteLabel]
+  );
 
   return (
-    <div>
+    <div className="client-contact-association">
       <Toast ref={toast} />
-      <h1>Asociar Clientes y Contactos</h1>
-      <Panel header="Seleccionar Cliente" toggleable>
-        <Card>
-          <div
-            className="flex align-items-center justify-content-between"
-            style={{ paddingTop: "10px" }}
-          >
-            <div className="p-inputgroup">
-              <FloatLabel>
-                <InputText
-                  id="buscarclientes"
-                  placeholder="Buscar cliente..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                {loading && (
-                  <i
-                    className="pi pi-spin pi-spinner"
-                    style={{ marginLeft: "10px" }}
-                  ></i>
-                )}
-                <label htmlFor="buscarclientes">Buscar cliente...</label>
-              </FloatLabel>
-            </div>
-            <div className="p-inputgroup ml-2">
-              <FloatLabel>
-                <Dropdown
-                  inputId="clientes"
-                  // id="idcliente"
-                  value={selectedCliente}
-                  onChange={onClienteChange}
-                  options={clientes}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Seleccione un cliente"
-                  filter
-                  filterBy="label"
-                  loading={loading}
-                  style={{ borderRadius: "4px" }}
-                />
-                <label htmlFor="clientes">Seleccione un cliente</label>
-              </FloatLabel>
-            </div>
+
+      <div className="client-contact-association__header">
+        <h2>Asociación de clientes y contactos</h2>
+        <p>Busca un cliente, administra sus contactos y guarda los cambios en un solo paso.</p>
+      </div>
+
+      <Panel header="Seleccionar cliente" toggleable className="client-contact-association__panel">
+        <Card className="client-contact-association__search-card">
+          <div className="client-contact-association__search-grid">
+            <FloatLabel>
+              <InputText
+                id="buscarclientes"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Escribe nombre, NIT o identidad"
+              />
+              <label htmlFor="buscarclientes">Buscar cliente</label>
+            </FloatLabel>
+
+            <FloatLabel>
+              <Dropdown
+                inputId="clientes"
+                value={selectedCliente}
+                onChange={onClienteChange}
+                options={clientes}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Selecciona un cliente"
+                filter
+                filterBy="label"
+                loading={loadingClientes}
+                showClear
+                className="client-contact-association__dropdown"
+              />
+              <label htmlFor="clientes">Cliente</label>
+            </FloatLabel>
+          </div>
+
+          <div className="client-contact-association__summary">
+            <i className="pi pi-user" />
+            <span>{selectedClienteText}</span>
+            {loadingClientes && <i className="pi pi-spin pi-spinner" />}
           </div>
         </Card>
       </Panel>
-      <div style={{ paddingTop: "10px" }}>
-        <Card>
-          <PickList
-            dataKey="idcontacto"
-            source={contactos}
-            target={contactosAsociados}
-            // itemTemplate={(item) => <span>{item.nombreCa}</span>}
-            itemTemplate={itemTemplate}
-            filter
-            filterBy="nombreCa,identificacionCa,telmovilCa,correoCa"
-            sourceHeader="Contactos Disponibles"
-            targetHeader="Contactos Asociados"
-            sourceStyle={{ height: "200px" }}
-            targetStyle={{ height: "200px" }}
-            onMoveToTarget={onMoveToTarget}
-            onMoveToSource={onMoveToSource}
-            showSourceControls={false}
-            showTargetControls={false}
-            sourceFilterPlaceholder="Buscar por nombre, identidad, teléfono o correo"
-            targetFilterPlaceholder="Buscar por nombre, identidad, teléfono o correo"
-            // sourceFilterPlaceholder="Buscar por nombre"
-            // targetFilterPlaceholder="Buscar por nombre"
-            pt={{
-              moveAllToTargetButton: {
-                root: { className: "hidden" },
-              },
-              moveAllToSourceButton: {
-                root: { className: "hidden" },
-              },
-            }}
+
+      <Card className="client-contact-association__picklist-card">
+        <PickList
+          dataKey="idcontacto"
+          source={sourceContactos}
+          target={targetContactos}
+          itemTemplate={itemTemplate}
+          filter
+          filterBy="nombreCa,identificacionCa,telmovilCa,correoCa"
+          sourceHeader="Contactos disponibles"
+          targetHeader="Contactos asociados"
+          sourceStyle={{ height: "320px" }}
+          targetStyle={{ height: "320px" }}
+          onChange={(event) => {
+            setSourceContactos(event.source);
+            setTargetContactos(event.target);
+          }}
+          showSourceControls={false}
+          showTargetControls={false}
+          sourceFilterPlaceholder="Buscar por nombre, identidad, teléfono o correo"
+          targetFilterPlaceholder="Buscar por nombre, identidad, teléfono o correo"
+          disabled={!selectedCliente || loadingContactos || saving}
+          pt={{
+            moveAllToTargetButton: { root: { className: "hidden" } },
+            moveAllToSourceButton: { root: { className: "hidden" } },
+          }}
+        />
+
+        <div className="client-contact-association__footer">
+          <small>
+            {selectedCliente
+              ? `${targetContactos.length} contacto(s) asociado(s) actualmente.`
+              : "Selecciona un cliente para comenzar."}
+          </small>
+          <Button
+            onClick={handleSave}
+            label={saving ? "Guardando..." : "Guardar asociaciones"}
+            icon={saving ? "pi pi-spin pi-spinner" : "pi pi-save"}
+            disabled={!selectedCliente || loadingContactos || saving}
           />
-        </Card>
-        <div style={{ paddingTop: "10px" }}>
-          <Card>
-            <Button
-              onClick={handleSave}
-              label="Asociar Contactos"
-              icon="pi pi-save"
-              className="p-button-success"
-            />
-          </Card>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };
