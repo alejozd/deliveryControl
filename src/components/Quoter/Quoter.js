@@ -12,6 +12,8 @@ import { Toast } from "primereact/toast";
 import { InputTextarea } from "primereact/inputtextarea";
 import { FloatLabel } from "primereact/floatlabel";
 import { Dropdown } from "primereact/dropdown";
+import { IconField } from "primereact/iconfield";
+import { InputIcon } from "primereact/inputicon";
 import ProductSearchDialog from "./ProductSearchDialog";
 import CustomerSearchDialog from "./CustomerSearchDialog";
 import { Calendar } from "primereact/calendar";
@@ -1224,9 +1226,11 @@ const Quoter = ({ onSave, quotationData, user }) => {
   );
 
   const startContent = (
-    <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+    <div className="quoter-product-toolbar">
       {/* Buscar producto */}
-      <div className="p-inputgroup inputtext" style={{ flexGrow: 1 }}>
+      <div className="quoter-product-toolbar__search">
+        <IconField iconPosition="left" className="quoter-product-toolbar__search-field">
+        <InputIcon className="pi pi-search" />
         <InputText
           placeholder="Buscar producto..."
           // size={"45"}
@@ -1239,16 +1243,18 @@ const Quoter = ({ onSave, quotationData, user }) => {
           }}
           tooltip="Buscar producto por nombre o referencia"
           tooltipOptions={{ position: "top" }}
-          style={{ width: "100%", minWidth: "4rem" }}
+          className="quoter-product-toolbar__search-input"
         />
-        <Button
-          icon="pi pi-search"
-          severity="warning"
-          onClick={searchProducts}
-        />
-      </div>
+      </IconField>
+      <Button
+        label="Buscar"
+        icon="pi pi-search"
+        severity="warning"
+        onClick={searchProducts}
+      />
+    </div>
       {/* Dropdown de bodegas */}
-      <div>
+      <div className="quoter-product-toolbar__bodega">
         <Dropdown
           className="inputtext"
           disabled={selectedProducts.length > 0} // Deshabilita si hay productos
@@ -1266,9 +1272,9 @@ const Quoter = ({ onSave, quotationData, user }) => {
   );
 
   const endContent = (
-    <div className="p-inputgroup inputtext">
+    <div className="quoter-product-toolbar__actions">
       <Button
-        label="Delete"
+        label="Eliminar selección"
         icon="pi pi-trash"
         severity="danger"
         onClick={confirmDeleteSelected}
@@ -1283,19 +1289,13 @@ const Quoter = ({ onSave, quotationData, user }) => {
       {/* Sección para buscar cliente */}
       <div className="grid">
         <div className="col-12">
-          <div className="card">
-            <h3
-              style={{
-                textAlign: "center",
-                marginTop: "-9px",
-                marginBottom: "5px",
-              }}
-            >
-              Busqueda de Cliente
-            </h3>
+          <div className="card quoter-section-card">
+            <h3 className="quoter-section-title">Busqueda de Cliente</h3>
             <div className="customer-search-container">
               <div className="search-group">
-                <InputText
+                <IconField iconPosition="left" className="quoter-customer-search-field">
+                  <InputIcon className="pi pi-search" />
+                  <InputText
                   placeholder="Buscar cliente..."
                   value={searchTextCustomer || ""}
                   onChange={(e) => setSearchTextCustomer(e.target.value)}
@@ -1306,8 +1306,11 @@ const Quoter = ({ onSave, quotationData, user }) => {
                   }}
                   tooltip="Buscar cliente por nombre o identificación"
                   tooltipOptions={{ position: "top" }}
+                  className="quoter-customer-search-input"
                 />
+                </IconField>
                 <Button
+                  label="Buscar"
                   icon="pi pi-search"
                   severity="warning"
                   onClick={searchCustomers}
@@ -1350,16 +1353,8 @@ const Quoter = ({ onSave, quotationData, user }) => {
       <div className="grid">
         {/* Sección para el cliente */}
         <div className="col-12 md:col-6">
-          <div className="card p-fluid ">
-            <h3
-              style={{
-                textAlign: "center",
-                marginTop: "-5px",
-                marginBottom: "5px",
-              }}
-            >
-              Información del cliente
-            </h3>
+          <div className="card p-fluid quoter-section-card">
+            <h3 className="quoter-section-title">Información del cliente</h3>
             {showValidationErrors && Boolean(missingRequiredFields.length) && (
               <div className="quoter-validation-banner">
                 Completa los campos obligatorios para guardar la cotización.
@@ -1406,7 +1401,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
                 />
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "row" }}>
+            <div className="quoter-customer-phone-row">
               <div className="labelinput">
                 <label htmlFor="telefonoFijo">Teléfono fijo</label>
                 <InputText
@@ -1502,16 +1497,8 @@ const Quoter = ({ onSave, quotationData, user }) => {
 
         {/* Sección para el contacto adicional */}
         <div className="col-12 md:col-6">
-          <div className="card p-fluid">
-            <h3
-              style={{
-                textAlign: "center",
-                marginTop: "-5px",
-                marginBottom: "5px",
-              }}
-            >
-              Contacto adicional
-            </h3>
+          <div className="card p-fluid quoter-section-card">
+            <h3 className="quoter-section-title">Contacto adicional</h3>
             {selectedCustomer && selectedCustomer.idcliente && (
               <AdditionalContacts
                 contacts={additionalContacts}
@@ -1528,19 +1515,11 @@ const Quoter = ({ onSave, quotationData, user }) => {
       {/* Sección para buscar productos */}
       <div className="grid">
         <div className="col-12 md:col-12">
-          <div className="card p-fluid">
-            <h3
-              style={{
-                textAlign: "center",
-                marginTop: "-9px",
-                marginBottom: "5px",
-              }}
-            >
-              Productos
-            </h3>
+          <div className="card p-fluid quoter-section-card">
+            <h3 className="quoter-section-title">Productos</h3>
             <Toolbar
+              className="quoter-products-toolbar"
               start={startContent}
-              style={{ margin: "-5px" }}
               end={endContent}
             />
           </div>
@@ -1548,7 +1527,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
       </div>
 
       {/* Lista de productos */}
-      <div className="p-col-12">
+      <div className="p-col-12 quoter-products-table-wrapper">
         <DataTable
           value={selectedProducts}
           showGridlines
@@ -1622,7 +1601,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
         </DataTable>
       </div>
 
-      <div className="p-col-12" style={{ marginTop: "20px" }}>
+      <div className="p-col-12 quoter-notes-section">
         <FloatLabel>
           <InputTextarea
             id="notas"
@@ -1638,7 +1617,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
       </div>
 
       {/* Botón para guardar la cotización */}
-      <div className="p-col-12" style={{ marginTop: "10px" }}>
+      <div className="p-col-12 quoter-footer-toolbar">
         <Toolbar
           start={
             <Button
