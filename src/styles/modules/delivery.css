@@ -144,3 +144,28 @@
   color: #475569;
   font-size: 0.88rem;
 }
+
+.consulta-entregas-toolbar {
+  border: 0;
+  padding: 0;
+}
+
+.consulta-entregas-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.consulta-entregas-quickranges {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .consulta-entregas-filters {
+    width: 100%;
+  }
+}
