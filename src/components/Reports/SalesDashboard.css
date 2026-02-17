@@ -1,63 +1,106 @@
 .sales-dashboard {
-  padding: 20px;
+  padding: 1rem;
 }
 
-.charts-container {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-  
-  @media (min-width: 768px) {
-    .charts-container {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-  
-  .chart-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 0;
+.sales-dashboard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.sales-dashboard__title {
+  margin: 0;
+}
+
+.sales-dashboard__filters-card {
+  margin-bottom: 0.75rem;
+}
+
+.sales-dashboard__filters {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.sales-dashboard__segments,
+.sales-dashboard__dropdown {
+  width: 100%;
+}
+
+.section {
+  margin-bottom: 1rem;
+}
+
+.kpi-section {
+  display: flex;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.datatable-section {
+  width: 100%;
+}
+
+.charts-section {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.chart-container {
+  flex: 1;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-container .p-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.sales-dashboard__chart-wrap {
+  min-height: 340px;
+}
+
+.sales-dashboard__chart-wrap--modal {
+  min-height: 300px;
+}
+
+.sales-dashboard__link-btn {
+  background: none;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
+.sales-dashboard__link-btn:hover {
+  text-decoration: underline;
+}
+
+.sales-dashboard__subtitle {
+  margin: 1rem 0 0.5rem;
+}
+
+.sales-dashboard__client-meta p {
+  margin: 0.35rem 0;
+}
+
+@media (max-width: 768px) {
+  .sales-dashboard {
+    padding: 0.5rem;
   }
 
   .chart-container {
-    flex: 1; /* Cada contenedor ocupa la mitad del ancho en pantallas grandes */
-    min-width: 300px; /* Ancho mínimo para evitar que los gráficos se hagan demasiado pequeños */
-    display: flex; /* Usamos Flexbox para igualar las alturas */
-    flex-direction: column; /* Asegura que el contenido esté en columna */
-  }
-
-  .chart-container .p-card {
-    flex: 1; /* Hace que las tarjetas ocupen toda la altura disponible */
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .section {
-    margin-bottom: 20px;
-  }
-  
-  .charts-section {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap; /* Permite que los gráficos se apilen en pantallas pequeñas */
-  }
-
-  .kpi-section {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap; /* Permite que las tarjetas se ajusten en pantallas pequeñas */
-  }
-  
-  .datatable-section {
+    min-width: 0;
     width: 100%;
   }
 
-  .segment-dropdown {
-    margin-bottom: 15px;
+  .sales-dashboard__chart-wrap {
+    min-height: 260px;
   }
-
-  .segment-dropdown .p-dropdown {
-    width: 100%;
-  }
+}

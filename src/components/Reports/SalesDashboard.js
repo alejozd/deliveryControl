@@ -1,454 +1,343 @@
-import { useEffect, useState, useRef } from "react";
+import { useMemo, useState, useRef } from "react";
 import { MultiSelect } from "primereact/multiselect";
 import { Card } from "primereact/card";
 import { Dropdown } from "primereact/dropdown";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { Button } from "primereact/button";
-import { Chart } from "primereact/chart"; // Importa el componente Chart de PrimeReact
-import { Calendar } from "primereact/calendar";
+import { Chart } from "primereact/chart";
 import { Toast } from "primereact/toast";
 import CardDashboard from "./CardDashboard";
-import ChartDataLabels from "chartjs-plugin-datalabels"; // Importa el plugin para los labels
+import ChartDataLabels from "chartjs-plugin-datalabels";
 import { Dialog } from "primereact/dialog";
 import "./SalesDashboard.css";
-import { segments, clients, salesData, salesDataByProduct } from "./mockData"; // Importa los datos
+import { segments, clients, salesData, salesDataByProduct } from "./mockData";
+
+const formatCurrency = (value = 0) =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(value);
+
+const PRODUCT_COLORS = [
+  "#FF6384",
+  "#36A2EB",
+  "#FFCE56",
+  "#4BC0C0",
+  "#9966FF",
+  "#FF9F40",
+  "#C9CBCF",
+  "#FF5733",
+  "#33FF57",
+  "#5733FF",
+];
+
+const SEGMENT_COLORS = [
+  "rgba(255, 99, 132, 0.5)",
+  "rgba(54, 162, 235, 0.5)",
+  "rgba(255, 206, 86, 0.5)",
+  "rgba(75, 192, 192, 0.5)",
+  "rgba(153, 102, 255, 0.5)",
+  "rgba(255, 159, 64, 0.5)",
+];
+
+const SEGMENT_BORDER_COLORS = [
+  "rgba(255, 99, 132, 1)",
+  "rgba(54, 162, 235, 1)",
+  "rgba(255, 206, 86, 1)",
+  "rgba(75, 192, 192, 1)",
+  "rgba(153, 102, 255, 1)",
+  "rgba(255, 159, 64, 1)",
+];
 
 const SalesDashboard = () => {
-  // Referencias para los gráficos
-  const barChartRef = useRef(null);
-  const pieChartRef = useRef(null);
-
+  const toast = useRef(null);
   const [selectedSegments, setSelectedSegments] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [topProductsCount, setTopProductsCount] = useState(5);
   const [selectedSegment, setSelectedSegment] = useState(
     segments.length > 0 ? segments[0] : null
   );
-  const [topProductsCount, setTopProductsCount] = useState(3);
-  const [selectedClient, setSelectedClient] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [date, setDate] = useState(null);
-  const toast = useRef(null);
 
-  const options = {
-    responsive: true, // Asegúrate de que esta opción esté habilitada
-    maintainAspectRatio: false, // Permite que el gráfico se ajuste al contenedor
-    aspectRatio: 0.8,
-    scales: {
-      y: {
-        max: 220000,
-        ticks: {
-          stepSize: 10000,
-          callback: function (value) {
-            // Formatear el valor como moneda COP
-            return new Intl.NumberFormat("es-CO", {
-              style: "currency",
-              currency: "COP",
-            }).format(value);
-          },
+  const filteredSales = useMemo(() => {
+    if (!selectedSegments.length) {
+      return salesData;
+    }
+
+    return salesData.filter((sale) =>
+      selectedSegments.some((seg) => String(seg) === String(sale.segment))
+    );
+  }, [selectedSegments]);
+
+  const filteredClients = useMemo(() => {
+    if (!selectedSegments.length) {
+      return clients;
+    }
+
+    return clients.filter((client) => {
+      const normalizedClientSegment = client.segment
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "_");
+
+      return selectedSegments.some((seg) => seg === normalizedClientSegment);
+    });
+  }, [selectedSegments]);
+
+  const totalSales = useMemo(
+    () => filteredSales.reduce((acc, sale) => acc + sale.amount, 0),
+    [filteredSales]
+  );
+
+  const totalSalesCount = useMemo(
+    () => filteredSales.reduce((acc, sale) => acc + sale.count, 0),
+    [filteredSales]
+  );
+
+  const dynamicKpis = useMemo(
+    () => [
+      {
+        title: "Ventas Totales",
+        value: formatCurrency(totalSales),
+        icon: "pi-dollar",
+        iconBgColor: "#4CAF50",
+      },
+      {
+        title: "Clientes Activos",
+        value: filteredClients.length,
+        icon: "pi-users",
+        iconBgColor: "#FF9800",
+      },
+      {
+        title: "Cantidad de Ventas",
+        value: totalSalesCount,
+        icon: "pi-shopping-cart",
+        iconBgColor: "#2196F3",
+      },
+    ],
+    [filteredClients.length, totalSales, totalSalesCount]
+  );
+
+  const salesBySegmentData = useMemo(() => {
+    const salesBySegmentMap = filteredSales.reduce((acc, sale) => {
+      acc[sale.segment] = (acc[sale.segment] || 0) + sale.amount;
+      return acc;
+    }, {});
+
+    const labels = Object.keys(salesBySegmentMap);
+    const values = Object.values(salesBySegmentMap);
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: "Ventas",
+          data: values,
+          backgroundColor: labels.map(
+            (_, index) => SEGMENT_COLORS[index % SEGMENT_COLORS.length]
+          ),
+          borderColor: labels.map(
+            (_, index) => SEGMENT_BORDER_COLORS[index % SEGMENT_BORDER_COLORS.length]
+          ),
+          borderWidth: 1,
         },
-      },
-    },
-  };
-
-  // Colores predefinidos para los segmentos
-  const segmentColors = [
-    "rgba(255, 99, 132, 0.5)", // Rojo
-    "rgba(54, 162, 235, 0.5)", // Azul
-    "rgba(255, 206, 86, 0.5)", // Amarillo
-    "rgba(75, 192, 192, 0.5)", // Verde
-    "rgba(153, 102, 255, 0.5)", // Morado
-    "rgba(255, 159, 64, 0.5)", // Naranja
-  ];
-
-  // Colores de borde para cada segmento
-  const segmentBorderColors = [
-    "rgba(255, 99, 132, 1)",
-    "rgba(54, 162, 235, 1)",
-    "rgba(255, 206, 86, 1)",
-    "rgba(75, 192, 192, 1)",
-    "rgba(153, 102, 255, 1)",
-    "rgba(255, 159, 64, 1)",
-  ];
-
-  const filteredSales =
-    selectedSegments.length > 0
-      ? salesData.filter((sale) =>
-          selectedSegments.some((seg) => String(seg) === String(sale.segment))
-        )
-      : salesData; // Si no hay selección, mostrar todas las ventas
-
-  // Filtrar clientes por segmento
-  const filteredClients = clients.filter((client) => {
-    // Normalizar el formato de los segmentos (convertir a minúsculas y quitar espacios)
-    const normalizedClientSegment = client.segment
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "_"); // Reemplaza espacios por guiones bajos
-
-    return (
-      selectedSegments.length === 0 ||
-      selectedSegments.some((seg) => seg === normalizedClientSegment)
-    );
-  });
-
-  // Calcular valores de los KPIs
-  const totalSales = filteredSales.reduce((acc, sale) => acc + sale.amount, 0);
-  const totalSalesCount = filteredSales.reduce(
-    (acc, sale) => acc + sale.count,
-    0
-  );
-  const activeClientsCount = filteredClients.length; // Ahora esto funciona correctamente
-
-  // Crear KPIs dinámico
-  const dynamicKpis = [
-    {
-      title: "Ventas Totales",
-      value: new Intl.NumberFormat("es-CO", {
-        style: "currency",
-        currency: "COP",
-      }).format(totalSales),
-      icon: "pi-dollar",
-      iconBgColor: "#4CAF50", // Verde
-    },
-    {
-      title: "Clientes Activos",
-      value: activeClientsCount,
-      icon: "pi-users",
-      iconBgColor: "#FF9800", // Naranja
-    },
-    {
-      title: "Cantidad de Ventas",
-      value: totalSalesCount,
-      icon: "pi-shopping-cart",
-      iconBgColor: "#2196F3", // Azul
-    },
-  ];
-
-  // Agrupar ventas por segmento correctamente
-  const salesBySegmentMap = filteredSales.reduce((acc, sale) => {
-    acc[sale.segment] = (acc[sale.segment] || 0) + sale.amount;
-    return acc;
-  }, {});
-
-  // Obtener los segmentos seleccionados
-  const segmentLabels = Object.keys(salesBySegmentMap);
-  const segmentValues = Object.values(salesBySegmentMap);
-
-  // Asignar colores dinámicamente según el segmento
-  const backgroundColors = segmentLabels.map(
-    (_, index) => segmentColors[index % segmentColors.length]
-  );
-  const borderColors = segmentLabels.map(
-    (_, index) => segmentBorderColors[index % segmentBorderColors.length]
-  );
-
-  // Datos para el gráfico
-  const salesBySegmentData = {
-    labels: segmentLabels,
-    datasets: [
-      {
-        label: "Ventas",
-        data: segmentValues,
-        backgroundColor: backgroundColors,
-        borderColor: borderColors,
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  const filteredSegmentSales = selectedSegment
-    ? salesDataByProduct.filter((sale) => sale.segment === selectedSegment)
-    : salesDataByProduct;
-
-  // Obtener los productos más vendidos dentro del segmento seleccionado
-  console.log(
-    "Ventas filtradas antes de agrupar por producto:",
-    filteredSegmentSales
-  );
-
-  filteredSegmentSales.forEach((sale, index) => {
-    console.log(`Venta ${index + 1}:`, sale);
-  });
-
-  const salesByProduct = filteredSegmentSales.reduce((acc, sale) => {
-    acc[sale.product] = (acc[sale.product] || 0) + sale.amount;
-    return acc;
-  }, {});
-
-  // Ordenar productos por ventas y tomar los primeros N (Top 6 o Top 10)
-  const sortedProducts = Object.entries(salesByProduct)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, topProductsCount);
-
-  // Preparar datos para el gráfico
-  const productsLabels = sortedProducts.map(([product]) => product);
-  const productsValues = sortedProducts.map(([_, value]) => value);
-
-  const pieChartData = {
-    labels: productsLabels,
-    datasets: [
-      {
-        data: productsValues,
-        backgroundColor: [
-          "#FF6384",
-          "#36A2EB",
-          "#FFCE56",
-          "#4BC0C0",
-          "#9966FF",
-          "#FF9F40",
-          "#C9CBCF",
-          "#FF5733",
-          "#33FF57",
-          "#5733FF",
-        ],
-      },
-    ],
-  };
-
-  const formatDatesForBackend = (range) => {
-    if (!range || range.length !== 2) return null;
-
-    const startDate = new Date(range[0]);
-    const endDate = new Date(range[1]);
-
-    // Establecer el primer día del mes
-    const fecha_ini = `${startDate.getFullYear()}-${(startDate.getMonth() + 1)
-      .toString()
-      .padStart(2, "0")}-01`;
-
-    // Obtener el último día del mes seleccionado
-    const lastDay = new Date(
-      endDate.getFullYear(),
-      endDate.getMonth() + 1,
-      0
-    ).getDate();
-    const fecha_fin = `${endDate.getFullYear()}-${(endDate.getMonth() + 1)
-      .toString()
-      .padStart(2, "0")}-${lastDay}`;
-
-    return { fecha_ini, fecha_fin };
-  };
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (barChartRef.current && barChartRef.current.chart) {
-        barChartRef.current.chart.resize();
-      }
-      if (pieChartRef.current && pieChartRef.current.chart) {
-        pieChartRef.current.chart.resize();
-      }
+      ],
     };
+  }, [filteredSales]);
 
-    // Forzar un redimensionamiento inicial
-    handleResize();
+  const pieChartData = useMemo(() => {
+    const filteredSegmentSales = selectedSegment
+      ? salesDataByProduct.filter((sale) => sale.segment === selectedSegment)
+      : salesDataByProduct;
 
-    // Agregar el listener de resize
-    window.addEventListener("resize", handleResize);
+    const salesByProduct = filteredSegmentSales.reduce((acc, sale) => {
+      acc[sale.product] = (acc[sale.product] || 0) + sale.amount;
+      return acc;
+    }, {});
 
-    // Limpieza del listener cuando el componente se desmonta
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    const sortedProducts = Object.entries(salesByProduct)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, topProductsCount);
 
-  // Función para abrir el modal con los detalles del cliente
-  const openModal = (client) => {
-    setSelectedClient(client);
-    setShowModal(true);
-  };
+    return {
+      labels: sortedProducts.map(([product]) => product),
+      datasets: [
+        {
+          data: sortedProducts.map(([, value]) => value),
+          backgroundColor: PRODUCT_COLORS,
+        },
+      ],
+    };
+  }, [selectedSegment, topProductsCount]);
 
-  // Contenido del modal
-  const renderModalContent = () => {
-    if (!selectedClient) return null;
+  const topProductsData = useMemo(() => {
+    if (!selectedClient || !Array.isArray(selectedClient.purchases)) {
+      return [];
+    }
 
-    // Datos para el DataTable
-    const clientSales = selectedClient.sales || [];
-
-    return (
-      <div>
-        {/* Información general */}
-        <div className="mb-4">
-          <p>
-            <strong>Total Compras:</strong>{" "}
-            {new Intl.NumberFormat("es-CO", {
-              style: "currency",
-              currency: "COP",
-            }).format(selectedClient.totalSales)}
-          </p>
-          <p>
-            <strong>Última Compra:</strong> {selectedClient.lastSale}
-          </p>
-        </div>
-
-        {/* DataTable para mostrar las ventas */}
-        <DataTable value={clientSales} className="p-datatable-sm">
-          <Column
-            field="invoiceNumber"
-            header="Factura"
-            style={{ width: "20%" }}
-          ></Column>
-          <Column field="date" header="Fecha" style={{ width: "20%" }}></Column>
-          <Column
-            field="amount"
-            header="Valor"
-            body={(rowData) =>
-              new Intl.NumberFormat("es-CO", {
-                style: "currency",
-                currency: "COP",
-              }).format(rowData.amount)
-            }
-            style={{ width: "20%" }}
-          ></Column>
-        </DataTable>
-        {/* Gráfico de barras horizontales */}
-        <h3>Top 5 Productos Más Comprados</h3>
-        <Chart
-          type="bar"
-          data={barChartData}
-          options={barChartOptions}
-          plugins={[ChartDataLabels]}
-        />
-      </div>
-    );
-  };
-
-  // Función para calcular el top 5 de productos comprados por el cliente seleccionado
-  const getTopProductsByClient = (client) => {
-    if (!client || !Array.isArray(client.purchases)) return [];
-
-    // Agrupar las compras del cliente por producto
-    const purchasesByProduct = client.purchases.reduce((acc, purchase) => {
+    const purchasesByProduct = selectedClient.purchases.reduce((acc, purchase) => {
       acc[purchase.product] = (acc[purchase.product] || 0) + purchase.amount;
       return acc;
     }, {});
 
-    // Ordenar los productos por cantidad comprada y tomar los primeros 5
-    const sortedProducts = Object.entries(purchasesByProduct)
-      .sort((a, b) => b[1] - a[1]) // Orden descendente
-      .slice(0, 5); // Top 5
+    return Object.entries(purchasesByProduct)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+  }, [selectedClient]);
 
-    return sortedProducts; // Asegúrate de que el nombre sea correcto
-  };
+  const barChartData = useMemo(
+    () => ({
+      labels: topProductsData.map(([product]) => product),
+      datasets: [
+        {
+          label: "Total Comprado",
+          data: topProductsData.map(([, amount]) => amount),
+          backgroundColor: [
+            "rgba(255, 99, 132, 0.6)",
+            "rgba(54, 162, 235, 0.6)",
+            "rgba(255, 206, 86, 0.6)",
+            "rgba(75, 192, 192, 0.6)",
+            "rgba(153, 102, 255, 0.6)",
+          ],
+          borderColor: [
+            "rgba(255, 99, 132, 1)",
+            "rgba(54, 162, 235, 1)",
+            "rgba(255, 206, 86, 1)",
+            "rgba(75, 192, 192, 1)",
+            "rgba(153, 102, 255, 1)",
+          ],
+          borderWidth: 1,
+        },
+      ],
+    }),
+    [topProductsData]
+  );
 
-  // Datos para el gráfico de barras horizontales
-  const topProductsData = selectedClient
-    ? getTopProductsByClient(selectedClient)
-    : [];
-
-  const barChartData = {
-    labels: topProductsData.map(([product]) => product), // Nombres de los productos
-    datasets: [
-      {
-        label: "Total Comprado",
-        data: topProductsData.map(([_, amount]) => amount), // Montos comprados
-        backgroundColor: [
-          "rgba(255, 99, 132, 0.6)",
-          "rgba(54, 162, 235, 0.6)",
-          "rgba(255, 206, 86, 0.6)",
-          "rgba(75, 192, 192, 0.6)",
-          "rgba(153, 102, 255, 0.6)",
-        ],
-        borderColor: [
-          "rgba(255, 99, 132, 1)",
-          "rgba(54, 162, 235, 1)",
-          "rgba(255, 206, 86, 1)",
-          "rgba(75, 192, 192, 1)",
-          "rgba(153, 102, 255, 1)",
-        ],
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  const barChartOptions = {
-    indexAxis: "y", // Hace que las barras sean horizontales
-    responsive: true,
-    maintainAspectRatio: false,
-    aspectRatio: 0.8,
-    plugins: {
-      datalabels: {
-        display: true,
-        color: "#000",
-        // anchor: "end",
-        // align: "end",
-        formatter: (value) =>
-          new Intl.NumberFormat("es-CO", {
-            style: "currency",
-            currency: "COP",
-          }).format(value),
-      },
-    },
-    scales: {
-      x: {
-        // beginAtZero: true,
-        ticks: {
-          callback: (value) => {
-            // Abreviar números grandes
-            if (value >= 1000000) {
-              return `${(value / 1000000).toFixed(1)}M`;
-            } else if (value >= 1000) {
-              return `${(value / 1000).toFixed(1)}k`;
-            }
-            return value;
+  const segmentChartOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      aspectRatio: 0.8,
+      scales: {
+        y: {
+          ticks: {
+            callback: (value) => formatCurrency(value),
           },
-          maxRotation: 0, // Evita rotación excesiva
-          autoSkip: true, // Salta algunos labels si hay muchos
         },
       },
-    },
+    }),
+    []
+  );
+
+  const pieChartOptions = useMemo(
+    () => ({
+      responsive: true,
+      aspectRatio: 1,
+      plugins: {
+        datalabels: {
+          display: true,
+          formatter: (value) => formatCurrency(value),
+          color: "#000",
+          font: { size: 12, weight: "bold" },
+        },
+      },
+    }),
+    []
+  );
+
+  const barChartOptions = useMemo(
+    () => ({
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      aspectRatio: 0.9,
+      plugins: {
+        datalabels: {
+          display: true,
+          color: "#111827",
+          formatter: (value) => formatCurrency(value),
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            callback: (value) => {
+              if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+              if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+              return value;
+            },
+            maxRotation: 0,
+            autoSkip: true,
+          },
+        },
+      },
+    }),
+    []
+  );
+
+  const openModal = (client) => {
+    setSelectedClient(client);
+    setShowModal(true);
+    toast.current?.show({
+      severity: "info",
+      summary: "Cliente seleccionado",
+      detail: client.name,
+      life: 1800,
+    });
   };
+
+  const renderClientName = (rowData) => (
+    <button
+      type="button"
+      className="sales-dashboard__link-btn"
+      onClick={() => openModal(rowData)}
+    >
+      {rowData.name}
+    </button>
+  );
 
   return (
     <div className="sales-dashboard">
-      <h2 className="mb-4">Dashboard de Ventas</h2>
+      <div className="sales-dashboard__header">
+        <h2 className="sales-dashboard__title">Dashboard de Ventas</h2>
+      </div>
       <Toast ref={toast} />
-      {/* Filtros */}
-      <Card className="p-4 flex gap-4 mb-2">
-        <MultiSelect
-          value={selectedSegments}
-          options={segments}
-          onChange={(e) => setSelectedSegments(e.value)}
-          optionLabel="label"
-          placeholder="Selecciona segmento(s)"
-          display="chip"
-          className="w-60 mr-2"
-        />
-        <Calendar
-          value={date}
-          onChange={(e) => setDate(e.value)}
-          view="month"
-          dateFormat="mm/yy"
-          selectionMode="range"
-          className="mr-2"
-          placeholder="Selecciona un rango de meses"
-          style={{ display: "none" }} // Oculta el calendario
-          disabled={true}
-        />
-        <Button
-          label="Buscar"
-          icon="pi pi-search"
-          severity="info"
-          onClick={() => {
-            const formattedDates = formatDatesForBackend(date);
-            console.log("Fechas enviadas al backend:", formattedDates);
 
-            if (formattedDates) {
-              toast.current.show({
-                severity: "info",
-                summary: "Fechas Seleccionadas",
-                detail: `Desde: ${formattedDates.fecha_ini} - Hasta: ${formattedDates.fecha_fin}`,
-              });
-            } else {
-              toast.current.show({
-                severity: "warn",
-                summary: "Error",
-                detail: "Selecciona un rango válido de fechas",
-              });
-            }
-          }}
-          visible={false}
-        />
+      <Card className="sales-dashboard__filters-card">
+        <div className="sales-dashboard__filters">
+          <MultiSelect
+            value={selectedSegments}
+            options={segments}
+            onChange={(e) => setSelectedSegments(e.value)}
+            optionLabel="label"
+            placeholder="Selecciona segmento(s)"
+            display="chip"
+            className="sales-dashboard__segments"
+          />
+
+          <Dropdown
+            value={selectedSegment}
+            options={segments}
+            onChange={(e) => setSelectedSegment(e.value)}
+            optionLabel="label"
+            placeholder="Segmento para productos"
+            className="sales-dashboard__dropdown"
+          />
+
+          <Dropdown
+            value={topProductsCount}
+            options={[
+              { label: "Top 3", value: 3 },
+              { label: "Top 5", value: 5 },
+              { label: "Top 10", value: 10 },
+            ]}
+            onChange={(e) => setTopProductsCount(e.value)}
+            className="sales-dashboard__dropdown"
+          />
+        </div>
       </Card>
 
-      {/* KPIs */}
       <Card className="mb-2">
         <div className="section kpi-section">
           {dynamicKpis.map((kpi, index) => (
@@ -457,127 +346,85 @@ const SalesDashboard = () => {
         </div>
       </Card>
 
-      {/* Tabla de Clientes */}
       <div className="section datatable-section">
         <Card title="Clientes del Segmento">
-          <DataTable
-            value={filteredClients}
-            paginator
-            rows={5}
-            className="mt-3"
-          >
-            <Column field="segment" header="Segmento" sortable></Column>
-            <Column
-              field="name"
-              header="Cliente"
-              sortable
-              body={(rowData) => (
-                <span
-                  className="cursor-pointer text-blue-500"
-                  // onClick={() => openSidebar(rowData)}
-                  onClick={() => openModal(rowData)}
-                >
-                  {rowData.name}
-                </span>
-              )}
-            />
+          <DataTable value={filteredClients} paginator rows={5} className="mt-3" responsiveLayout="scroll">
+            <Column field="segment" header="Segmento" sortable />
+            <Column field="name" header="Cliente" sortable body={renderClientName} />
             <Column
               field="totalSales"
               header="Total de Ventas"
-              body={(rowData) =>
-                new Intl.NumberFormat("es-CO", {
-                  style: "currency",
-                  currency: "COP",
-                }).format(rowData.totalSales)
-              }
-            ></Column>
-            <Column field="lastSale" header="Última Venta"></Column>
+              body={(rowData) => formatCurrency(rowData.totalSales)}
+              sortable
+            />
+            <Column field="lastSale" header="Última Venta" sortable />
           </DataTable>
         </Card>
       </div>
 
-      {/* Gráficos */}
       <div className="section charts-section">
-        {/* Gráfica de Ventas por Segmento */}
         <div className="chart-container">
           <Card title="Ventas por Segmento">
-            <Chart
-              ref={barChartRef}
-              type="bar"
-              data={salesBySegmentData}
-              options={options}
-              // plugins={[ChartDataLabels]}
-            />
+            <div className="sales-dashboard__chart-wrap">
+              <Chart type="bar" data={salesBySegmentData} options={segmentChartOptions} />
+            </div>
           </Card>
         </div>
 
-        {/* Gráfica de Productos Más Vendidos */}
         <div className="chart-container">
           <Card title="Productos Más Vendidos">
-            <div className="segment-dropdown">
-              {/* Dropdown para seleccionar un segmento */}
-              <Dropdown
-                value={selectedSegment}
-                options={segments}
-                onChange={(e) => setSelectedSegment(e.value)}
-                optionLabel="label"
-                placeholder="Selecciona un segmento"
-                className="mb-2"
-              />
-
-              {/* Dropdown para elegir Top 3 o Top 5 */}
-              <Dropdown
-                value={topProductsCount}
-                options={[
-                  { label: "Top 3", value: 3 },
-                  { label: "Top 5", value: 5 },
-                ]}
-                onChange={(e) => setTopProductsCount(e.value)}
-                className="mb-2"
+            <div className="sales-dashboard__chart-wrap">
+              <Chart
+                type="pie"
+                data={pieChartData}
+                options={pieChartOptions}
+                plugins={[ChartDataLabels]}
               />
             </div>
-            <Chart
-              ref={pieChartRef}
-              type="pie"
-              data={pieChartData}
-              // options={chartOptions}
-              options={{
-                responsive: true,
-                aspectRatio: 1,
-                // plugins: { datalabels: { display: true } },
-                plugins: {
-                  datalabels: {
-                    display: true,
-                    formatter: (value) => {
-                      // Formatear el valor como moneda COP
-                      return new Intl.NumberFormat("es-CO", {
-                        style: "currency",
-                        currency: "COP",
-                      }).format(value);
-                    },
-                    color: "#000", // Color del texto
-                    font: {
-                      size: 14, // Tamaño de la fuente
-                      weight: "bold", // Peso de la fuente
-                    },
-                  },
-                },
-              }}
-              plugins={[ChartDataLabels]} // Usa el plugin para los labels
-            />
           </Card>
         </div>
       </div>
 
-      {/* Modal para mostrar detalles del cliente */}
       <Dialog
-        visible={showModal && !!selectedClient} // Solo muestra el modal si hay un cliente seleccionado
+        visible={showModal && !!selectedClient}
         onHide={() => setShowModal(false)}
         header={`Cliente: ${selectedClient?.name}`}
         style={{ width: "70vw" }}
         className="custom-modal"
       >
-        {renderModalContent()}
+        {selectedClient ? (
+          <div>
+            <div className="mb-4 sales-dashboard__client-meta">
+              <p>
+                <strong>Total Compras:</strong> {formatCurrency(selectedClient.totalSales)}
+              </p>
+              <p>
+                <strong>Última Compra:</strong> {selectedClient.lastSale}
+              </p>
+            </div>
+
+            <DataTable value={selectedClient.sales || []} className="p-datatable-sm" responsiveLayout="scroll">
+              <Column field="invoiceNumber" header="Factura" style={{ width: "20%" }} />
+              <Column field="date" header="Fecha" style={{ width: "20%" }} />
+              <Column
+                field="amount"
+                header="Valor"
+                body={(rowData) => formatCurrency(rowData.amount)}
+                style={{ width: "20%" }}
+              />
+            </DataTable>
+
+            <h3 className="sales-dashboard__subtitle">Top 5 Productos Más Comprados</h3>
+            <div className="sales-dashboard__chart-wrap sales-dashboard__chart-wrap--modal">
+              <Chart
+                type="bar"
+                data={barChartData}
+                options={barChartOptions}
+                plugins={[ChartDataLabels]}
+              />
+            </div>
+          </div>
+        ) : null}
       </Dialog>
     </div>
   );
