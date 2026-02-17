@@ -286,6 +286,7 @@ const ClientContactAssociation = () => {
             onClick={handleSave}
             label={saving ? "Guardando..." : "Guardar asociaciones"}
             icon={saving ? "pi pi-spin pi-spinner" : "pi pi-save"}
+            severity="success"
             disabled={!selectedCliente || loadingContactos || saving}
           />
         </div>

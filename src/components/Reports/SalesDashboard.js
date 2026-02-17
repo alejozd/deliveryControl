@@ -220,7 +220,6 @@ const SalesDashboard = () => {
     () => ({
       responsive: true,
       maintainAspectRatio: false,
-      aspectRatio: 0.8,
       scales: {
         y: {
           ticks: {
@@ -235,7 +234,7 @@ const SalesDashboard = () => {
   const pieChartOptions = useMemo(
     () => ({
       responsive: true,
-      aspectRatio: 1,
+      maintainAspectRatio: false,
       plugins: {
         datalabels: {
           display: true,
@@ -253,7 +252,6 @@ const SalesDashboard = () => {
       indexAxis: "y",
       responsive: true,
       maintainAspectRatio: false,
-      aspectRatio: 0.9,
       plugins: {
         datalabels: {
           display: true,
@@ -339,6 +337,25 @@ const SalesDashboard = () => {
         </div>
       </Card>
 
+      <div className="section charts-section">
+        <Card title="Ventas por Segmento" className="chart-container">
+          <div className="sales-dashboard__chart-wrap">
+            <Chart type="bar" data={salesBySegmentData} options={segmentChartOptions} />
+          </div>
+        </Card>
+
+        <Card title="Productos Más Vendidos" className="chart-container">
+          <div className="sales-dashboard__chart-wrap">
+            <Chart
+              type="pie"
+              data={pieChartData}
+              options={pieChartOptions}
+              plugins={[ChartDataLabels]}
+            />
+          </div>
+        </Card>
+      </div>
+
       <div className="section datatable-section">
         <Card title="Clientes del Segmento">
           <DataTable value={filteredClients} paginator rows={5} className="mt-3" responsiveLayout="scroll">
@@ -353,29 +370,6 @@ const SalesDashboard = () => {
             <Column field="lastSale" header="Última Venta" sortable />
           </DataTable>
         </Card>
-      </div>
-
-      <div className="section charts-section">
-        <div className="chart-container">
-          <Card title="Ventas por Segmento">
-            <div className="sales-dashboard__chart-wrap">
-              <Chart type="bar" data={salesBySegmentData} options={segmentChartOptions} />
-            </div>
-          </Card>
-        </div>
-
-        <div className="chart-container">
-          <Card title="Productos Más Vendidos">
-            <div className="sales-dashboard__chart-wrap">
-              <Chart
-                type="pie"
-                data={pieChartData}
-                options={pieChartOptions}
-                plugins={[ChartDataLabels]}
-              />
-            </div>
-          </Card>
-        </div>
       </div>
 
       <Dialog

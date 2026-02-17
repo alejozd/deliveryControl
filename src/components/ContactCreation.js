@@ -280,6 +280,7 @@ const ContactCreation = ({
         label={saving ? "Guardando..." : "Guardar"}
         icon={saving ? "pi pi-spin pi-spinner" : "pi pi-check"}
         onClick={saveContact}
+        severity="success"
         disabled={saving}
       />
     </div>

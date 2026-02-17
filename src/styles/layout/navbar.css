@@ -32,7 +32,9 @@
 }
 
 .app-navbar__company {
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 0.98rem;
+  padding: 0.45rem 0.8rem;
 }
 
 .app-navbar__end {

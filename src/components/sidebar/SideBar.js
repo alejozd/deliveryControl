@@ -14,6 +14,7 @@ import {
   FaAddressBook,
   FaUserFriends,
   FaKey,
+  FaBuilding,
 } from "react-icons/fa";
 import "../../styles/layout/sidebar.css";
 
@@ -126,7 +127,10 @@ const SideBar = ({ sidebarVisible, setSidebarVisible, user, onLogout }) => {
       className="app-sidebar"
       header={
         <div className="app-sidebar__header">
-          <span className="app-sidebar__title">Control de Entregas</span>
+          <div className="app-sidebar__title-wrap">
+            <FaBuilding className="app-sidebar__brand-icon" />
+            <span className="app-sidebar__title">Control de Entregas</span>
+          </div>
           <small>Versión {packageJson.version}</small>
         </div>
       }

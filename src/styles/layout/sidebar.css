@@ -29,6 +29,17 @@
   font-weight: 700;
 }
 
+.app-sidebar__title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.app-sidebar__brand-icon {
+  font-size: 1rem;
+  color: #cde9ff;
+}
+
 .app-sidebar .p-sidebar-content {
   background: #f5f9fc;
   padding: 0.8rem;
