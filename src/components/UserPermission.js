@@ -4,6 +4,8 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
+import { IconField } from "primereact/iconfield";
+import { InputIcon } from "primereact/inputicon";
 import { Toast } from "primereact/toast";
 import { Paginator } from "primereact/paginator";
 import { Toolbar } from "primereact/toolbar";
@@ -186,14 +188,14 @@ const UserPermission = () => {
       <Toolbar className="user-permission__toolbar" start={leftToolbar} end={rightToolbar} />
 
       <div className="user-permission__search-wrap">
-        <span className="p-input-icon-left user-permission__search-field">
-          <i className="pi pi-search" />
+        <IconField iconPosition="left" className="user-permission__search-field">
+          <InputIcon className="pi pi-search" />
           <InputText
             value={searchTerm}
             onChange={onSearch}
             placeholder="Buscar por nombre o código..."
           />
-        </span>
+        </IconField>
         <span className="user-permission__meta">
           {filteredUsers.length} usuario{filteredUsers.length === 1 ? "" : "s"}
         </span>
