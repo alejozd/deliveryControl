@@ -230,7 +230,6 @@ const EntregasList = ({
         readOnly={saldo <= 0}
         value={cantidadesEntregar[rowData.id] ?? null}
         min={0.01}
-        max={saldo}
         onValueChange={(e) => handleCantidadEntregarInput(e, rowData)}
         minFractionDigits={2}
         maxFractionDigits={2}
