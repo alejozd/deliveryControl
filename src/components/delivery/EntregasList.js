@@ -56,6 +56,8 @@ const EntregasList = ({
   handleSearch,
   toast,
   products,
+  originalProductsCount = 0,
+  hasSearched = false,
   onUpdateAceptapotradatos,
   loading,
 }) => {
@@ -229,6 +231,9 @@ const EntregasList = ({
 
   const header = (
     <div className="delivery-expand-controls">
+      <small className="delivery-results-counter">
+        Mostrando {products.length} de {originalProductsCount} facturas
+      </small>
       <Button icon="pi pi-plus" label="Expandir" onClick={() => setExpandedRows(products)} text />
       <Button icon="pi pi-minus" label="Contraer" onClick={() => setExpandedRows([])} text />
     </div>
@@ -312,7 +317,7 @@ const EntregasList = ({
         onRowToggle={(e) => setExpandedRows(e.data)}
         rowExpansionTemplate={rowExpansionTemplate}
         header={header}
-        emptyMessage="No se encontraron facturas para los filtros seleccionados."
+        emptyMessage={hasSearched ? "No se encontraron facturas para los filtros seleccionados." : "Selecciona filtros y presiona Buscar para consultar facturas."}
         stripedRows
         loading={loading}
         dataKey="numfactura"

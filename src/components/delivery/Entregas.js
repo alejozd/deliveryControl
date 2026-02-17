@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import { Panel } from "primereact/panel";
@@ -8,7 +8,7 @@ import { Button } from "primereact/button";
 import config from "../../Config";
 import SearchBar from "./SearchBar";
 import EntregasList from "./EntregasList";
-import { formatDateForApi, getFriendlyErrorMessage } from "./deliveryUtils";
+import { formatDateForApi, getFriendlyErrorMessage, toNumber } from "./deliveryUtils";
 
 function Entregas() {
   const apiUrl = useMemo(
@@ -20,12 +20,25 @@ function Entregas() {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showOnlyPending, setShowOnlyPending] = useState(true);
   const [products, setProducts] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
 
   const closeErrorDialog = useCallback(() => {
     setErrorMessage("");
   }, []);
+
+  const filteredProducts = useMemo(() => {
+    if (!showOnlyPending) return products;
+
+    return products
+      .map((factura) => ({
+        ...factura,
+        detalle: (factura.detalle || []).filter((item) => toNumber(item.saldo) > 0),
+      }))
+      .filter((factura) => factura.detalle.length > 0);
+  }, [products, showOnlyPending]);
 
   const handleUpdateAceptapotradatos = useCallback((idcliente, accepted) => {
     setProducts((current) =>
@@ -60,6 +73,7 @@ function Entregas() {
       }));
 
       setProducts(mapped);
+      setHasSearched(true);
     } catch (error) {
       const friendly = getFriendlyErrorMessage(error);
       setErrorMessage(friendly);
@@ -74,11 +88,6 @@ function Entregas() {
     }
   }, [apiUrl, searchTerm, selectedDate]);
 
-  useEffect(() => {
-    handleSearch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <div className="delivery-page">
       <Panel header="Control de Entregas" toggleable>
@@ -88,6 +97,8 @@ function Entregas() {
             setSelectedDate={setSelectedDate}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
+            showOnlyPending={showOnlyPending}
+            setShowOnlyPending={setShowOnlyPending}
             handleSearch={handleSearch}
             loading={loading}
           />
@@ -97,7 +108,9 @@ function Entregas() {
       <Toast ref={toast} />
 
       <EntregasList
-        products={products}
+        products={filteredProducts}
+        originalProductsCount={products.length}
+        hasSearched={hasSearched}
         toast={toast}
         handleSearch={handleSearch}
         onUpdateAceptapotradatos={handleUpdateAceptapotradatos}

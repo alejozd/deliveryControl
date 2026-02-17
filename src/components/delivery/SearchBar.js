@@ -3,6 +3,7 @@ import { Calendar } from "primereact/calendar";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { Toolbar } from "primereact/toolbar";
+import { Checkbox } from "primereact/checkbox";
 import setupLocale from "../../config/localeConfig";
 import "../../styles/modules/delivery.css";
 
@@ -11,6 +12,8 @@ function SearchBar({
   setSelectedDate,
   searchTerm,
   setSearchTerm,
+  showOnlyPending,
+  setShowOnlyPending,
   handleSearch,
   loading,
 }) {
@@ -60,16 +63,27 @@ function SearchBar({
       <Toolbar
         className="delivery-searchbar"
         start={
-          <span className="p-float-label">
-            <Calendar
-              inputId="fechaFacturas"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.value)}
-              showIcon
-              dateFormat="dd/mm/yy"
-            />
-            <label htmlFor="fechaFacturas">Fecha facturas</label>
-          </span>
+          <div className="delivery-searchbar__left">
+            <span className="p-float-label">
+              <Calendar
+                inputId="fechaFacturas"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.value)}
+                showIcon
+                dateFormat="dd/mm/yy"
+              />
+              <label htmlFor="fechaFacturas">Fecha facturas</label>
+            </span>
+
+            <div className="delivery-filter-toggle">
+              <Checkbox
+                inputId="soloPendientes"
+                checked={showOnlyPending}
+                onChange={(e) => setShowOnlyPending(e.checked)}
+              />
+              <label htmlFor="soloPendientes">Solo facturas con saldo pendiente</label>
+            </div>
+          </div>
         }
         end={
           <div className="delivery-searchbar__actions">
