@@ -45,9 +45,10 @@
   color: #dc2626;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .quoter-toolbar__search {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .quoter-toolbar__search .p-inputtext {

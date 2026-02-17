@@ -13,6 +13,7 @@ import { Toast } from "primereact/toast";
 import axios from "axios";
 import config from "../../Config";
 import setupLocale from "../../config/localeConfig";
+import useExcelExport from "../hooks/useExcelExport";
 import PrintQuote from "./PrintQuote";
 import Quoter from "./Quoter";
 import WhatsAppDialog from "./WhatsAppDialog";
@@ -27,9 +28,16 @@ const formatDateForApi = (date) =>
     year: "numeric",
   });
 
+const formatCurrency = (value = 0) =>
+  Number(value).toLocaleString("es-CO", {
+    style: "currency",
+    currency: "COP",
+  });
+
 const QuoterList = () => {
   const location = useLocation();
   const toast = useRef(null);
+  const { exportToExcel } = useExcelExport("cotizaciones");
   const { user } = location.state || {};
 
   const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaCotizaciones`;
@@ -68,6 +76,15 @@ const QuoterList = () => {
     });
   };
 
+  const showSuccessToast = (message) => {
+    toast.current?.show({
+      severity: "success",
+      summary: "Completado",
+      detail: message,
+      life: 2400,
+    });
+  };
+
   const filteredQuoters = useMemo(() => {
     const criteria = searchText.trim().toLowerCase();
     if (!criteria) return quoters;
@@ -94,6 +111,7 @@ const QuoterList = () => {
 
       if (response?.data?.status === 200) {
         setQuoters(response.data.data || []);
+        setSelectedQuotation(null);
         return;
       }
 
@@ -106,6 +124,36 @@ const QuoterList = () => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleExport = async () => {
+    const rows = filteredQuoters.map((row) => ({
+      numerocotizacion: row.numerocotizacion,
+      fechacotizacion: row.fechacotizacion,
+      nit: row.nit,
+      nombrecliente: row.nombrecliente,
+      total: Number(row.total || 0),
+    }));
+
+    const success = await exportToExcel(rows, null, {
+      fileName: "cotizaciones",
+      columnTitles: {
+        numerocotizacion: "Número",
+        fechacotizacion: "Fecha",
+        nit: "Identificación",
+        nombrecliente: "Cliente",
+        total: "Total",
+      },
+    });
+
+    if (success) {
+      showSuccessToast("Exportación de cotizaciones generada correctamente.");
     }
   };
 
@@ -210,12 +258,7 @@ const QuoterList = () => {
         );
         setDeleteDialogVisible(false);
         setQuotationToDelete(null);
-        toast.current?.show({
-          severity: "success",
-          summary: "Eliminada",
-          detail: "Cotización eliminada correctamente.",
-          life: 2400,
-        });
+        showSuccessToast("Cotización eliminada correctamente.");
         return;
       }
 
@@ -310,12 +353,6 @@ const QuoterList = () => {
     setShowComprobante(quotation);
   };
 
-  const formatCurrency = (value = 0) =>
-    Number(value).toLocaleString("es-CO", {
-      style: "currency",
-      currency: "COP",
-    });
-
   const actionbodyTemplate = (rowData) => (
     <div className="quoter-actions">
       <Button icon="pi pi-whatsapp" severity="success" rounded text onClick={() => openWhatsAppModal(rowData)} />
@@ -355,10 +392,12 @@ const QuoterList = () => {
                   id="searchCriteria"
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   placeholder="Cotización, cédula/nit o nombre"
                 />
               </span>
-              <Button label="Buscar" icon="pi pi-sync" loading={loading} onClick={handleSearch} />
+              <Button label="Consultar" icon="pi pi-sync" loading={loading} onClick={handleSearch} />
+              <Button label="Exportar" icon="pi pi-file-excel" severity="success" outlined onClick={handleExport} disabled={!filteredQuoters.length} />
             </div>
           }
         />
