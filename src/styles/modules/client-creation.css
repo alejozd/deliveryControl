@@ -20,6 +20,22 @@
   gap: 0.45rem;
 }
 
+.client-creation-helper {
+  display: block;
+  margin-bottom: 0.6rem;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.client-creation-dialog .inputtext-empty,
+.client-creation-dialog .inputtext-empty.p-inputtext,
+.client-creation-dialog .inputtext-empty .p-inputtext,
+.client-creation-dialog .inputtext-empty.p-dropdown {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 0.12rem rgba(245, 158, 11, 0.18);
+  background: #fffaf0;
+}
+
 @media (max-width: 768px) {
   .client-creation-steps {
     justify-content: center;

@@ -96,6 +96,15 @@ const ClientCreation = ({
   const [isFELTabValid, setIsFELTabValid] = useState(false);
 
   const [emptyFields, setEmptyFields] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
+
+  const markTouched = (field) => {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+  };
+
+  const shouldShowFieldError = (field) =>
+    emptyFields[field] && (showValidationErrors || touchedFields[field]);
 
   const resetForm = () => {
     setNombreCliente("");
@@ -108,6 +117,8 @@ const ClientCreation = ({
     setSelectedVendedor(null);
     setSelectedSegment(null);
     setSelectedClaseidentidad(null);
+    setTouchedFields({});
+    setShowValidationErrors(false);
   };
 
   // const isDisabled =
@@ -370,6 +381,13 @@ const ClientCreation = ({
   ]);
 
   useEffect(() => {
+    if (!visible) {
+      setTouchedFields({});
+      setShowValidationErrors(false);
+    }
+  }, [visible]);
+
+  useEffect(() => {
     if (
       (nombrecliente || "").trim() !== "" &&
       (identidad || "").trim() !== "" &&
@@ -533,6 +551,18 @@ const ClientCreation = ({
   };
 
   const handleValidateAndCreate = async () => {
+    setShowValidationErrors(true);
+
+    if (!isFormValid) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Campos obligatorios",
+        detail: "Completa los campos requeridos para continuar.",
+        life: 3000,
+      });
+      return;
+    }
+
     setLoading(true);
     const response = await validateCustomer();
     setValidationResponse(response);
@@ -926,15 +956,17 @@ const ClientCreation = ({
             <TabPanel header={getTabHeader("Básicos", isBasicTabValid)}>
               <div className="card">
                 {error && <p style={{ color: "red" }}>{error}</p>}
+                <small className="client-creation-helper">Los campos se resaltan cuando los tocas o al intentar guardar.</small>
                 <div className="labelinput">
                   <label htmlFor="nombreCliente">Nombre del Cliente</label>
                   <InputText
                     className={`inputtext ${
-                      emptyFields.nombrecliente ? "inputtext-empty" : ""
+                      shouldShowFieldError("nombrecliente") ? "inputtext-empty" : ""
                     }`}
                     id="nombreCliente"
                     value={nombrecliente}
                     onChange={(e) => setNombreCliente(e.target.value)}
+                    onBlur={() => markTouched("nombrecliente")}
                     style={{ width: "100%" }}
                   />
                 </div>
@@ -942,7 +974,7 @@ const ClientCreation = ({
                   <label htmlFor="idclaseidentidad">Tipo de Identidad</label>
                   <Dropdown
                     className={`inputtext ${
-                      emptyFields.selectedClaseidentidad
+                      shouldShowFieldError("selectedClaseidentidad")
                         ? "inputtext-empty"
                         : ""
                     }`}
@@ -954,6 +986,7 @@ const ClientCreation = ({
                     placeholder="Seleccionar Tipo de Identidad"
                     required
                     disabled={loading}
+                    onBlur={() => markTouched("selectedClaseidentidad")}
                   />
                 </div>
                 <div className="p-fluid flex">
@@ -961,12 +994,12 @@ const ClientCreation = ({
                     <label htmlFor="identidad">Identidad</label>
                     <InputText
                       className={`inputtext ${
-                        emptyFields.identidad ? "inputtext-empty" : ""
+                        shouldShowFieldError("identidad") ? "inputtext-empty" : ""
                       }`}
                       id="identidad"
                       value={identidad}
                       onChange={(e) => setIdentidad(e.target.value)}
-                      onBlur={handleBlur} // Ejecuta el cálculo solo cuando el usuario sale del campo
+                      onBlur={(e) => { handleBlur(e); markTouched("identidad"); }} // Ejecuta el cálculo solo cuando el usuario sale del campo
                       disabled={isIdentidadDisabled}
                     />
                   </div>
@@ -985,11 +1018,12 @@ const ClientCreation = ({
                     <label htmlFor="telefonofijo">Teléfono fijo</label>
                     <InputText
                       className={`inputtext ${
-                        emptyFields.telefonoFijo ? "inputtext-empty" : ""
+                        shouldShowFieldError("telefonoFijo") ? "inputtext-empty" : ""
                       }`}
                       id="telefonofijo"
                       value={telefonoFijo}
                       onChange={(e) => setTelefonoFijo(e.target.value)}
+                      onBlur={() => markTouched("telefonoFijo")}
                       // style={{ width: "100%" }}
                     />
                   </div>
@@ -997,11 +1031,12 @@ const ClientCreation = ({
                     <label htmlFor="telmovil">Teléfono móvil</label>
                     <InputText
                       className={`inputtext ${
-                        emptyFields.telmovil ? "inputtext-empty" : ""
+                        shouldShowFieldError("telmovil") ? "inputtext-empty" : ""
                       }`}
                       id="telmovil"
                       value={telmovil}
                       onChange={(e) => setTelmovil(e.target.value)}
+                      onBlur={() => markTouched("telmovil")}
                       style={{ width: "100%" }}
                     />
                   </div>
@@ -1010,11 +1045,12 @@ const ClientCreation = ({
                   <label htmlFor="direccion">Dirección</label>
                   <InputText
                     className={`inputtext ${
-                      emptyFields.direccion ? "inputtext-empty" : ""
+                      shouldShowFieldError("direccion") ? "inputtext-empty" : ""
                     }`}
                     id="direccion"
                     value={direccion}
                     onChange={(e) => setDireccion(e.target.value)}
+                    onBlur={() => markTouched("direccion")}
                     style={{ width: "100%" }}
                   />
                 </div>
@@ -1022,11 +1058,12 @@ const ClientCreation = ({
                   <label htmlFor="email">Correo electrónico</label>
                   <InputText
                     className={`inputtext ${
-                      emptyFields.email ? "inputtext-empty" : ""
+                      shouldShowFieldError("email") ? "inputtext-empty" : ""
                     }`}
                     id="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onBlur={() => markTouched("email")}
                     style={{ width: "100%" }}
                   />
                 </div>
@@ -1034,7 +1071,7 @@ const ClientCreation = ({
                   <label htmlFor="vendedorId">Vendedor</label>
                   <Dropdown
                     className={`inputtext ${
-                      emptyFields.selectedVendedor ? "inputtext-empty" : ""
+                      shouldShowFieldError("selectedVendedor") ? "inputtext-empty" : ""
                     }`}
                     id="vendedorId"
                     value={selectedVendedor}
@@ -1044,13 +1081,14 @@ const ClientCreation = ({
                     placeholder="Seleccione un vendedor"
                     disabled={isDisabled}
                     required
+                    onBlur={() => markTouched("selectedVendedor")}
                   />
                 </div>
                 <div className="labelinput">
                   <label htmlFor="idsegmento">Segmento</label>
                   <Dropdown
                     className={`inputtext ${
-                      emptyFields.selectedSegment ? "inputtext-empty" : ""
+                      shouldShowFieldError("selectedSegment") ? "inputtext-empty" : ""
                     }`}
                     id="idsegmento"
                     value={selectedSegment}
@@ -1059,6 +1097,7 @@ const ClientCreation = ({
                     optionLabel="label"
                     placeholder="Seleccionar Segmento"
                     required
+                    onBlur={() => markTouched("selectedSegment")}
                   />
                 </div>
                 <div style={{ marginTop: "1em" }}>
