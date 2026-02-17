@@ -15,13 +15,13 @@ const INITIAL_FORM = {
 };
 
 const getFieldError = (name, value) => {
-  const cleaned = value.trim();
+  const cleanedValue = value.trim();
 
-  if (name === "nombre" && !cleaned) {
+  if (name === "nombre" && !cleanedValue) {
     return "El usuario es obligatorio.";
   }
 
-  if (name === "clave" && !cleaned) {
+  if (name === "clave" && !cleanedValue) {
     return "La contraseña es obligatoria.";
   }
 
@@ -81,12 +81,10 @@ const Login = ({ onLoginSuccess }) => {
 
     try {
       setLoading(true);
-      const payload = {
+      const response = await axios.post(apiUrl, {
         nombre: formValues.nombre.trim(),
         clave: formValues.clave,
-      };
-
-      const response = await axios.post(apiUrl, payload);
+      });
 
       if (response?.data?.status === 200) {
         onLoginSuccess({
@@ -111,19 +109,19 @@ const Login = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="login-page">
+    <main className="login-page">
       <Card className="login-card">
-        <div className="login-card__brand">
+        <header className="login-card__brand">
           <h1>Control de Entregas</h1>
-          <p>Accede con tu usuario para continuar.</p>
-        </div>
+          <p>Ingresa con tus credenciales para continuar.</p>
+        </header>
 
-        <Divider />
+        <Divider className="login-divider" />
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit} noValidate className="login-form">
           <div className="login-field">
             <label htmlFor="nombre">Usuario</label>
-            <span className="p-input-icon-left login-input-icon-left">
+            <span className="p-input-icon-left login-icon-field">
               <i className="pi pi-user" />
               <InputText
                 id="nombre"
@@ -143,8 +141,8 @@ const Login = ({ onLoginSuccess }) => {
 
           <div className="login-field">
             <label htmlFor="clave">Contraseña</label>
-            <div className="login-password-wrapper">
-              <i className="pi pi-lock login-password-wrapper__icon" />
+            <span className="p-input-icon-left login-icon-field login-icon-field--password">
+              <i className="pi pi-lock" />
               <Password
                 inputId="clave"
                 name="clave"
@@ -162,8 +160,7 @@ const Login = ({ onLoginSuccess }) => {
                     : "login-password__input"
                 }
               />
-            </div>
-
+            </span>
             {touched.clave && fieldErrors.clave && (
               <small className="login-field__error">{fieldErrors.clave}</small>
             )}
@@ -183,7 +180,7 @@ const Login = ({ onLoginSuccess }) => {
           />
         </form>
       </Card>
-    </div>
+    </main>
   );
 };
 

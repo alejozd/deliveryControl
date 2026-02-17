@@ -1,5 +1,5 @@
 .login-page {
-  min-height: 100vh;
+  min-height: calc(100vh - 2rem);
   display: grid;
   place-items: center;
   padding: 1.25rem;
@@ -7,14 +7,15 @@
     radial-gradient(circle at 8% 15%, rgba(255, 255, 255, 0.24), transparent 32%),
     radial-gradient(circle at 90% 90%, rgba(255, 255, 255, 0.17), transparent 30%),
     linear-gradient(135deg, #0f3d68 0%, #14578a 42%, #1f7ab8 100%);
+  border-radius: 14px;
 }
 
 .login-card {
-  width: min(100%, 430px);
+  width: min(100%, 440px);
   border-radius: 18px;
   box-shadow: 0 18px 50px rgba(1, 20, 46, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(2px);
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .login-card .p-card-body {
@@ -33,11 +34,20 @@
   font-size: 0.95rem;
 }
 
+.login-divider {
+  margin: 1rem 0 1.25rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
 .login-field {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  margin-bottom: 0.95rem;
 }
 
 .login-field > label {
@@ -46,54 +56,44 @@
   font-weight: 600;
 }
 
-.login-input-icon-left,
-.login-input-icon-left .p-inputtext,
-.login-password,
-.login-password .p-password-input {
+.login-icon-field {
   width: 100%;
 }
 
-.login-input-icon-left > i,
-.login-password-wrapper__icon {
+.login-icon-field > i {
   color: #64748b;
+  left: 0.9rem;
 }
 
-.login-input-icon-left .p-inputtext {
-  padding-left: 2.4rem;
+.login-icon-field .p-inputtext,
+.login-icon-field .p-password,
+.login-icon-field .p-password .p-inputtext {
+  width: 100%;
 }
 
-.login-password-wrapper {
-  position: relative;
+.login-icon-field .p-inputtext,
+.login-icon-field .p-password .p-inputtext {
+  padding-left: 2.6rem;
+  height: 2.9rem;
 }
 
-.login-password-wrapper__icon {
-  position: absolute;
-  left: 0.85rem;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
+.login-icon-field .p-password {
+  display: block;
 }
 
-.login-password__input {
-  padding-left: 2.4rem;
-}
-
-.login-password .p-password-input {
-  height: 2.85rem;
-}
-
-.login-password .p-password-toggle-mask-icon {
-  right: 0.85rem;
+.login-icon-field .p-password-toggle-mask-icon {
+  right: 0.9rem;
   color: #64748b;
 }
 
 .login-message {
   width: 100%;
-  margin: 0.4rem 0 0.95rem;
+  margin: 0;
 }
 
 .login-submit {
   width: 100%;
+  margin-top: 0.25rem;
 }
 
 .login-field__error {
@@ -102,6 +102,11 @@
 }
 
 @media (max-width: 480px) {
+  .login-page {
+    padding: 0.75rem;
+    border-radius: 0;
+  }
+
   .login-card .p-card-body {
     padding: 1.2rem 1rem;
   }
