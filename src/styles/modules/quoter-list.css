@@ -32,6 +32,16 @@
   width: min(22rem, 58vw);
 }
 
+.quoter-toolbar__action-btn {
+  min-width: 7.75rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.quoter-toolbar__action-btn .p-button-label {
+  white-space: nowrap;
+}
+
 .quoter-list-panel .p-panel-content {
   padding-top: 0.5rem;
 }

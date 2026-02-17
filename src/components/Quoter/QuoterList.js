@@ -414,8 +414,8 @@ const QuoterList = () => {
                   placeholder="Cotización, cédula/nit o nombre"
                 />
               </IconField>
-              <Button label="Consultar" icon="pi pi-sync" loading={loading} onClick={handleSearch} />
-              <Button label="Exportar" icon="pi pi-file-excel" severity="success" outlined onClick={handleExport} disabled={!filteredQuoters.length} />
+              <Button className="quoter-toolbar__action-btn" label="Consultar" icon="pi pi-sync" loading={loading} onClick={handleSearch} />
+              <Button className="quoter-toolbar__action-btn" label="Exportar" icon="pi pi-file-excel" severity="success" outlined onClick={handleExport} disabled={!filteredQuoters.length} />
             </div>
           }
         />
