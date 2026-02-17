@@ -83,3 +83,55 @@
     justify-content: flex-end;
   }
 }
+
+.delivery-confirmation-modal .p-dialog-content {
+  padding-top: 0.6rem;
+}
+
+.delivery-confirmation-summary {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr auto auto;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  background: #f8fbff;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  padding: 0.7rem;
+}
+
+.delivery-confirmation-summary small {
+  display: block;
+  color: #64748b;
+}
+
+.delivery-confirmation-summary strong {
+  color: #0f172a;
+}
+
+.delivery-confirmation-table {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.delivery-confirmation-notes {
+  margin-top: 0.9rem;
+}
+
+.delivery-confirmation-notes__input {
+  width: 100%;
+  min-height: 92px;
+}
+
+.delivery-confirmation-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+@media (max-width: 900px) {
+  .delivery-confirmation-summary {
+    grid-template-columns: 1fr;
+  }
+}
