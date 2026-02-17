@@ -1,0 +1,114 @@
+// src/components/ClientContactAssociation.js
+import React, { useState, useEffect } from "react";
+import { PickList } from "primereact/picklist";
+import { Button } from "primereact/button";
+import { Dropdown } from "primereact/dropdown";
+import { Panel } from "primereact/panel";
+import { Card } from "primereact/card";
+import { InputText } from "primereact/inputtext";
+import config from "../Config";
+import axios from "axios";
+
+const ClientContactAssociation = () => {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClientes`;
+  const apiUrlContactos = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DataContactosCliente`;
+  const [clientes, setClientes] = useState([]);
+  const [selectedCliente, setSelectedCliente] = useState(null);
+  const [contactos, setContactos] = useState([]);
+  const [contactosAsociados, setContactosAsociados] = useState([]);
+  const [searchTerm, setSearchTerm] = useState(""); //Cliente para buscar
+  const [loading, setLoading] = useState(false);
+
+  const fetchClientes = async (term) => {
+    setLoading(true);
+    try {
+      const requestData = { criterio: term };
+      const response = await axios.put(apiUrl, requestData);
+      const formattedClientes = response.data.data.map((cliente) => ({
+        label: `${cliente.nombrecliente} (${cliente.identidad})`,
+        value: cliente.idcliente,
+      }));
+      setClientes(formattedClientes);
+    } catch (error) {
+      console.error("Error fetching clientes:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchTerm.length > 0) {
+        fetchClientes(searchTerm);
+      } else {
+        setClientes([]);
+      }
+    }, 300); // 300 ms de espera
+
+    return () => clearTimeout(delayDebounceFn); // Limpiar el timeout si el usuario sigue escribiendo
+  }, [searchTerm]);
+
+  const onClienteChange = async (e) => {
+    const clienteId = e.value;
+    setSelectedCliente(clienteId);
+    setContactos([]);
+    setContactosAsociados([]);
+
+    // Cargar contactos asociados al cliente seleccionado
+    try {
+      const responseContactos = await axios.put(apiUrlContactos, {
+        idcliente: clienteId,
+      });
+      setContactos(responseContactos.data.contactos); // Actualiza esto dependiendo de la estructura de datos que recibas
+    } catch (error) {
+      console.error("Error fetching contactos:", error);
+    }
+  };
+
+  return (
+    <div>
+      <h1>Asociar Clientes y Contactos</h1>
+      <Panel header="Seleccionar Cliente" toggleable>
+        <Card>
+          <div className="flex align-items-center justify-justify-content-between">
+            <div className="p-inputgroup">
+              <InputText
+                placeholder="Buscar cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {loading && (
+                <i
+                  className="pi pi-spin pi-spinner"
+                  style={{ marginLeft: "10px" }}
+                ></i>
+              )}
+            </div>
+            <div className="p-inputgroup ml-2">
+              <Dropdown
+                id="idcliente"
+                value={selectedCliente}
+                onChange={onClienteChange}
+                options={clientes}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccione un cliente"
+                filter
+                filterBy="label"
+                className="w-full md:w-14rem"
+              />
+            </div>
+          </div>
+        </Card>
+      </Panel>
+      <div>
+        <Card>
+          {/* Aquí puedes agregar la implementación del PickList para asociar contactos */}
+          {/* <PickList source={contactos} target={contactosAsociados} ... /> */}
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default ClientContactAssociation;

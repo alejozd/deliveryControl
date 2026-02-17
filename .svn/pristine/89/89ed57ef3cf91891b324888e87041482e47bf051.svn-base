@@ -1,0 +1,69 @@
+import React, { useEffect, useState } from "react";
+import { Panel } from "primereact/panel";
+import { Toolbar } from "primereact/toolbar";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import axios from "axios";
+import config from "../../Config";
+
+const Quoter = () => {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClientes`;
+  const [clientes, setClientes] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorState, setErrorState] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleSearch = async () => {
+    try {
+      setLoading(true);
+      const requestData = {
+        criterio: searchTerm,
+      };
+
+      const response = await axios.put(apiUrl, requestData);
+      // console.log(response.data);
+      if (response.data.status === 200) {
+        setClientes(response.data.data);
+      } else {
+        console.error("Error en la respuesta:", response.data.error);
+        setErrorMessage(response.data.error);
+      }
+    } catch (error) {
+      if (error.message === "Network Error") {
+        setErrorState(true);
+        setErrorMessage(
+          "Error de red: No se puede conectar al servidor. Por favor, verifica tu conexión a Internet o inténtalo más tarde."
+        );
+      } else {
+        setErrorState(true);
+        setErrorMessage(`Error al realizar la solicitud: ${error.message}`);
+      }
+      console.error("Error al realizar la solicitud:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <h5>Cotizaciones</h5>
+      <p>En construccion</p>
+      <Panel header="Busqueda de Cliente" toggleable>
+        <Toolbar
+          start={
+            <>
+              <InputText
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <Button icon="pi pi-search" onClick={handleSearch} />
+            </>
+          }
+        ></Toolbar>
+      </Panel>
+    </div>
+  );
+};
+export default Quoter;

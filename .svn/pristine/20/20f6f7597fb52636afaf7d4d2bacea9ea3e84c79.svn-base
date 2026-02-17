@@ -1,0 +1,78 @@
+import React, { useState } from "react";
+import { Dropdown } from "primereact/dropdown";
+
+const ClientCreationAddiData = ({
+  carteraList,
+  selectedCartera,
+  setSelectedCartera,
+  naturalezaList,
+  selectedNaturaleza,
+  setSelectedNaturaleza,
+  actividadList,
+  selectedActividad,
+  setSelectedActividad,
+  ciudadList,
+  selectedCiudad,
+  setSelectedCiudad,
+}) => {
+  const [error, setError] = useState(null);
+
+  return (
+    <div>
+      <div className="labelinput">
+        <label htmlFor="idcartera">Cartera</label>
+        <Dropdown
+          className="inputtext"
+          id="idcartera"
+          value={selectedCartera}
+          onChange={(e) => setSelectedCartera(e.value)}
+          options={carteraList}
+          optionLabel="label"
+          placeholder="Seleccionar Cartera"
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idnaturaleza">Naturaleza</label>
+        <Dropdown
+          className="inputtext"
+          id="idnaturaleza"
+          value={selectedNaturaleza}
+          onChange={(e) => setSelectedNaturaleza(e.value)}
+          options={naturalezaList}
+          optionLabel="label"
+          placeholder="Seleccionar Naturaleza"
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idactividad">Actividad</label>
+        <Dropdown
+          className="inputtext"
+          id="idactividad"
+          value={selectedActividad}
+          onChange={(e) => setSelectedActividad(e.value)}
+          options={actividadList}
+          optionLabel="label"
+          placeholder="Seleccionar Actividad"
+          panelClassName="custom-dropdown-panel"
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idciudad">Ciudad</label>
+        <Dropdown
+          className="inputtext"
+          id="idciudad"
+          value={selectedCiudad}
+          onChange={(e) => setSelectedCiudad(e.value)}
+          options={ciudadList}
+          optionLabel="label"
+          placeholder="Seleccionar Ciudad"
+          filter
+          showClear
+        />
+        {error && <p style={{ color: "red" }}>{error}</p>}
+      </div>
+    </div>
+  );
+};
+
+export default ClientCreationAddiData;

@@ -1,0 +1,41 @@
+import React from "react";
+import { Button } from 'primereact/button';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
+import { Toolbar } from 'primereact/toolbar';
+
+// import { Navbar, Button, Nav } from "react-bootstrap";
+// import "bootstrap/dist/css/bootstrap.min.css";
+
+class NavBar extends React.Component {
+  render() {
+    const userIconStyle = {
+      fontSize: "32px",
+      marginRight: "5px",
+    };
+
+    const start = (
+      <Button
+        icon="pi pi-align-left"
+        onClick={this.props.toggle}
+        className="p-button-text"
+      />
+    );
+
+    const end = (
+      <span style={userIconStyle}>
+        <FontAwesomeIcon icon={faUserCircle} />
+      </span>
+    );
+
+    return (
+      <Toolbar
+        start={start}
+        end={end}
+        style={{ padding: "1px" }}
+      />
+    );
+  }
+}
+
+export default NavBar;

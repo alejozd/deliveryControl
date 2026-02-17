@@ -1,0 +1,1137 @@
+import React, { useState, useEffect, useRef } from "react";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Dialog } from "primereact/dialog";
+import { Toolbar } from "primereact/toolbar";
+import { ColumnGroup } from "primereact/columngroup";
+import { Row } from "primereact/row";
+import { InputNumber } from "primereact/inputnumber";
+import { Toast } from "primereact/toast";
+import { InputTextarea } from "primereact/inputtextarea";
+import { FloatLabel } from "primereact/floatlabel";
+import { Dropdown } from "primereact/dropdown";
+import ProductSearchDialog from "./ProductSearchDialog";
+import CustomerSearchDialog from "./CustomerSearchDialog";
+import { Calendar } from "primereact/calendar";
+import { ProgressSpinner } from "primereact/progressspinner";
+import AdditionalContacts from "./AdditionalContacts";
+import config from "../../Config";
+import axios from "axios";
+import "./Quoter.css";
+
+const Quoter = ({ onSave, quotationData, user }) => {
+  let emptyProduct = {
+    orden: 0,
+    codigo: 0,
+    subcodigo: 0,
+    nombreproductos: "",
+    referencia: "",
+    total: 0,
+    precio: 0,
+    cantidad: 0,
+    tarifaiva: 0,
+  };
+
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaProducto`;
+  const apiUrlProducto = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DataProducto`;
+  const apiUrlCliente = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClientes`;
+  const apiUrlClienteData = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DataCliente`;
+  const apiUrlNuevaCotizacion = `${config.apiUrl}/Datasnap/rest/TServerMethods1/NuevaCotizacion`;
+  const apiUrlCotizacionByID = `${config.apiUrl}/Datasnap/rest/TServerMethods1/CotizacionByID`;
+  const apiUrlContactos = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DataContactosCliente`;
+  const apiUrlAddContact = `${config.apiUrl}/Datasnap/rest/TServerMethods1/AddContact`;
+  const apiUrlSegmentacion = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaSegmentacion`;
+  const apiUrlBodegas = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaBodegas`;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [customers, setCustomers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [showDialog, setShowDialog] = useState(false);
+  const [showDialogProduct, setShowDialogProduct] = useState(false);
+  const [showDialogCustomer, setShowDialogCustomer] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [searchTextCustomer, setSearchTextCustomer] = useState("");
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState({
+    nombrecliente: "",
+    identidad: "",
+    telmovil: "",
+    direccion: "",
+    email: "",
+    notas: "",
+    identidadve: "",
+  });
+  const [additionalContacts, setAdditionalContacts] = useState([]); //Este se pasa a AdditionalContacts
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [date, setDate] = useState(null);
+  const [selectedProductsrows, setSelectedProductstrows] = useState([]);
+  const [deleteProductDialog, setDeleteProductDialog] = useState(false);
+  const [product, setProduct] = useState(emptyProduct);
+  const [deleteProductsDialog, setDeleteProductsDialog] = useState(false);
+  const toast = useRef(null);
+  const [isNewQuotation, setIsNewQuotation] = useState(true);
+  const [segmentList, setSegmentList] = useState([]);
+  const [loadingSegments, setLoadingSegments] = useState(true);
+  const [bodegasList, setBodegasList] = useState([]);
+  const [selectedBodega, setSelectedBodega] = useState(null);
+
+  const handleChangeCustomer = (e) => {
+    const { id, value } = e.target;
+    setSelectedCustomer((prevCustomer) => ({
+      ...prevCustomer,
+      [id]: value,
+    }));
+  };
+
+  const handleSegmentChange = (e) => {
+    const { value } = e;
+    const selectedSegment = segmentList.find(
+      (segment) => segment.value === value
+    );
+    setSelectedCustomer((prevCustomer) => ({
+      ...prevCustomer,
+      idsegmento: value, // Actualiza el idsegmento
+      nombresegmento: selectedSegment ? selectedSegment.label : "", // Actualiza el nombresegmento
+    }));
+  };
+
+  useEffect(() => {
+    const fetchQuotationByID = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.put(apiUrlCotizacionByID, {
+          idcotizacion: quotationData.idcotizacion,
+        });
+        if (response.data.status === 200) {
+          setSelectedCustomer(response.data.cliente);
+          setSelectedProducts(response.data.productos);
+          setSelectedContact(response.data.cliente.idcontacto);
+          // Obtener contactos del cliente
+          await fetchCustomerContacts(response.data.cliente.idcliente);
+        } else {
+          console.error(
+            "[Quoter] - Error en la respuesta:",
+            response.data.error
+          );
+          setError(response.data.error || "Error en la respuesta");
+        }
+      } catch (error) {
+        console.error("Error al realizar la solicitud:", error.message);
+        setError("Error al realizar la solicitud: " + error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchCustomerContacts = async (idcliente) => {
+      try {
+        const responseContactos = await axios.put(apiUrlContactos, {
+          idcliente: idcliente,
+        });
+
+        if (responseContactos.data.status === 200) {
+          setAdditionalContacts(responseContactos.data.contactos);
+        } else {
+          console.error(
+            "Error al obtener datos de contacto adicionales:",
+            responseContactos.data.error
+          );
+        }
+      } catch (error) {
+        console.error("Error al realizar la solicitud:", error.message);
+      }
+    };
+
+    // Verifica si el ID de cotización está definido y es válido
+    if (quotationData && quotationData.idcotizacion !== null) {
+      fetchQuotationByID();
+      setIsNewQuotation(false);
+    } else {
+      // Si no hay ID de cotización, es una nueva cotización,
+      setSelectedCustomer({
+        nombrecliente: "",
+        identidad: "",
+        telmovil: "",
+        direccion: "",
+        email: "",
+        notas: "",
+      });
+    }
+    if (quotationData && quotationData.fechacotizacion) {
+      // Convertir la cadena de fecha a un objeto Date
+      const dateValue = convertStringToDate(quotationData.fechacotizacion);
+      setDate(dateValue);
+    }
+  }, [quotationData?.idcotizacion && quotationData?.fechacotizacion]);
+
+  useEffect(() => {
+    if (selectedCustomer && selectedCustomer.idcliente) {
+    }
+  }, [selectedCustomer]);
+
+  useEffect(() => {
+    const fetchBodegas = async () => {
+      try {
+        const response = await axios.get(apiUrlBodegas);
+        if (response.status === 200) {
+          const formattedBodegas = response.data.result.map((bodega) => ({
+            label: bodega.nombrebodega,
+            value: bodega.codigobodega,
+          }));
+          setBodegasList(formattedBodegas);
+        } else {
+          console.error("Error fetching bodegas:", response.data.error);
+        }
+      } catch (error) {
+        console.error("Error fetching bodegas:", error);
+      }
+    };
+    fetchBodegas();
+  }, [apiUrlBodegas]);
+
+  useEffect(() => {
+    const fetchSegments = async () => {
+      try {
+        const response = await axios.get(apiUrlSegmentacion);
+        if (response.status === 200) {
+          const formattedSegments = response.data.result.map((segment) => ({
+            label: segment.nombresegmento,
+            value: segment.idsegmento,
+          }));
+          setSegmentList(formattedSegments);
+          setLoadingSegments(false);
+        } else {
+          console.error("Error fetching segments:", response.data.error);
+        }
+      } catch (error) {
+        console.error("Error fetching segments:", error);
+        setLoadingSegments(false);
+      }
+    };
+    fetchSegments();
+  }, [apiUrlSegmentacion]);
+
+  // Función para convertir la cadena de fecha a objeto Date
+  const convertStringToDate = (dateString) => {
+    const [day, month, year] = dateString.split("/").map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const formatCurrency = (value) => {
+    return value.toLocaleString("es-CO", {
+      style: "currency",
+      currency: "COP",
+    });
+  };
+
+  const priceBodyTemplate = (selectedProducts) => {
+    return formatCurrency(selectedProducts.precio);
+  };
+  const totalBodyTemplate = (selectedProducts) => {
+    const total = formatCurrency(
+      selectedProducts.precio * selectedProducts.cantidad
+    );
+    return formatCurrency(total);
+  };
+
+  const searchCustomers = async () => {
+    // Realiza la solicitud al servidor para buscar clientes utilizando el texto de búsqueda
+    try {
+      setLoading(true);
+      // Realiza la solicitud al servidor y guarda los resultados en el estado de clientes
+      const response = await axios.put(apiUrlCliente, {
+        criterio: searchTextCustomer,
+      });
+      if (response.data.status === 200) {
+        setCustomers(response.data.data);
+        setShowDialogCustomer(true);
+      } else {
+        console.error("Error en la respuesta:", response.data.error);
+        setError(response.data.error || "Error en la respuesta");
+      }
+    } catch (error) {
+      console.error("Error al realizar la solicitud:", error.message);
+      setError("Error al realizar la solicitud: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para buscar productos
+  const searchProducts = async () => {
+    // Realiza la solicitud al servidor para buscar productos utilizando el texto de búsqueda
+    try {
+      setLoading(true);
+      // Realiza la solicitud al servidor y guarda los resultados en el estado de productos
+      const response = await axios.put(apiUrl, { criterio: searchText });
+      if (response.data.status === 200) {
+        setProducts(response.data.data);
+        setShowDialogProduct(true);
+      } else {
+        console.error("Error en la respuesta:", response.data.error);
+        setError(response.data.error || "Error en la respuesta");
+      }
+    } catch (error) {
+      console.error("Error al realizar la solicitud:", error.message);
+      setError("Error al realizar la solicitud: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para calcular el precio total de la cotización
+  const calculateTotalPrice = () => {
+    let total = 0;
+    for (let selectedProduct of selectedProducts) {
+      total += selectedProduct.precio * selectedProduct.cantidad;
+    }
+    return total;
+  };
+
+  const handleContactSelect = (contact) => {
+    setSelectedContact(contact);
+  };
+
+  // Función para guardar la cotización
+  const saveQuotation = async () => {
+    try {
+      // Armar los datos de la cotización
+      const fechaActual = new Date();
+      const fechaCotizacion = fechaActual.toLocaleDateString("es-CO", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+
+      // console.log("selectedCustomer:", selectedCustomer);
+      const quotationDataFull = {
+        idcotizacion: quotationData?.idcotizacion || null,
+        numerocotizacion: quotationData?.numerocotizacion || null,
+        fechaCotizacion: fechaCotizacion, // Fecha de la cotización
+        idCliente: selectedCustomer.idcliente, // ID del cliente seleccionado
+        total: calculateTotalPrice(), // Total de la cotización
+        notas: selectedCustomer.notas || "",
+        idcontacto: selectedContact?.idcontacto ?? -1,
+        idsegmento: selectedCustomer.idsegmento,
+        codigousuario: user.codigo,
+        nombreusuario: user.name,
+        codigobodega: selectedBodega.codigobodega,
+
+        // Detalles de la cotización (productos)
+        detalles: selectedProducts.map((product) => ({
+          codigo: product.codigo,
+          subcodigo: product.subcodigo,
+          cantidad: product.cantidad,
+          precio: product.precio,
+          lineatotal: product.total,
+          orden: product.orden,
+          tarifaiva: product.tarifaiva,
+        })),
+        isNewQuotation: isNewQuotation ? 1 : 0,
+      };
+      console.log("quotationDataFull:", quotationDataFull);
+      // Realizar la solicitud POST al endpoint para guardar la cotización
+      const response = await axios.put(
+        apiUrlNuevaCotizacion,
+        quotationDataFull
+      );
+      // Verificar si la solicitud fue exitosa
+      if (response.data.status === 200) {
+        console.log("La cotización se guardó correctamente:");
+        setShowDialog(false);
+        onSave();
+      } else {
+        console.error(
+          "Hubo un problema al guardar la cotización:",
+          response.data.error
+        );
+      }
+    } catch (error) {
+      // Captura cualquier error de la solicitud
+      console.error("Error al guardar la cotización:", error.message);
+    }
+  };
+
+  // Funcion para recibir y poblar en los input los datos del cliente seleccionado
+  const selectedCustomerData = async (selectedCustomerData) => {
+    try {
+      // Realizar la solicitud al endpoint para obtener los datos completos del cliente
+      const response = await axios.put(apiUrlClienteData, {
+        idcliente: selectedCustomerData.idcliente,
+      });
+
+      // Verificar si la solicitud fue exitosa y obtener los datos del cliente
+      if (response.data.status === 200) {
+        setSelectedCustomer(response.data.cliente); // Actualizar el estado con los datos completos del cliente
+        const responseContactos = await axios.put(apiUrlContactos, {
+          idcliente: selectedCustomerData.idcliente,
+        });
+
+        if (responseContactos.data.status === 200) {
+          setAdditionalContacts(responseContactos.data.contactos); // Actualizar el estado con los datos de contacto
+        } else {
+          console.error(
+            "Error al obtener datos de contacto adicionales:",
+            responseContactos.data.error
+          );
+        }
+      } else {
+        console.error(
+          "Error al obtener datos del cliente seleccionado:",
+          response.data.error
+        );
+      }
+    } catch (error) {
+      console.error("Error al realizar la solicitud:", error.message);
+    }
+  };
+
+  // Función para agregar productos al DataTable
+  const addProductsToDataTable = async (selectedProductsToAdd) => {
+    // console.log("Productos seleccionados en Quoter:", selectedProductsToAdd);
+    // Aquí puedes consumir un endpoint para obtener el precio de cada producto
+    const productsWithPrice = await Promise.all(
+      selectedProductsToAdd.map(async (product, index) => {
+        try {
+          // Consumir el endpoint para obtener el precio del producto
+          const response = await axios.put(apiUrlProducto, {
+            codigo: product.codigo,
+            subcodigo: product.subcodigo,
+          });
+
+          // Verificar si la solicitud fue exitosa y obtener el precio del producto
+          if (response.data.status === 200) {
+            const precio = response.data.data[0].precio;
+            const tarifaiva = response.data.data[0].tarifaiva;
+            // console.log("precio", precio);
+            // Agregar el precio al producto
+            const newProduct = {
+              ...product,
+              precio: precio,
+              cantidad: product.cantidad || 1,
+              total: precio * (product.cantidad || 1),
+              orden: selectedProducts.length + index + 1, // Calcular el orden basado en la longitud actual de los productos
+              tarifaiva: tarifaiva,
+            };
+            // console.log("newProduct:", newProduct);
+            return newProduct;
+          } else {
+            console.error(
+              "Error al obtener el precio del producto:",
+              response.data.error
+            );
+            return null;
+          }
+        } catch (error) {
+          console.error("Error al realizar la solicitud:", error.message);
+          return null;
+        }
+      })
+    );
+    // Filtrar los productos que no pudieron obtener precio
+    const validProducts = productsWithPrice.filter(
+      (product) => product !== null
+    );
+
+    // Concatenar los nuevos productos a la lista existente de productos seleccionados
+    setSelectedProducts((prevSelectedProducts) => [
+      ...prevSelectedProducts,
+      ...validProducts,
+    ]);
+  };
+
+  const renderCantidad = (rowData) => {
+    return (
+      <InputNumber
+        value={rowData.cantidad}
+        mode="decimal"
+        showButtons
+        min={0.01}
+        onChange={(e) => {
+          const cantidad = e.value || 0;
+          const total = rowData.precio * cantidad;
+          const updatedProducts = selectedProducts.map((product) => {
+            if (
+              product.codigo === rowData.codigo &&
+              product.subcodigo === rowData.subcodigo
+            ) {
+              return { ...product, cantidad: cantidad, total: total }; // Actualizar cantidad y total
+            }
+            return product;
+          });
+          setSelectedProducts(updatedProducts); // Actualizar el estado de los productos seleccionados
+          // console.log("rendercantidad - selectedProducts", selectedProducts);
+        }}
+        minFractionDigits={2}
+        locale="en-US"
+        style={{ width: "100%" }} // Ajusta el ancho del InputNumber
+        inputStyle={{ width: "4rem" }} // Ajusta el ancho del campo de entrada
+      />
+    );
+  };
+
+  const precioTotal = () => {
+    let total = selectedProducts.reduce((acc, product) => {
+      return acc + product.total;
+    }, 0);
+    return formatCurrency(total);
+  };
+
+  const confirmDeleteProduct = (product) => {
+    setProduct(product);
+    setDeleteProductDialog(true);
+  };
+
+  const hideDeleteProductDialog = () => {
+    setDeleteProductDialog(false);
+  };
+
+  const hideDeleteProductsDialog = () => {
+    setDeleteProductsDialog(false);
+  };
+
+  const deleteProduct = () => {
+    let _products = selectedProducts.filter(
+      (val) => val.orden !== product.orden
+    );
+    setSelectedProducts(_products);
+    setDeleteProductDialog(false);
+    setProduct(emptyProduct);
+    toast.current.show({
+      severity: "success",
+      summary: "Realizado",
+      detail: "Producto Borrado",
+      life: 3000,
+    });
+
+    // Reasignar el orden a los productos restantes
+    _products = _products.map((product, index) => ({
+      ...product,
+      orden: index + 1, // Asignar orden secuencial
+    }));
+
+    // Actualizar el estado de los productos con los productos actualizados
+    setSelectedProducts(_products);
+  };
+
+  const confirmDeleteSelected = () => {
+    setDeleteProductsDialog(true);
+  };
+
+  const deleteSelectedProducts = () => {
+    let _products = selectedProducts.filter(
+      (val) => !selectedProductsrows.includes(val)
+    );
+    setSelectedProducts(_products);
+    setDeleteProductsDialog(false);
+    setSelectedProductstrows(null);
+    toast.current.show({
+      severity: "success",
+      summary: "Realizado",
+      detail: "Productos Borrados",
+      life: 3000,
+    });
+    // Reasignar el orden a los productos restantes
+    _products = _products.map((product, index) => ({
+      ...product,
+      orden: index + 1, // Asignar orden secuencial
+    }));
+
+    // Actualizar el estado de los productos con los productos actualizados
+    setSelectedProducts(_products);
+  };
+
+  // Define una función para verificar si se pueden guardar los datos
+  const canSaveQuotation = () => {
+    // Verifica si se ha seleccionado un cliente y al menos un artículo
+    return selectedCustomer.nombrecliente !== "" && selectedProducts.length > 0;
+  };
+
+  const actionBodyTemplate = (rowData) => {
+    return (
+      <React.Fragment>
+        {/* <Button icon="pi pi-pencil" rounded outlined className="mr-2" onClick={() => editProduct(rowData)} /> */}
+        <Button
+          icon="pi pi-trash"
+          rounded
+          text
+          severity="danger"
+          onClick={() => confirmDeleteProduct(rowData)}
+        />
+      </React.Fragment>
+    );
+  };
+
+  const handleNotasChange = (e) => {
+    setSelectedCustomer({
+      ...selectedCustomer,
+      notas: e.target.value,
+    });
+  };
+
+  // Función para copiar la información del cliente a un nuevo contacto
+  const copyCustomerToContact = async () => {
+    console.log("selectedCustomer:", selectedCustomer);
+    const newContact = {
+      nombreCa: selectedCustomer.nombrecliente,
+      identificacionCa: selectedCustomer.identidad,
+      telmovilCa: selectedCustomer.telmovil,
+      correoCa: selectedCustomer.email,
+      direccionCa: selectedCustomer.direccion,
+      idcliente: selectedCustomer.idcliente,
+      identidadve: selectedCustomer.identidadve,
+    };
+
+    try {
+      const response = await axios.post(apiUrlAddContact, newContact);
+      if (response.status === 200) {
+        const addedContact = response.data;
+        setAdditionalContacts([...additionalContacts, addedContact]);
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Contacto agregado correctamente",
+          life: 3000,
+        });
+
+        try {
+          const responseContactos = await axios.put(apiUrlContactos, {
+            idcliente: selectedCustomer.idcliente,
+          });
+
+          if (responseContactos.data.status === 200) {
+            setAdditionalContacts(responseContactos.data.contactos);
+          } else {
+            console.error(
+              "Error al obtener datos de contacto adicionales:",
+              responseContactos.data.error
+            );
+          }
+        } catch (error) {
+          console.error("Error al realizar la solicitud:", error.message);
+        }
+      } else {
+        console.error("Error al agregar el contacto:", response.data.error);
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo agregar el contacto",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("Error al agregar el contacto:", error.message);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error en la solicitud al servidor",
+        life: 3000,
+      });
+    }
+  };
+
+  const handleCustomerCreated = (newCustomer) => {
+    setCustomers((prevCustomers) => [...prevCustomers, newCustomer]);
+    setShowDialogCustomer(true); // Esto asegura que el dialogo se reabra mostrando el nuevo cliente
+  };
+
+  const deleteProductDialogFooter = (
+    <React.Fragment>
+      <Button
+        label="No"
+        icon="pi pi-times"
+        outlined
+        onClick={hideDeleteProductDialog}
+      />
+      <Button
+        label="Si"
+        icon="pi pi-check"
+        severity="danger"
+        onClick={deleteProduct}
+      />
+    </React.Fragment>
+  );
+
+  const deleteProductsDialogFooter = (
+    <React.Fragment>
+      <Button
+        label="No"
+        icon="pi pi-times"
+        outlined
+        onClick={hideDeleteProductsDialog}
+      />
+      <Button
+        label="Si"
+        icon="pi pi-check"
+        severity="danger"
+        onClick={deleteSelectedProducts}
+      />
+    </React.Fragment>
+  );
+
+  const footerContent = (
+    <div>
+      <Button
+        label="No"
+        icon="pi pi-times"
+        onClick={() => setShowDialog(false)}
+        severity="danger"
+        text
+        raised
+      />
+      <Button
+        label="Si"
+        icon="pi pi-check"
+        onClick={saveQuotation}
+        severity="success"
+        autoFocus
+      />
+    </div>
+  );
+
+  const footerGroup = (
+    <ColumnGroup>
+      <Row>
+        <Column
+          footer="Total:"
+          colSpan={6}
+          footerStyle={{ textAlign: "right" }}
+        />
+        <Column footer={precioTotal} style={{ textAlign: "right" }} />
+      </Row>
+    </ColumnGroup>
+  );
+
+  const startContent = (
+    <div>
+      <div className="p-inputgroup inputtext">
+        <InputText
+          placeholder="Buscar producto..."
+          size={"45"}
+          value={searchText || ""}
+          onChange={(e) => setSearchText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              searchProducts();
+            }
+          }}
+          tooltip="Buscar producto por nombre o referencia"
+          tooltipOptions={{ position: "top" }}
+        />
+        <Button
+          icon="pi pi-search"
+          severity="warning"
+          onClick={searchProducts}
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idbodegas">Bodegas</label>
+        <Dropdown
+          className="inputtext"
+          id="idbodegas"
+          value={selectedBodega}
+          onChange={(e) => setSelectedBodega(e.value)}
+          options={bodegasList}
+          optionLabel="label"
+          placeholder="Seleccionar bodega"
+        />
+      </div>
+    </div>
+  );
+
+  const endContent = (
+    <div className="p-inputgroup inputtext">
+      <Button
+        label="Delete"
+        icon="pi pi-trash"
+        severity="danger"
+        onClick={confirmDeleteSelected}
+        disabled={!selectedProductsrows || !selectedProductsrows.length}
+      />
+    </div>
+  );
+
+  return (
+    <div>
+      <Toast ref={toast} />
+      {/* Sección para buscar cliente */}
+      <div className="grid">
+        <div className="col-12">
+          <div className="card">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-9px",
+                marginBottom: "5px",
+              }}
+            >
+              Busqueda de Cliente
+            </h3>
+            <div className="customer-search-container">
+              <div className="search-group">
+                <InputText
+                  placeholder="Buscar cliente..."
+                  value={searchTextCustomer || ""}
+                  onChange={(e) => setSearchTextCustomer(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      searchCustomers();
+                    }
+                  }}
+                  tooltip="Buscar cliente por nombre o identificación"
+                  tooltipOptions={{ position: "top" }}
+                />
+                <Button
+                  icon="pi pi-search"
+                  severity="warning"
+                  onClick={searchCustomers}
+                />
+              </div>
+              <Button
+                label="Copiar"
+                icon="pi pi-copy"
+                severity="secondary"
+                title="Copiar los datos de cliente a Contacto adicional"
+                onClick={copyCustomerToContact}
+              />
+              <div className="date-group">
+                <FloatLabel>
+                  <label htmlFor="buttondisplay">Fecha de cotización</label>
+                  <Calendar
+                    id="buttondisplay"
+                    value={date}
+                    showIcon
+                    dateFormat="dd/mm/yy"
+                    disabled
+                  />
+                </FloatLabel>
+              </div>
+              <div className="quote-number">
+                <label className="quote-label">No. de Cotización</label>
+                <label className="quote-value">
+                  {quotationData ? quotationData.numerocotizacion : ""}
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {loading && (
+        <div className="loader-overlay">
+          <ProgressSpinner />
+        </div>
+      )}
+      <div className="grid">
+        {/* Sección para el cliente */}
+        <div className="col-12 md:col-6">
+          <div className="card p-fluid ">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Información del cliente
+            </h3>
+            <div className="labelinput">
+              <label htmlFor="nombrecliente">Nombre</label>
+              <InputText
+                className="inputtext"
+                id="nombrecliente"
+                value={selectedCustomer.nombrecliente || ""}
+                onChange={handleChangeCustomer}
+                disabled
+              />
+            </div>
+            <div style={{ display: "flex", flexDirection: "row" }}>
+              <div className="labelinput">
+                <label htmlFor="identidad">Identificación</label>
+                <InputText
+                  className="inputtext"
+                  id="identidad"
+                  value={selectedCustomer.identidad || ""}
+                  onChange={handleChangeCustomer}
+                  disabled
+                />
+              </div>
+              <div className="labelinput">
+                <label htmlFor="telmovil">Teléfono</label>
+                <InputText
+                  className="inputtext"
+                  id="telmovil"
+                  value={selectedCustomer.telmovil || ""}
+                  onChange={handleChangeCustomer}
+                  disabled
+                />
+              </div>
+            </div>
+            <div className="labelinput">
+              <label htmlFor="direccion">Dirección</label>
+              <InputText
+                className="inputtext"
+                id="direccion"
+                value={selectedCustomer.direccion || ""}
+                onChange={handleChangeCustomer}
+                disabled
+              />
+            </div>
+            <div className="labelinput">
+              <label htmlFor="email">Correo electrónico</label>
+              <InputText
+                className="inputtext"
+                id="email"
+                value={selectedCustomer.email || ""}
+                onChange={handleChangeCustomer}
+                disabled
+              />
+            </div>
+            <div className="labelinput">
+              <label htmlFor="vendedor">Vendedor</label>
+              <InputText
+                className="inputtext"
+                id="vendedor"
+                value={selectedCustomer.nombreve || ""}
+                onChange={handleChangeCustomer}
+                disabled
+              />
+            </div>
+            <div className="labelinput">
+              <label htmlFor="idsegmento">Segmento</label>
+              <Dropdown
+                className="inputtext"
+                id="idsegmento"
+                value={selectedCustomer.idsegmento || null}
+                options={segmentList}
+                onChange={handleSegmentChange}
+                placeholder="Seleccionar Segmento"
+                disabled={selectedCustomer.nombresegmento ? true : false}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Sección para el contacto adicional */}
+        <div className="col-12 md:col-6">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Contacto adicional
+            </h3>
+            {selectedCustomer && selectedCustomer.idcliente && (
+              <AdditionalContacts
+                contacts={additionalContacts}
+                setContacts={setAdditionalContacts}
+                selectedContact={selectedContact}
+                onContactSelect={handleContactSelect}
+                idCliente={selectedCustomer.idcliente}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Sección para buscar productos */}
+      <div className="grid">
+        <div className="col-12 md:col-12">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-9px",
+                marginBottom: "5px",
+              }}
+            >
+              Productos
+            </h3>
+            <Toolbar
+              start={startContent}
+              style={{ margin: "-5px" }}
+              end={endContent}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de productos */}
+      <div className="p-col-12">
+        <DataTable
+          value={selectedProducts}
+          showGridlines
+          rows={5}
+          emptyMessage="No hay productos disponibles"
+          // paginator
+          paginatorTemplate="CurrentPageReport"
+          currentPageReportTemplate="{totalRecords} Productos en este documento"
+          footerColumnGroup={footerGroup}
+          selection={selectedProductsrows}
+          onSelectionChange={(e) => setSelectedProductstrows(e.value)}
+          dataKey="orden"
+          scrollable
+          scrollHeight="350px"
+        >
+          <Column
+            selectionMode="multiple"
+            exportable={false}
+            headerStyle={{ width: "3rem" }}
+            bodyStyle={{ width: "3rem", textAlign: "center" }}
+          />
+          <Column field="orden" header="#" headerStyle={{ width: "2rem" }} />
+          <Column field="codigo" header="Código" hidden />
+          <Column field="subcodigo" header="Subcódigo" hidden />
+          <Column field="nombreproductos" header="Nombre" />
+          <Column field="referencia" header="Referencia" />
+          <Column
+            field="cantidad"
+            header="Cantidad"
+            body={renderCantidad}
+            // style={{ width: "5rem" }}
+          />
+          <Column
+            field="precio"
+            header="Precio"
+            body={priceBodyTemplate}
+            style={{ textAlign: "right" }}
+          />
+          <Column
+            field="total"
+            header="Total"
+            body={totalBodyTemplate}
+            style={{ textAlign: "right" }}
+          />
+          <Column
+            body={actionBodyTemplate}
+            exportable={false}
+            style={{ minWidth: "4rem" }}
+            alignFrozen="right"
+            frozen={true}
+            headerStyle={{ width: "2rem" }}
+          />
+        </DataTable>
+      </div>
+
+      <div className="p-col-12" style={{ marginTop: "20px" }}>
+        <FloatLabel>
+          <InputTextarea
+            id="notas"
+            value={selectedCustomer.notas}
+            onChange={handleNotasChange}
+            rows={5}
+            autoResize
+            style={{ width: "100%" }}
+          />
+          <label htmlFor="notas">Notas</label>
+        </FloatLabel>
+      </div>
+
+      {/* Botón para guardar la cotización */}
+      <div className="p-col-12" style={{ marginTop: "10px" }}>
+        <Toolbar
+          start={
+            <Button
+              label="Guardar"
+              icon="pi pi-save"
+              onClick={() => setShowDialog(true)}
+              severity="success"
+              disabled={!canSaveQuotation()}
+            />
+          }
+          end={
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              onClick={() => onSave()}
+              severity="danger"
+              text
+              raised
+            />
+          }
+        />
+      </div>
+
+      {/* Diálogo de búsqueda de productos */}
+      <ProductSearchDialog
+        showDialogProduct={showDialogProduct} // Prop para controlar la visibilidad del diálogo
+        setShowDialogProduct={setShowDialogProduct} // Prop para actualizar el estado del diálogo
+        products={products} // Prop para pasar los productos al diálogo
+        onAcceptSelection={addProductsToDataTable} // Pasa la función de devolución de llamada
+      />
+
+      {/* Diálogo de búsqueda de clientes */}
+      <CustomerSearchDialog
+        showDialogCustomer={showDialogCustomer} // Prop para controlar la visibilidad del diálogo
+        setShowDialogCustomer={setShowDialogCustomer} // Prop para actualizar el estado del diálogo
+        customers={customers} // Prop para pasar los clientes al diálogo
+        onAcceptSelection={selectedCustomerData} // Pasa la función de devolución de llamada
+        onCustomerCreated={handleCustomerCreated}
+      />
+
+      {/* Diálogo de confirmación */}
+      <Dialog
+        visible={showDialog}
+        onHide={() => setShowDialog(false)}
+        footer={footerContent}
+        header="Confirmación"
+      >
+        <p className="m-0">
+          <i
+            className="pi pi-exclamation-triangle mr-2"
+            style={{ fontSize: "2rem" }}
+          ></i>
+          ¿Desea guardar la cotización?
+        </p>
+      </Dialog>
+
+      <Dialog
+        visible={deleteProductDialog}
+        style={{ width: "32rem" }}
+        breakpoints={{ "960px": "75vw", "641px": "90vw" }}
+        header="Confirmación"
+        modal
+        footer={deleteProductDialogFooter}
+        onHide={hideDeleteProductDialog}
+      >
+        <div className="confirmation-content">
+          <i
+            className="pi pi-exclamation-triangle mr-3"
+            style={{ fontSize: "2rem" }}
+          />
+          {product && (
+            <span>
+              Esta seguro de borrar <b>{product.nombreproductos}</b>?
+            </span>
+          )}
+        </div>
+      </Dialog>
+      <Dialog
+        visible={deleteProductsDialog}
+        style={{ width: "32rem" }}
+        breakpoints={{ "960px": "75vw", "641px": "90vw" }}
+        header="Confirmación"
+        modal
+        footer={deleteProductsDialogFooter}
+        onHide={hideDeleteProductsDialog}
+      >
+        <div className="confirmation-content">
+          <i
+            className="pi pi-exclamation-triangle mr-3"
+            style={{ fontSize: "2rem" }}
+          />
+          {product && (
+            <span>¿Esta seguro de borrar los productos seleccionados?</span>
+          )}
+        </div>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Quoter;

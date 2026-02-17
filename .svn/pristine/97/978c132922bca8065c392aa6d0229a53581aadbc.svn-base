@@ -1,0 +1,1727 @@
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Dialog } from "primereact/dialog";
+import { Toolbar } from "primereact/toolbar";
+import { ColumnGroup } from "primereact/columngroup";
+import { Row } from "primereact/row";
+import { InputNumber } from "primereact/inputnumber";
+import { Toast } from "primereact/toast";
+import { InputTextarea } from "primereact/inputtextarea";
+import { FloatLabel } from "primereact/floatlabel";
+import { Dropdown } from "primereact/dropdown";
+import ProductSearchDialog from "./ProductSearchDialog";
+import CustomerSearchDialog from "./CustomerSearchDialog";
+import { Calendar } from "primereact/calendar";
+import { ProgressSpinner } from "primereact/progressspinner";
+import AdditionalContacts from "./AdditionalContacts";
+import config from "../../Config";
+import axios from "axios";
+import ClientCreation from "../ClientCreation";
+import "./Quoter.css";
+
+const Quoter = ({ onSave, quotationData, user }) => {
+  let emptyProduct = {
+    orden: 0,
+    codigo: 0,
+    subcodigo: 0,
+    nombreproductos: "",
+    referencia: "",
+    total: 0,
+    precio: 0,
+    cantidad: 0,
+    tarifaiva: 0,
+    pordescuento: 0,
+    vrdescuento: 0,
+  };
+
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaProducto`;
+  const apiUrlProducto = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DataProducto`;
+  const apiUrlCliente = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClientes`;
+  const apiUrlClienteData = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DataCliente`;
+  const apiUrlNuevaCotizacion = `${config.apiUrl}/Datasnap/rest/TServerMethods1/NuevaCotizacion`;
+  const apiUrlCotizacionByID = `${config.apiUrl}/Datasnap/rest/TServerMethods1/CotizacionByID`;
+  const apiUrlContactos = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DataContactosCliente`;
+  const apiUrlAddContact = `${config.apiUrl}/Datasnap/rest/TServerMethods1/AddContact`;
+  const apiUrlSegmentacion = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaSegmentacion`;
+  const apiUrlBodegas = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaBodegas`;
+  const apiUrlValidaCliFull = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ValidaCliFull`;
+  const apiUrlVendedores = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaVendedores`;
+  const apiUrlClaseIdentidad = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClaseIdentidad`;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [customers, setCustomers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [showDialog, setShowDialog] = useState(false);
+  const [showDialogProduct, setShowDialogProduct] = useState(false);
+  const [showDialogCustomer, setShowDialogCustomer] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [searchTextCustomer, setSearchTextCustomer] = useState("");
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState({
+    nombrecliente: "",
+    claseIdentidad: "",
+    identidad: "",
+    iddigverif: "",
+    telmovil: "",
+    direccion: "",
+    email: "",
+    notas: "",
+    identidadve: "",
+    idsegmento: "",
+  });
+  const [additionalContacts, setAdditionalContacts] = useState([]); //Este se pasa a AdditionalContacts
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [date, setDate] = useState(null);
+  const [selectedProductsrows, setSelectedProductsRows] = useState([]);
+  const [deleteProductDialog, setDeleteProductDialog] = useState(false);
+  const [product, setProduct] = useState(emptyProduct);
+  const [deleteProductsDialog, setDeleteProductsDialog] = useState(false);
+  const toast = useRef(null);
+  const [isNewQuotation, setIsNewQuotation] = useState(true);
+  const [vendedoresList, setVendedoresList] = useState([]);
+  const [segmentList, setSegmentList] = useState([]);
+  const [bodegasList, setBodegasList] = useState([]);
+  const [claseidentidadList, setClaseidentidadList] = useState([]);
+  const [selectedBodega, setSelectedBodega] = useState(-1); // -1 para múltiples bodegas
+  const [isClientDialogVisible, setClientDialogVisible] = useState(false);
+  const [isClientValid, setIsClientValid] = useState(true);
+  const MIN_SEARCH_LENGTH = 4; //Minimo de caracteres para realizar la busqueda
+  const [notas, setNotas] = useState(selectedCustomer?.notas || "");
+  const [emptyFields, setEmptyFields] = useState({});
+
+  const handleEditClient = () => {
+    // console.log("handleEditClient-selectedCustomer", selectedCustomer);
+    selectedCustomerData(selectedCustomer); //Se pasa el dato del cliente para que lo vuelva consultar completo
+    setClientDialogVisible(true);
+  };
+
+  const handleChangeCustomer = (e) => {
+    const { id, value } = e.target;
+    setSelectedCustomer((prevCustomer) => ({
+      ...prevCustomer,
+      [id]: value,
+    }));
+  };
+
+  const handleClaseIdentidadChange = (e) => {
+    const { value } = e;
+    const selectedClaseIdentidad = claseidentidadList.find(
+      (claseidentidad) => claseidentidad.value === value
+    );
+    setSelectedCustomer((prevCustomer) => ({
+      ...prevCustomer,
+      codigoclaseidentidad: value, // Actualiza el idclaseidentidad
+      nombreclaseidentidad: selectedClaseIdentidad
+        ? selectedClaseIdentidad.label
+        : "", // Actualiza el nombreclaseidentidad
+    }));
+  };
+
+  const handleSegmentChange = (e) => {
+    const { value } = e;
+    const selectedSegment = segmentList.find(
+      (segment) => segment.value === value
+    );
+    setSelectedCustomer((prevCustomer) => ({
+      ...prevCustomer,
+      idsegmento: value, // Actualiza el idsegmento
+      nombresegmento: selectedSegment ? selectedSegment.label : "", // Actualiza el nombresegmento
+    }));
+  };
+
+  const handleVendedorChange = (e) => {
+    const { value } = e;
+    const selectedVendedor = vendedoresList.find(
+      (vendedor) => vendedor.value === value
+    );
+    setSelectedCustomer((prevCustomer) => ({
+      ...prevCustomer,
+      identidadve: value, // Actualiza el identidadve
+      nombreve: selectedVendedor ? selectedVendedor.label : "", // Actualiza el nombreve
+    }));
+  };
+
+  const handleError = (error) => {
+    console.error("Error:", error);
+    setError("Error: " + error);
+    toast.current.show({
+      severity: "error",
+      summary: "Error",
+      detail: "Error: " + error,
+      life: 3000,
+    });
+  };
+
+  useEffect(() => {
+    const fetchQuotationByID = async () => {
+      try {
+        const response = await axios.put(apiUrlCotizacionByID, {
+          idcotizacion: quotationData.idcotizacion,
+        });
+        if (response.data.status === 200) {
+          // console.log("CLiente-cotizacion:", response.data.cliente);
+          setSelectedCustomer(response.data.cliente);
+          setSelectedProducts(response.data.productos);
+          setSelectedContact(response.data.cliente.idcontacto);
+          // Obtener contactos del cliente
+          await fetchCustomerContacts(response.data.cliente.idcliente);
+        } else {
+          setError(response.data.error || "Error en la respuesta");
+          handleError(response.data.error);
+        }
+      } catch (error) {
+        setError("Error al realizar la solicitud: " + error.message);
+        handleError(error.message);
+      }
+    };
+
+    const fetchCustomerContacts = async (idcliente) => {
+      try {
+        setLoading(true);
+        const responseContactos = await axios.put(apiUrlContactos, {
+          idcliente: idcliente,
+        });
+
+        if (responseContactos.data.status === 200) {
+          setAdditionalContacts(responseContactos.data.contactos);
+        } else {
+          setError(
+            "Error al obtener datos de contacto adicionales:",
+            responseContactos.data.error
+          );
+          handleError(responseContactos.data.error);
+        }
+      } catch (error) {
+        setError("Error al realizar la solicitud: " + error.message);
+        handleError(error.message);
+      }
+    };
+
+    // Verifica si el ID de cotización está definido y es válido
+    if (quotationData && quotationData.idcotizacion !== null) {
+      fetchQuotationByID();
+      setIsNewQuotation(false);
+    } else {
+      // Si no hay ID de cotización, es una nueva cotización,
+      setSelectedCustomer({
+        nombrecliente: "",
+        identidad: "",
+        telmovil: "",
+        direccion: "",
+        email: "",
+        notas: "",
+      });
+    }
+    if (quotationData && quotationData.fechacotizacion) {
+      // Convertir la cadena de fecha a un objeto Date
+      const dateValue = convertStringToDate(quotationData.fechacotizacion);
+      setDate(dateValue);
+    }
+    // }, [quotationData?.idcotizacion && quotationData?.fechacotizacion]);
+  }, [quotationData, apiUrlCotizacionByID, apiUrlContactos]);
+
+  useEffect(() => {
+    if (selectedCustomer && selectedCustomer.idcliente) {
+    }
+  }, [selectedCustomer]);
+
+  useEffect(() => {
+    const fetchBodegas = async () => {
+      try {
+        const response = await axios.get(apiUrlBodegas);
+        if (response.status === 200) {
+          const formattedBodegas = [
+            { label: "Múltiples Bodegas", value: "-1" },
+            ...response.data.result.map((bodega) => ({
+              label: bodega.nombrebodega,
+              value: bodega.codigobodega,
+            })),
+          ];
+          setBodegasList(formattedBodegas);
+          // Asignar selectedBodega después de que se carga bodegasList
+          if (quotationData && quotationData.codigobodega) {
+            const selectedBodega = formattedBodegas.find(
+              (bodega) => bodega.value === String(quotationData.codigobodega)
+            );
+            if (selectedBodega) {
+              setSelectedBodega(selectedBodega.value);
+            }
+          }
+        } else {
+          setError("Error fetching bodegas:", response.data.error);
+          handleError(response.data.error);
+        }
+      } catch (error) {
+        setError("Error fetching bodegas:", error.message);
+        handleError(error.message);
+      }
+    };
+    fetchBodegas();
+  }, [apiUrlBodegas, quotationData]);
+
+  useEffect(() => {
+    const fetchClaseIdentidad = async () => {
+      try {
+        const response = await axios.get(apiUrlClaseIdentidad);
+        if (response.status === 200) {
+          const formattedClaseIdentidad = response.data.result.map(
+            (claseIdentidad) => ({
+              label: claseIdentidad.nombreclaseidentidad,
+              value: claseIdentidad.codigoclaseidentidad,
+            })
+          );
+          setClaseidentidadList(formattedClaseIdentidad);
+        } else {
+          setError("Error fetching claseIdentidad:", response.data.error);
+          handleError(response.data.error);
+        }
+      } catch (error) {
+        setError("Error fetching claseIdentidad:", error.message);
+        handleError(error.message);
+      }
+    };
+    fetchClaseIdentidad();
+  }, [apiUrlClaseIdentidad]);
+
+  useEffect(() => {
+    const fetchSegments = async () => {
+      try {
+        const response = await axios.get(apiUrlSegmentacion);
+        if (response.status === 200) {
+          const formattedSegments = response.data.result.map((segment) => ({
+            label: segment.nombresegmento,
+            value: segment.idsegmento,
+          }));
+          setSegmentList(formattedSegments);
+        } else {
+          setError("Error fetching segments:", response.data.error);
+          handleError(response.data.error);
+        }
+      } catch (error) {
+        setError("Error fetching segments:", error.message);
+        handleError(error.message);
+      }
+    };
+    fetchSegments();
+  }, [apiUrlSegmentacion]);
+
+  useEffect(() => {
+    const fetchVendedores = async () => {
+      try {
+        const response = await axios.get(apiUrlVendedores);
+        if (response.status === 200) {
+          const formattedVendedores = response.data.result.map((vendedor) => ({
+            label: vendedor.nombreve,
+            value: vendedor.identidadve,
+          }));
+          setVendedoresList(formattedVendedores);
+        } else {
+          setError("Error fetching vendedores:", response.data.error);
+          handleError(response.data.error);
+        }
+      } catch (error) {
+        setError("Error fetching vendedores:", error.message);
+        handleError(error.message);
+      }
+    };
+
+    fetchVendedores();
+  }, [apiUrlVendedores]);
+
+  const validateClient = useCallback(
+    async (idCliente) => {
+      try {
+        setLoading(true);
+        const response = await axios.put(apiUrlValidaCliFull, {
+          idcliente: idCliente,
+        });
+
+        if (response.data.status === 200) {
+          const isFull = response.data.clientefull === 1;
+          setIsClientValid(isFull); // Si es 1, el cliente es válido
+        } else {
+          setError("Error al validar cliente:", response.data.error);
+          handleError(response.data.error);
+          setIsClientValid(true); // En caso de error, no oculta el botón
+        }
+      } catch (error) {
+        setError("Error al validar cliente:", error.message);
+        handleError(error.message);
+        setIsClientValid(true); // Muestra el botón si hay error
+      } finally {
+        setLoading(false);
+      }
+    },
+    [apiUrlValidaCliFull]
+  );
+
+  useEffect(() => {
+    if (selectedCustomer && selectedCustomer.idcliente) {
+      validateClient(selectedCustomer.idcliente);
+    }
+  }, [selectedCustomer, validateClient]);
+
+  useEffect(() => {
+    setNotas(selectedCustomer?.notas || "");
+  }, [selectedCustomer]);
+
+  // Función para convertir la cadena de fecha a objeto Date
+  const convertStringToDate = (dateString) => {
+    const [day, month, year] = dateString.split("/").map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const formatCurrency = (value) => {
+    if (value === undefined || value === null) {
+      value = 0;
+    }
+    return value.toLocaleString("es-CO", {
+      style: "currency",
+      currency: "COP",
+    });
+  };
+
+  const priceBodyTemplate = (selectedProducts) => {
+    return formatCurrency(selectedProducts.precio);
+  };
+  const totalBodyTemplate = (selectedProducts) => {
+    const total =
+      selectedProducts.precio * selectedProducts.cantidad -
+      selectedProducts.vrdescuento;
+    return formatCurrency(total);
+  };
+
+  const searchCustomers = async () => {
+    // Realiza la solicitud al servidor para buscar clientes utilizando el texto de búsqueda
+    try {
+      const trimmedSearchText = searchTextCustomer.trim(); // Elimina los espacios en blanco
+      if (trimmedSearchText.length < MIN_SEARCH_LENGTH) {
+        const errorMessage = `Por favor ingrese al menos ${MIN_SEARCH_LENGTH} caracteres para buscar clientes.`;
+        setError(errorMessage);
+        handleError(errorMessage);
+        return;
+      }
+      setLoading(true);
+      // Realiza la solicitud al servidor y guarda los resultados en el estado de clientes
+      const response = await axios.put(apiUrlCliente, {
+        criterio: searchTextCustomer,
+      });
+      if (response.data.status === 200) {
+        setCustomers(response.data.data);
+        setShowDialogCustomer(true);
+      } else {
+        setError("Error en la respuesta:", response.data.error);
+        handleError(error);
+      }
+    } catch (error) {
+      setError("Error al realizar la solicitud:", error.message);
+      handleError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para buscar productos
+  const searchProducts = async () => {
+    // Realiza la solicitud al servidor para buscar productos utilizando el texto de búsqueda
+    try {
+      const trimmedSearchText = searchText.trim(); // Elimina los espacios en blanco
+      if (trimmedSearchText.length < MIN_SEARCH_LENGTH) {
+        const errorMessage = `Por favor ingrese al menos ${MIN_SEARCH_LENGTH} caracteres para buscar productos.`;
+        setError(errorMessage);
+        handleError(errorMessage);
+        return;
+      }
+      if (!selectedBodega) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Debe seleccionar una bodega antes de buscar productos",
+          life: 3000,
+        });
+        return; // Detiene la ejecución si no hay bodega seleccionada
+      }
+      setLoading(true);
+      // Realiza la solicitud al servidor y guarda los resultados en el estado de productos
+      const response = await axios.put(apiUrl, { criterio: searchText });
+      if (response.data.status === 200) {
+        const adaptedProducts = response.data.data.map((product) => {
+          const bodegasAdaptadas = product.bodegas.map((b) => ({
+            codigobodega: b.s_bodega,
+            nombrebodega: b.s_nombre,
+            existencia: b.s_existencia,
+            cantidad: 0, // Se inicia en 0 para después modificar en la expansión
+          }));
+
+          return {
+            ...product,
+            nombreproductos: product.nombreproducto,
+            bodegas: bodegasAdaptadas, // ahora sí, adaptadas
+            existencia:
+              selectedBodega === -1
+                ? bodegasAdaptadas.reduce((acc, b) => acc + b.existencia, 0)
+                : bodegasAdaptadas.find(
+                    (b) => b.codigobodega === selectedBodega
+                  )?.existencia || 0,
+            nombrebodega:
+              selectedBodega === -1
+                ? "Múltiples Bodegas"
+                : bodegasAdaptadas.find(
+                    (b) => b.codigobodega === selectedBodega
+                  )?.nombrebodega || "",
+          };
+        });
+
+        setProducts(adaptedProducts);
+        setShowDialogProduct(true);
+      } else {
+        setError("Error en la respuesta:", response.data.error);
+        handleError(error);
+      }
+    } catch (error) {
+      setError("Error al realizar la solicitud:", error.message);
+      handleError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para calcular el precio total de la cotización
+  const calculateTotalPrice = () => {
+    let total = 0;
+    for (let selectedProduct of selectedProducts) {
+      total += selectedProduct.precio * selectedProduct.cantidad;
+    }
+    return total;
+  };
+
+  const handleContactSelect = (contact) => {
+    setSelectedContact(contact);
+  };
+
+  // Función para guardar la cotización
+  const saveQuotation = async () => {
+    try {
+      setLoading(true);
+      // Armar los datos de la cotización
+      const fechaActual = new Date();
+      const fechaCotizacion = fechaActual.toLocaleDateString("es-CO", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+      // console.log("saveQuotation-selectedCustomer", selectedCustomer);
+      const quotationDataFull = {
+        idcotizacion: quotationData?.idcotizacion || null,
+        numerocotizacion: quotationData?.numerocotizacion || null,
+        fechaCotizacion: fechaCotizacion, // Fecha de la cotización
+        idCliente: selectedCustomer.idcliente, // ID del cliente seleccionado
+        total: calculateTotalPrice(), // Total de la cotización
+        // notas: selectedCustomer.notas || "",
+        notas: notas,
+        idcontacto: selectedContact?.idcontacto ?? -1,
+        idsegmento: selectedCustomer.idsegmento,
+        codigousuario: user.codigo,
+        nombreusuario: user.name,
+        codigobodega: selectedBodega,
+        codigolistaprecios:
+          (selectedCustomer.comerciales &&
+            selectedCustomer.comerciales.codigolistaprecios) ||
+          1,
+        vendedor: selectedCustomer.identidadve,
+
+        // Detalles de la cotización (productos)
+        detalles: selectedProducts.map((product) => ({
+          codigo: product.codigo,
+          subcodigo: product.subcodigo,
+          nombre: product.nombreproductos,
+          referencia: product.referencia,
+          cantidad: product.cantidad,
+          precio: product.precio,
+          pordescuento: product.pordescuento,
+          vrdescuento: product.vrdescuento,
+          lineatotal: product.total,
+          orden: product.orden,
+          tarifaiva: product.tarifaiva,
+        })),
+        isNewQuotation: isNewQuotation ? 1 : 0,
+      };
+
+      // console.log("quotationDataFull", quotationDataFull);
+      // Realizar la solicitud POST al endpoint para guardar la cotización
+      const response = await axios.put(
+        apiUrlNuevaCotizacion,
+        quotationDataFull
+      );
+      // console.log("response", response.data);
+      // Verificar si la solicitud fue exitosa
+      if (response.data.status === 200) {
+        console.log("La cotización se guardó correctamente:");
+        setShowDialog(false);
+        onSave();
+      } else {
+        setError(
+          "Hubo un problema al guardar la cotización:",
+          response.data.error
+        );
+        handleError("SaveQuotation: " + response.data.error);
+      }
+    } catch (error) {
+      console.error("Error al guardar la cotización:", error);
+      setError("Error al guardar la cotización:", error.message);
+      handleError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Funcion para recibir y poblar en los input los datos del cliente seleccionado
+  const selectedCustomerData = async (selectedCustomerData) => {
+    try {
+      setLoading(true);
+      // Realizar la solicitud al endpoint para obtener los datos completos del cliente
+      const response = await axios.put(apiUrlClienteData, {
+        idcliente: selectedCustomerData.idcliente,
+      });
+
+      // Verificar si la solicitud fue exitosa y obtener los datos del cliente
+      if (response.data.status === 200) {
+        // console.log("Cliente seleccinado:", response.data.cliente);
+        setSelectedCustomer(response.data.cliente); // Actualizar el estado con los datos completos del cliente
+        const responseContactos = await axios.put(apiUrlContactos, {
+          idcliente: selectedCustomerData.idcliente,
+        });
+
+        if (responseContactos.data.status === 200) {
+          setAdditionalContacts(responseContactos.data.contactos); // Actualizar el estado con los datos de contacto
+        } else {
+          setError(
+            "Error al obtener datos de contacto adicionales:",
+            responseContactos.data.error
+          );
+          handleError(responseContactos.data.error);
+        }
+      } else {
+        setError(
+          "Error al obtener datos del cliente seleccionado:",
+          response.data.error
+        );
+        handleError(response.data.error);
+      }
+    } catch (error) {
+      setError("Error al realizar la solicitud:", error.message);
+      handleError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para agregar productos al DataTable
+  const addProductsToDataTable = async (selectedProductsToAdd) => {
+    setLoading(true);
+
+    try {
+      // Paso 1: Crear mapa de productos actuales en la grilla
+      const currentProductMap = new Map();
+      selectedProducts.forEach((p) => {
+        const key = `${p.codigo}-${p.subcodigo}-${p.bodega}`;
+        currentProductMap.set(key, p);
+      });
+
+      // Paso 2: Identificar productos que necesitan actualización o inserción
+      const productsToInsert = [];
+      const productsToUpdate = [];
+      const productsForPriceQuery = new Map();
+
+      selectedProductsToAdd.forEach((product) => {
+        const key = `${product.codigo}-${product.subcodigo}-${product.bodega}`;
+        const existing = currentProductMap.get(key);
+
+        if (existing) {
+          if (existing.cantidad !== product.cantidad) {
+            productsToUpdate.push({
+              ...existing,
+              cantidad: product.cantidad,
+              updated: true,
+            });
+          }
+        } else {
+          productsToInsert.push(product);
+          const priceKey = `${product.codigo}-${product.subcodigo}`;
+          if (
+            !selectedProducts.some(
+              (p) =>
+                p.codigo === product.codigo && p.subcodigo === product.subcodigo
+            )
+          ) {
+            productsForPriceQuery.set(priceKey, product);
+          }
+        }
+      });
+
+      // Paso 3: Consultar precios solo para nuevos productos (por código-subcódigo)
+      const fetchedPrices = await Promise.all(
+        Array.from(productsForPriceQuery.values()).map(async (product) => {
+          try {
+            const response = await axios.put(apiUrlProducto, {
+              codigo: product.codigo,
+              subcodigo: product.subcodigo,
+            });
+
+            if (response.data.status === 200) {
+              return {
+                key: `${product.codigo}-${product.subcodigo}`,
+                precio: response.data.data[0].precio,
+                tarifaiva: response.data.data[0].tarifaiva,
+              };
+            } else {
+              handleError(response.data.error);
+              return null;
+            }
+          } catch (error) {
+            handleError(error.message);
+            return null;
+          }
+        })
+      );
+
+      // Paso 4: Armar mapa de precios
+      const priceMap = new Map();
+      fetchedPrices.forEach((entry) => {
+        if (entry) {
+          priceMap.set(entry.key, {
+            precio: entry.precio,
+            tarifaiva: entry.tarifaiva,
+          });
+        }
+      });
+
+      // Paso 5: Armar productos finales para insertar
+      const finalInsertProducts = productsToInsert.map((product, index) => {
+        const priceKey = `${product.codigo}-${product.subcodigo}`;
+        const priceInfo =
+          priceMap.get(priceKey) ||
+          selectedProducts.find(
+            (p) =>
+              p.codigo === product.codigo && p.subcodigo === product.subcodigo
+          );
+
+        if (!priceInfo) return null;
+
+        const cantidad = product.cantidad || 1;
+        const pordescuento = product.pordescuento || 0;
+        const vrdescuento = (priceInfo.precio * cantidad * pordescuento) / 100;
+        const total = priceInfo.precio * cantidad - vrdescuento;
+
+        return {
+          ...product,
+          precio: priceInfo.precio,
+          tarifaiva: priceInfo.tarifaiva,
+          cantidad,
+          pordescuento,
+          vrdescuento,
+          total,
+          orden: selectedProducts.length + index + 1,
+        };
+      });
+
+      const validInsertProducts = finalInsertProducts.filter((p) => p !== null);
+
+      // Paso 6: Actualizar y agregar productos
+      setSelectedProducts((prev) => {
+        const updated = prev.map((p) => {
+          const update = productsToUpdate.find(
+            (u) =>
+              u.codigo === p.codigo &&
+              u.subcodigo === p.subcodigo &&
+              u.bodega === p.bodega
+          );
+          return update ? { ...p, cantidad: update.cantidad } : p;
+        });
+
+        return [...updated, ...validInsertProducts];
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderCantidad = (rowData) => {
+    return (
+      <InputNumber
+        value={rowData.cantidad}
+        mode="decimal"
+        showButtons
+        min={0.01}
+        onChange={(e) => {
+          const cantidad = e.value || 0;
+          // console.log("rowData:", rowData);
+          const vrdescuento =
+            (rowData.precio * cantidad * (rowData.pordescuento || 0)) / 100;
+          const total = rowData.precio * cantidad - vrdescuento;
+
+          const updatedProducts = selectedProducts.map((product) => {
+            if (
+              product.codigo === rowData.codigo &&
+              product.subcodigo === rowData.subcodigo
+            ) {
+              return { ...product, cantidad, vrdescuento, total };
+            }
+            return product;
+          });
+
+          setSelectedProducts(updatedProducts);
+        }}
+        minFractionDigits={2}
+        locale="en-US"
+        style={{ width: "100%" }}
+        inputStyle={{ width: "4rem" }}
+      />
+    );
+  };
+
+  const precioTotal = () => {
+    let total = selectedProducts.reduce((acc, product) => {
+      return acc + product.total;
+    }, 0);
+    return formatCurrency(total);
+  };
+
+  const confirmDeleteProduct = (product) => {
+    setProduct(product);
+    setDeleteProductDialog(true);
+  };
+
+  const hideDeleteProductDialog = () => {
+    setDeleteProductDialog(false);
+  };
+
+  const hideDeleteProductsDialog = () => {
+    setDeleteProductsDialog(false);
+  };
+
+  const deleteProduct = () => {
+    let _products = selectedProducts.filter(
+      (val) => val.orden !== product.orden
+    );
+    setSelectedProducts(_products);
+    setDeleteProductDialog(false);
+    setProduct(emptyProduct);
+    toast.current.show({
+      severity: "success",
+      summary: "Realizado",
+      detail: "Producto Borrado",
+      life: 3000,
+    });
+
+    // Reasignar el orden a los productos restantes
+    _products = _products.map((product, index) => ({
+      ...product,
+      orden: index + 1, // Asignar orden secuencial
+    }));
+
+    // Actualizar el estado de los productos con los productos actualizados
+    setSelectedProducts(_products);
+  };
+
+  const confirmDeleteSelected = () => {
+    setDeleteProductsDialog(true);
+  };
+
+  const deleteSelectedProducts = () => {
+    let _products = selectedProducts.filter(
+      (val) => !selectedProductsrows.includes(val)
+    );
+    setSelectedProducts(_products);
+    setDeleteProductsDialog(false);
+    setSelectedProductsRows(null);
+    toast.current.show({
+      severity: "success",
+      summary: "Realizado",
+      detail: "Productos Borrados",
+      life: 3000,
+    });
+    // Reasignar el orden a los productos restantes
+    _products = _products.map((product, index) => ({
+      ...product,
+      orden: index + 1, // Asignar orden secuencial
+    }));
+
+    // Actualizar el estado de los productos con los productos actualizados
+    setSelectedProducts(_products);
+  };
+
+  // Define una función para verificar si se pueden guardar los datos
+  const canSaveQuotation = () => {
+    // Verifica si se ha seleccionado un cliente y al menos un artículo
+    // Además, verifica que los campos necesarios del cliente estén completos
+    const {
+      nombrecliente,
+      identidad,
+      telefonoFijo,
+      telmovil,
+      direccion,
+      email,
+      identidadve,
+      idsegmento,
+    } = selectedCustomer;
+    return (
+      nombrecliente !== "" &&
+      identidad !== "" &&
+      (telefonoFijo !== "" || telmovil !== "") &&
+      direccion !== "" &&
+      email !== "" &&
+      identidadve !== "" &&
+      idsegmento !== null &&
+      selectedBodega !== null &&
+      selectedProducts.length > 0
+    );
+  };
+
+  // const handleDiscountValueChange = (e, rowData) => {
+  //   const vrdescuento = e.value || 0;
+  //   const pordescuento =
+  //     (vrdescuento / (rowData.precio * rowData.cantidad)) * 100;
+  //   const total = rowData.precio * rowData.cantidad - vrdescuento;
+
+  //   const updatedProducts = selectedProducts.map((product) => {
+  //     if (
+  //       product.codigo === rowData.codigo &&
+  //       product.subcodigo === rowData.subcodigo
+  //     ) {
+  //       return { ...product, pordescuento, vrdescuento, total };
+  //     }
+  //     return product;
+  //   });
+
+  //   setSelectedProducts(updatedProducts);
+  // };
+
+  const handleDiscountValueChange = (e, rowData) => {
+    const vrdescuento = e.value || 0;
+    const pordescuento =
+      (vrdescuento / (rowData.precio * rowData.cantidad)) * 100;
+    const total = rowData.precio * rowData.cantidad - vrdescuento;
+
+    const updatedProducts = selectedProducts.map((product) => {
+      if (
+        product.codigo === rowData.codigo &&
+        product.subcodigo === rowData.subcodigo
+      ) {
+        return { ...product, pordescuento, vrdescuento, total };
+      }
+      return product;
+    });
+
+    setSelectedProducts(updatedProducts);
+  };
+
+  const handleDiscountChange = (e, rowData) => {
+    const pordescuento =
+      e.value !== null && e.value !== undefined ? e.value : 0;
+    // console.log("pordescuento:", pordescuento);
+    const vrdescuento =
+      (rowData.precio * rowData.cantidad * pordescuento) / 100;
+    const total = rowData.precio * rowData.cantidad - vrdescuento;
+
+    const updatedProducts = selectedProducts.map((product) => {
+      if (
+        product.codigo === rowData.codigo &&
+        product.subcodigo === rowData.subcodigo
+      ) {
+        return { ...product, pordescuento, vrdescuento, total };
+      }
+      return product;
+    });
+
+    setSelectedProducts(updatedProducts);
+  };
+
+  const renderDiscount = (rowData) => {
+    return (
+      <InputNumber
+        value={rowData.pordescuento}
+        mode="decimal"
+        showButtons
+        min={0}
+        max={100}
+        onBlur={(e) => {
+          if (e.target.value === "") {
+            handleDiscountChange({ value: 0 }, rowData);
+            // Forzar la actualización del estado para renderizar el 0
+            setSelectedProducts((prevProducts) =>
+              prevProducts.map((product) =>
+                product.codigo === rowData.codigo &&
+                product.subcodigo === rowData.subcodigo
+                  ? { ...product, pordescuento: 0 }
+                  : product
+              )
+            );
+          }
+        }}
+        onChange={(e) => handleDiscountChange(e, rowData)}
+        minFractionDigits={2}
+        locale="en-US"
+        style={{ width: "100%" }}
+        inputStyle={{ width: "4rem" }}
+      />
+    );
+  };
+
+  const renderDiscountValue = (rowData) => {
+    return (
+      <InputNumber
+        // value={rowData.vrdescuento}
+        value={rowData.vrdescuento === 0 ? "" : rowData.vrdescuento} // Si es 0, muestra campo vacío
+        mode="currency"
+        currency="COP"
+        onChange={(e) => handleDiscountValueChange(e, rowData)}
+        onBlur={(e) => {
+          if (e.target.value === "") {
+            // Solo asigna 0 al perder el foco
+            handleDiscountValueChange({ value: 0 }, rowData);
+          }
+        }}
+        minFractionDigits={2}
+        locale="es-CO"
+        style={{ width: "8rem" }}
+        inputStyle={{ minWidth: "6rem" }}
+      />
+    );
+  };
+
+  const actionBodyTemplate = (rowData) => {
+    return (
+      <React.Fragment>
+        {/* <Button icon="pi pi-pencil" rounded outlined className="mr-2" onClick={() => editProduct(rowData)} /> */}
+        <Button
+          icon="pi pi-trash"
+          rounded
+          text
+          severity="danger"
+          onClick={() => confirmDeleteProduct(rowData)}
+        />
+      </React.Fragment>
+    );
+  };
+
+  const handleNotasChange = (e) => {
+    // const { value } = e.target;
+    // setSelectedCustomer((prevCustomer) => {
+    //   if (prevCustomer.notas !== value) {
+    //     return { ...prevCustomer, notas: value };
+    //   }
+    //   return prevCustomer;
+    // });
+    setNotas(e.target.value);
+  };
+
+  // Función para copiar la información del cliente a un nuevo contacto
+  const copyCustomerToContact = async () => {
+    // console.log("selectedCustomer:", selectedCustomer);
+    const newContact = {
+      nombreCa: selectedCustomer.nombrecliente,
+      identificacionCa: selectedCustomer.identidad,
+      telmovilCa: selectedCustomer.telmovil,
+      correoCa: selectedCustomer.email,
+      direccionCa: selectedCustomer.direccion,
+      idcliente: selectedCustomer.idcliente,
+      identidadve: selectedCustomer.identidadve,
+    };
+
+    try {
+      const response = await axios.post(apiUrlAddContact, newContact);
+      if (response.status === 200) {
+        const addedContact = response.data;
+        setAdditionalContacts([...additionalContacts, addedContact]);
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Contacto agregado correctamente",
+          life: 3000,
+        });
+
+        try {
+          const responseContactos = await axios.put(apiUrlContactos, {
+            idcliente: selectedCustomer.idcliente,
+          });
+
+          if (responseContactos.data.status === 200) {
+            setAdditionalContacts(responseContactos.data.contactos);
+          } else {
+            setError(
+              "Error al obtener datos de contacto adicionales:",
+              responseContactos.data.error
+            );
+            handleError(responseContactos.data.error);
+          }
+        } catch (error) {
+          setError("Error al realizar la solicitud:", error.message);
+          handleError(error.message);
+        }
+      } else {
+        setError("Error al agregar el contacto:", response.data.error);
+        handleError(response.data.error);
+      }
+    } catch (error) {
+      setError("Error al agregar el contacto:", error.message);
+      handleError(error.message);
+    }
+  };
+
+  const handleCustomerCreated = (newCustomer) => {
+    setCustomers((prevCustomers) => [...prevCustomers, newCustomer]);
+    setShowDialogCustomer(true); // Esto asegura que el dialogo se reabra mostrando el nuevo cliente
+  };
+
+  const handleCustomerEdited = (editedCustomer) => {
+    // console.log("editedCustomer:", editedCustomer);
+    setSelectedCustomer(editedCustomer);
+    setCustomers((prevCustomers) =>
+      prevCustomers.map((customer) =>
+        customer.idcliente === editedCustomer.idcliente
+          ? { ...customer, ...editedCustomer }
+          : customer
+      )
+    );
+  };
+
+  const handleBodegaChange = (e) => {
+    // console.log("Bodega seleccionada:", e.value);
+    if (selectedProducts.length > 0) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail:
+          "No puede cambiar la bodega cuando hay productos en la cotización",
+        life: 3000,
+      });
+      return; // Evita el cambio si hay productos
+    }
+    setSelectedBodega(e.value);
+  };
+
+  useEffect(() => {
+    const newEmptyFields = {
+      nombrecliente: (selectedCustomer.nombrecliente || "").trim() === "",
+      identidad: (selectedCustomer.identidad || "").trim() === "",
+      codigoclaseidentidad:
+        selectedCustomer.codigoclaseidentidad === "" ||
+        selectedCustomer.codigoclaseidentidad === 0,
+      telefonoFijo: (selectedCustomer.telefonoFijo || "").trim() === "",
+      telmovil: (selectedCustomer.telmovil || "").trim() === "",
+      direccion: (selectedCustomer.direccion || "").trim() === "",
+      email: (selectedCustomer.email || "").trim() === "",
+      identidadve:
+        selectedCustomer.identidadve === "" ||
+        selectedCustomer.identidadve === 0,
+      idsegmento:
+        selectedCustomer.idsegmento === "" || selectedCustomer.idsegmento === 0,
+    };
+
+    setEmptyFields(newEmptyFields);
+  }, [selectedCustomer]);
+
+  const deleteProductDialogFooter = (
+    <React.Fragment>
+      <Button
+        label="No"
+        icon="pi pi-times"
+        outlined
+        onClick={hideDeleteProductDialog}
+      />
+      <Button
+        label="Si"
+        icon="pi pi-check"
+        severity="danger"
+        onClick={deleteProduct}
+      />
+    </React.Fragment>
+  );
+
+  const deleteProductsDialogFooter = (
+    <React.Fragment>
+      <Button
+        label="No"
+        icon="pi pi-times"
+        outlined
+        onClick={hideDeleteProductsDialog}
+      />
+      <Button
+        label="Si"
+        icon="pi pi-check"
+        severity="danger"
+        onClick={deleteSelectedProducts}
+      />
+    </React.Fragment>
+  );
+
+  const footerContent = (
+    <div>
+      <Button
+        label="No"
+        icon="pi pi-times"
+        onClick={() => setShowDialog(false)}
+        severity="danger"
+        text
+        raised
+      />
+      <Button
+        label="Si"
+        icon="pi pi-check"
+        onClick={saveQuotation}
+        severity="success"
+        autoFocus
+      />
+    </div>
+  );
+
+  const footerGroup = (
+    <ColumnGroup>
+      <Row>
+        <Column
+          footer="Total:"
+          colSpan={8}
+          footerStyle={{ textAlign: "right" }}
+        />
+        <Column footer={precioTotal} style={{ textAlign: "right" }} />
+      </Row>
+    </ColumnGroup>
+  );
+
+  const startContent = (
+    <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+      {/* Buscar producto */}
+      <div className="p-inputgroup inputtext" style={{ flexGrow: 1 }}>
+        <InputText
+          placeholder="Buscar producto..."
+          // size={"45"}
+          value={searchText || ""}
+          onChange={(e) => setSearchText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              searchProducts();
+            }
+          }}
+          tooltip="Buscar producto por nombre o referencia"
+          tooltipOptions={{ position: "top" }}
+          style={{ width: "100%" }}
+        />
+        <Button
+          icon="pi pi-search"
+          severity="warning"
+          onClick={searchProducts}
+        />
+      </div>
+      {/* Dropdown de bodegas */}
+      <div>
+        <FloatLabel className="w-full md:w-14rem">
+          <Dropdown
+            className="inputtext"
+            disabled={selectedProducts.length > 0} // Deshabilita si hay productos
+            key={selectedBodega}
+            id="codigobodega"
+            value={selectedBodega}
+            onChange={handleBodegaChange}
+            options={bodegasList}
+            optionLabel="label"
+            // placeholder="Seleccionar bodega"
+            style={{ width: "100%" }}
+          />
+          <label
+            htmlFor="codigobodega"
+            style={{
+              marginBottom: "0.2rem",
+              marginTop: "-0.2rem",
+              fontWeight: "bold",
+            }}
+          >
+            Bodegas
+          </label>
+        </FloatLabel>
+      </div>
+    </div>
+  );
+
+  const endContent = (
+    <div className="p-inputgroup inputtext">
+      <Button
+        label="Delete"
+        icon="pi pi-trash"
+        severity="danger"
+        onClick={confirmDeleteSelected}
+        disabled={!selectedProductsrows || !selectedProductsrows.length}
+      />
+    </div>
+  );
+
+  return (
+    <div>
+      <Toast ref={toast} />
+      {/* Sección para buscar cliente */}
+      <div className="grid">
+        <div className="col-12">
+          <div className="card">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-9px",
+                marginBottom: "5px",
+              }}
+            >
+              Busqueda de Cliente
+            </h3>
+            <div className="customer-search-container">
+              <div className="search-group">
+                <InputText
+                  placeholder="Buscar cliente..."
+                  value={searchTextCustomer || ""}
+                  onChange={(e) => setSearchTextCustomer(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      searchCustomers();
+                    }
+                  }}
+                  tooltip="Buscar cliente por nombre o identificación"
+                  tooltipOptions={{ position: "top" }}
+                />
+                <Button
+                  icon="pi pi-search"
+                  severity="warning"
+                  onClick={searchCustomers}
+                />
+              </div>
+              <Button
+                label="Copiar"
+                icon="pi pi-copy"
+                severity="secondary"
+                title="Copiar los datos de cliente a Contacto adicional"
+                onClick={copyCustomerToContact}
+              />
+              <div className="date-group">
+                <FloatLabel>
+                  <label htmlFor="buttondisplay">Fecha de cotización</label>
+                  <Calendar
+                    id="buttondisplay"
+                    value={date}
+                    showIcon
+                    dateFormat="dd/mm/yy"
+                    disabled
+                  />
+                </FloatLabel>
+              </div>
+              <div className="quote-number">
+                <label className="quote-label">No. de Cotización</label>
+                <label className="quote-value">
+                  {quotationData ? quotationData.numerocotizacion : ""}
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {loading && (
+        <div className="loader-overlay">
+          <ProgressSpinner />
+        </div>
+      )}
+      <div className="grid">
+        {/* Sección para el cliente */}
+        <div className="col-12 md:col-6">
+          <div className="card p-fluid ">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Información del cliente
+            </h3>
+            <div className="labelinput">
+              <label htmlFor="nombrecliente">Nombre</label>
+              <InputText
+                className={`inputtext ${
+                  emptyFields.nombrecliente ? "inputtext-empty" : ""
+                }`}
+                id="nombrecliente"
+                value={selectedCustomer.nombrecliente || ""}
+                onChange={handleChangeCustomer}
+                disabled
+              />
+            </div>
+            <div>
+              <div className="labelinput">
+                <label htmlFor="identidad">Identificación</label>
+                <InputText
+                  className={`inputtext ${
+                    emptyFields.identidad ? "inputtext-empty" : ""
+                  }`}
+                  id="identidad"
+                  value={selectedCustomer.identidad || ""}
+                  onChange={handleChangeCustomer}
+                  disabled
+                />
+              </div>
+              <div className="labelinput">
+                <label htmlFor="codigoclaseidentidad">Tipo de Identidad</label>
+                <Dropdown
+                  className={`inputtext ${
+                    emptyFields.codigoclaseidentidad ? "inputtext-empty" : ""
+                  }`}
+                  id="codigoclaseidentidad"
+                  value={selectedCustomer.codigoclaseidentidad || ""}
+                  options={claseidentidadList}
+                  onChange={handleClaseIdentidadChange}
+                  placeholder="Seleccionar Tipo de Identidad"
+                  disabled
+                  // style={{ width: "75%" }}
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "row" }}>
+              <div className="labelinput">
+                <label htmlFor="telefonoFijo">Teléfono fijo</label>
+                <InputText
+                  className={`inputtext ${
+                    emptyFields.telefonoFijo ? "inputtext-empty" : ""
+                  }`}
+                  id="telefonoFijo"
+                  value={selectedCustomer.telefonoFijo || ""}
+                  onChange={handleChangeCustomer}
+                  disabled
+                />
+              </div>
+              <div className="labelinput">
+                <label htmlFor="telmovil">Teléfono móvil</label>
+                <InputText
+                  className={`inputtext ${
+                    emptyFields.telmovil ? "inputtext-empty" : ""
+                  }`}
+                  id="telmovil"
+                  value={selectedCustomer.telmovil || ""}
+                  onChange={handleChangeCustomer}
+                  disabled
+                />
+              </div>
+            </div>
+            <div className="labelinput">
+              <label htmlFor="direccion">Dirección</label>
+              <InputText
+                className={`inputtext ${
+                  emptyFields.direccion ? "inputtext-empty" : ""
+                }`}
+                id="direccion"
+                value={selectedCustomer.direccion || ""}
+                onChange={handleChangeCustomer}
+                disabled
+              />
+            </div>
+            <div className="labelinput">
+              <label htmlFor="email">Correo electrónico</label>
+              <InputText
+                className={`inputtext ${
+                  emptyFields.email ? "inputtext-empty" : ""
+                }`}
+                id="email"
+                value={selectedCustomer.email || ""}
+                onChange={handleChangeCustomer}
+                disabled
+              />
+            </div>
+            <div className="labelinput">
+              <label htmlFor="identidadve">Vendedor</label>
+              <Dropdown
+                className={`inputtext ${
+                  emptyFields.identidadve ? "inputtext-empty" : ""
+                }`}
+                id="identidadve"
+                value={selectedCustomer.identidadve || null}
+                options={vendedoresList}
+                onChange={handleVendedorChange}
+                placeholder="Seleccionar Vendedor"
+                disabled
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div className="labelinput">
+              <label htmlFor="idsegmento">Segmento</label>
+              <Dropdown
+                className={`inputtext ${
+                  emptyFields.idsegmento ? "inputtext-empty" : ""
+                }`}
+                id="idsegmento"
+                value={selectedCustomer.idsegmento || null}
+                options={segmentList}
+                onChange={handleSegmentChange}
+                placeholder="Seleccionar Segmento"
+                // disabled={selectedCustomer.nombresegmento ? true : false}
+                disabled
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div>
+              {!isClientValid && ( // El botón se mostrará solo si el cliente es válido
+                <Button
+                  icon="pi pi-search"
+                  label="Editar Cliente"
+                  severity="warning"
+                  onClick={handleEditClient}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Sección para el contacto adicional */}
+        <div className="col-12 md:col-6">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Contacto adicional
+            </h3>
+            {selectedCustomer && selectedCustomer.idcliente && (
+              <AdditionalContacts
+                contacts={additionalContacts}
+                setContacts={setAdditionalContacts}
+                selectedContact={selectedContact}
+                onContactSelect={handleContactSelect}
+                idCliente={selectedCustomer.idcliente}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Sección para buscar productos */}
+      <div className="grid">
+        <div className="col-12 md:col-12">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-9px",
+                marginBottom: "5px",
+              }}
+            >
+              Productos
+            </h3>
+            <Toolbar
+              start={startContent}
+              style={{ margin: "-5px" }}
+              end={endContent}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de productos */}
+      <div className="p-col-12">
+        <DataTable
+          value={selectedProducts}
+          showGridlines
+          rows={5}
+          emptyMessage="No hay productos disponibles"
+          // paginator
+          paginatorTemplate="CurrentPageReport"
+          currentPageReportTemplate="{totalRecords} Productos en este documento"
+          footerColumnGroup={footerGroup}
+          selection={selectedProductsrows}
+          onSelectionChange={(e) => setSelectedProductsRows(e.value)}
+          dataKey="orden"
+          scrollable
+          scrollHeight="350px"
+        >
+          <Column
+            selectionMode="multiple"
+            exportable={false}
+            headerStyle={{ width: "3rem" }}
+            bodyStyle={{ width: "3rem", textAlign: "center" }}
+          />
+          <Column field="orden" header="#" headerStyle={{ width: "2rem" }} />
+          <Column field="codigo" header="Código" hidden />
+          <Column field="subcodigo" header="Subcódigo" hidden />
+          <Column field="nombreproducto" header="Nombre" />
+          <Column field="referencia" header="Referencia" />
+          <Column
+            field="cantidad"
+            header="Cantidad"
+            body={renderCantidad}
+            // style={{ width: "5rem" }}
+          />
+          <Column
+            field="precio"
+            header="Precio"
+            body={priceBodyTemplate}
+            style={{ textAlign: "right" }}
+          />
+          <Column
+            field="pordescuento"
+            header="% Descuento"
+            body={renderDiscount}
+            style={{ textAlign: "right" }}
+          />
+          <Column
+            field="vrdescuento"
+            header="Valor Descuento"
+            body={renderDiscountValue}
+            style={{ textAlign: "right" }}
+          />
+          <Column
+            field="total"
+            header="Total"
+            body={totalBodyTemplate}
+            style={{ textAlign: "right" }}
+          />
+          <Column
+            body={actionBodyTemplate}
+            exportable={false}
+            style={{ minWidth: "4rem" }}
+            alignFrozen="right"
+            frozen={true}
+            headerStyle={{ width: "2rem" }}
+          />
+        </DataTable>
+      </div>
+
+      <div className="p-col-12" style={{ marginTop: "20px" }}>
+        <FloatLabel>
+          <InputTextarea
+            id="notas"
+            // value={selectedCustomer.notas}
+            value={notas}
+            onChange={handleNotasChange}
+            rows={5}
+            autoResize
+            style={{ width: "100%" }}
+          />
+          <label htmlFor="notas">Notas</label>
+        </FloatLabel>
+      </div>
+
+      {/* Botón para guardar la cotización */}
+      <div className="p-col-12" style={{ marginTop: "10px" }}>
+        <Toolbar
+          start={
+            <Button
+              label="Guardar"
+              icon="pi pi-save"
+              onClick={() => setShowDialog(true)}
+              severity="success"
+              disabled={!canSaveQuotation()}
+            />
+          }
+          end={
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              onClick={() => onSave()}
+              severity="danger"
+              text
+              raised
+            />
+          }
+        />
+      </div>
+
+      {/* Diálogo de búsqueda de productos */}
+      <ProductSearchDialog
+        showDialogProduct={showDialogProduct} // Prop para controlar la visibilidad del diálogo
+        setShowDialogProduct={setShowDialogProduct} // Prop para actualizar el estado del diálogo
+        products={products} // Prop para pasar los productos al diálogo
+        onAcceptSelection={addProductsToDataTable} // Pasa la función de devolución de llamada
+        selectedBodega={selectedBodega}
+        initialSelectedProducts={selectedProducts} // Pasa los productos seleccionados
+      />
+
+      {/* Diálogo de búsqueda de clientes */}
+      <CustomerSearchDialog
+        showDialogCustomer={showDialogCustomer} // Prop para controlar la visibilidad del diálogo
+        setShowDialogCustomer={setShowDialogCustomer} // Prop para actualizar el estado del diálogo
+        customers={customers} // Prop para pasar los clientes al diálogo
+        onAcceptSelection={selectedCustomerData} // Pasa la función de devolución de llamada
+        onCustomerCreated={handleCustomerCreated}
+        user={user}
+      />
+
+      {/* Diálogo de confirmación */}
+      <Dialog
+        visible={showDialog}
+        onHide={() => setShowDialog(false)}
+        footer={footerContent}
+        header="Confirmación"
+        closeOnEscape={false}
+      >
+        <p className="m-0">
+          <i
+            className="pi pi-exclamation-triangle mr-2"
+            style={{ fontSize: "2rem" }}
+          ></i>
+          ¿Desea guardar la cotización?
+        </p>
+      </Dialog>
+
+      <Dialog
+        visible={deleteProductDialog}
+        // style={{ width: "32rem" }}
+        // breakpoints={{ "960px": "75vw", "641px": "90vw" }}
+        header="Confirmación"
+        modal
+        footer={deleteProductDialogFooter}
+        onHide={hideDeleteProductDialog}
+        closeOnEscape={false}
+      >
+        <div className="confirmation-content">
+          <i
+            className="pi pi-exclamation-triangle mr-3"
+            style={{ fontSize: "4rem" }}
+          />
+          {product && (
+            <span>
+              ¿Desea borrar el producto <b>{product.nombreproducto}?</b>
+            </span>
+          )}
+        </div>
+      </Dialog>
+      <Dialog
+        visible={deleteProductsDialog}
+        // style={{ width: "32rem" }}
+        // breakpoints={{ "960px": "75vw", "641px": "90vw" }}
+        header="Confirmación"
+        modal
+        footer={deleteProductsDialogFooter}
+        onHide={hideDeleteProductsDialog}
+        closeOnEscape={false}
+      >
+        <div className="confirmation-content">
+          <i
+            className="pi pi-exclamation-triangle mr-3"
+            style={{ fontSize: "2rem" }}
+          />
+          {product && (
+            <span>¿Esta seguro de borrar los productos seleccionados?</span>
+          )}
+        </div>
+      </Dialog>
+      {user && (
+        <ClientCreation
+          visible={isClientDialogVisible}
+          onHide={() => setClientDialogVisible(false)}
+          onCustomerCreated={handleCustomerEdited}
+          selectedCustomer={selectedCustomer || {}} // Para pasar los datos actuales del cliente
+          user={user}
+        />
+      )}
+    </div>
+  );
+};
+
+export default Quoter;

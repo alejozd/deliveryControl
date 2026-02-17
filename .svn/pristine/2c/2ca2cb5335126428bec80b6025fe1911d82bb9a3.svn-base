@@ -1,0 +1,34 @@
+import React, { useState } from 'react';
+import SideBar from "./components/sidebar/SideBar";
+import Content from "./components/content/Content";
+import Login from "./Login";
+import "./App.css";
+
+function App() {
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Función para manejar el inicio de sesión exitoso
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+  };
+
+  return (
+    console.log("isLoggedIn:", isLoggedIn),
+    <div >
+      {isLoggedIn ? ( // Mostrar la aplicación principal si el usuario ha iniciado sesión
+        < >
+          <div className='App'>
+            <SideBar sidebarVisible={sidebarVisible} />
+            <Content setSidebarVisible={setSidebarVisible} />
+          </div>
+        </>
+      ) : ( // Mostrar el formulario de inicio de sesión si el usuario no ha iniciado sesión
+        <Login onLoginSuccess={handleLoginSuccess} />
+      )}
+    </div>
+
+  );
+}
+
+export default App;

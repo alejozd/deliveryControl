@@ -1,0 +1,76 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import SideBar from "./components/sidebar/SideBar";
+import Content from "./components/content/Content";
+import axios from "axios";
+import Login from "./Login";
+import "./App.css";
+
+function App() {
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+  const [empresa, setEmpresa] = useState({ codigo: "", nombre: "" });
+  const navigate = useNavigate();
+
+  // Función para manejar el inicio de sesión exitoso
+  const handleLoginSuccess = async (user) => {
+    try {
+      setUser(user);
+      setIsLoggedIn(true);
+      const response = await axios.get(
+        "http://localhost:8080/Datasnap/rest/TServerMethods1/GetNombreEmpresa"
+      );
+      if (response.data.status === 200) {
+        const { codigo, nombre } = response.data;
+        console.log("codigo:", codigo, "nombre:", nombre);
+        setEmpresa({ codigo, nombre });
+      } else {
+        console.error("Error al obtener la información de la empresa");
+      }
+    } catch (error) {
+      console.error(
+        "Error al obtener la información de la empresa:",
+        error.message
+      );
+    }
+  };
+
+  useEffect(() => {
+    console.log("empresa:", empresa);
+  }, [empresa]);
+
+  const handleLogout = () => {
+    // Realiza las acciones necesarias para cerrar sesión, como limpiar el estado, redirigir, etc.
+    setUser(null);
+    setIsLoggedIn(false);
+    navigate("/");
+  };
+
+  return (
+    // console.log("isLoggedIn:", isLoggedIn),
+    <div>
+      {isLoggedIn ? ( // Mostrar la aplicación principal si el usuario ha iniciado sesión
+        <>
+          <div className="App">
+            <SideBar
+              sidebarVisible={sidebarVisible}
+              user={user}
+              onLogout={() => handleLogout()}
+            />
+            <Content
+              setSidebarVisible={setSidebarVisible}
+              user={user}
+              empresa={empresa}
+            />
+          </div>
+        </>
+      ) : (
+        // Mostrar el formulario de inicio de sesión si el usuario no ha iniciado sesión
+        <Login onLoginSuccess={handleLoginSuccess} />
+      )}
+    </div>
+  );
+}
+
+export default App;

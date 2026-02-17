@@ -1,0 +1,52 @@
+import React from "react";
+import { Button } from "primereact/button";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUserCircle } from "@fortawesome/free-solid-svg-icons";
+import { Toolbar } from "primereact/toolbar";
+
+function NavBar({ setSidebarVisible, user }) {
+  const handleSidebarToggle = () => {
+    // console.log('Button clicked');
+    setSidebarVisible((prev) => !prev);
+  };
+
+  const userIconStyle = {
+    fontSize: "32px",
+    marginRight: "5px",
+  };
+
+  const toolbarStyle = {
+    position: "sticky",
+    top: 0, // Ajusta el valor según sea necesario
+    zIndex: 1000, // Ajusta el valor según sea necesario
+  };
+
+  const start = (
+    <Button
+      icon="pi pi-bars"
+      // className="p-button-text"
+      onClick={handleSidebarToggle}
+    />
+  );
+
+  const end = (
+    <>
+      <span style={{ marginRight: "5px" }}>Usuario: </span>
+      <span style={{ marginRight: "10px" }}>{user}</span>
+      <span style={userIconStyle}>
+        <FontAwesomeIcon icon={faUserCircle} />
+      </span>
+    </>
+  );
+
+  return (
+    <Toolbar
+      start={start}
+      end={end}
+      // style={{ padding: "1px" }}
+      style={{ ...toolbarStyle, padding: "1px" }}
+    />
+  );
+}
+
+export default NavBar;

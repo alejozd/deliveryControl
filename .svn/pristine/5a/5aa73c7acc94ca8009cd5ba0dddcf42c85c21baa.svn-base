@@ -1,0 +1,38 @@
+import React from 'react';
+import { Dialog } from 'primereact/dialog';
+import { Button } from 'primereact/button';
+
+const ConfirmationModal = (props) => {
+    const { factura, productos, cantidadEntregar, onConfirm, onCancel, visible } = props;
+
+    return (
+        <Dialog
+            header={`Confirmar entrega para Factura ${factura}`}
+            visible={visible}
+            style={{ width: '50vw' }}
+            onHide={onCancel}
+            position={'top'}
+            footer={
+                <div>
+                    <Button label="Cancelar" icon="pi pi-times" onClick={onCancel} className="p-button-text" />
+                    <Button label="Confirmar" icon="pi pi-check" onClick={onConfirm} autoFocus />
+                </div>
+            }
+        >
+            <div>
+                {/* Muestra los productos correspondientes en la ventana modal */}
+                <h4>Productos:</h4>
+                <ul>
+                    {productos.map((producto) => (
+                        <li key={producto.id}>
+                            {/* {producto.NOMBREPRODUCTOS} - Cantidad a Entregar: {cantidadEntregar[producto.id]} */}
+                            {producto.NOMBREPRODUCTOS} - Cantidad a Entregar: 0
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </Dialog>
+    );
+};
+
+export default ConfirmationModal;

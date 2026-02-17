@@ -1,0 +1,406 @@
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Panel } from "primereact/panel";
+import { Calendar } from "primereact/calendar";
+import { Button } from "primereact/button";
+import { Toolbar } from "primereact/toolbar";
+import { Dialog } from "primereact/dialog";
+import { InputText } from "primereact/inputtext";
+import { FilterMatchMode, FilterOperator } from "primereact/api";
+import { Toast } from "primereact/toast";
+import { classNames } from "primereact/utils";
+import { IconField } from "primereact/iconfield";
+import { InputIcon } from "primereact/inputicon";
+import { InputSwitch } from "primereact/inputswitch";
+import config from "../../Config";
+import axios from "axios";
+import setupLocale from "../../config/localeConfig"; // Importar el locale
+import useExcelExport from "../hooks/useExcelExport";
+
+const ConsultaPendientesEntrega = () => {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaRefEntregar`;
+  const [pendientes, setPendientes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [dates, setDates] = useState([new Date(), new Date()]);
+  const [fechaIni, setFechaIni] = useState(dates[0]);
+  const [fechaFin, setFechaFin] = useState(dates[1]);
+  const [errorState, setErrorState] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const uniqueIdCounter = useRef(0);
+  const [filters, setFilters] = useState(null);
+  const [globalFilterValue, setGlobalFilterValue] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [exportAllColumns, setExportAllColumns] = useState(false);
+  const toast = useRef(null);
+  const dt = useRef(null); // Referencia al DataTable
+  const { exportToExcel } = useExcelExport("pendientes_entrega");
+
+  // Definir los títulos de columna personalizados
+  const columnTitles = {
+    numfactura: "Documento",
+    referencia: "Referencia",
+    nombreproducto: "Nombre Artículo",
+    vendedor: "Vendedor",
+    saldo: "Cant. Pendiente",
+    nombrecliente: "Cliente",
+    identidad: "Identidad",
+  };
+
+  useEffect(() => {
+    setupLocale(); // Llamar la configuración del locale
+    if (fechaIni && !fechaFin) {
+      setFechaFin(fechaIni);
+    } else if (!fechaIni && fechaFin) {
+      setFechaIni(fechaFin);
+    }
+    initFilters();
+  }, [fechaIni, fechaFin]);
+
+  const handleExportExcel = () => {
+    // Obtener las columnas del DataTable
+    const columns = React.Children.toArray(dt.current?.props.children)
+      .filter((col) => col.props.field)
+      .map((col) => ({
+        field: col.props.field,
+        hidden: col.props.hidden,
+      }));
+
+    exportToExcel(dt.current.filteredValue || pendientes, columns, {
+      columnTitles,
+      exportAllColumns,
+      hiddenColumns: ["id"], // Excluir la columna id generada internamente
+    });
+  };
+
+  const handleCloseErrorDialog = () => {
+    setErrorState(false);
+    setErrorMessage("");
+  };
+
+  const handleSearch = async () => {
+    try {
+      setLoading(true);
+      const fechaInicio = fechaIni || new Date();
+      const fechaFinal = fechaFin || new Date();
+      const requestData = {
+        fechaIni: fechaInicio.toLocaleDateString("es-CO", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+        fechaFin: fechaFinal.toLocaleDateString("es-CO", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+      };
+
+      const response = await axios.put(apiUrl, requestData);
+
+      if (response.data.status === 200) {
+        const dataWithIds = response.data.data.map((item) => ({
+          ...item,
+          id: generateUniqueId(),
+        }));
+        setPendientes(dataWithIds);
+      } else {
+        setErrorMessage(response.data.error);
+      }
+    } catch (error) {
+      setErrorState(true);
+      setErrorMessage(
+        error.message === "Network Error"
+          ? "Error de red: No se puede conectar al servidor. Por favor, verifica tu conexión a Internet o inténtalo más tarde."
+          : `Error al realizar la solicitud: ${error.message}`
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDateChange = (e) => {
+    setDates(e.value);
+    if (e.value && e.value.length > 0) {
+      setFechaIni(e.value[0]);
+      setFechaFin(e.value.length === 2 ? e.value[1] : e.value[0]);
+    } else {
+      setFechaIni(null);
+      setFechaFin(null);
+    }
+  };
+
+  const generateUniqueId = () => {
+    uniqueIdCounter.current += 1;
+    return `unique-id-${uniqueIdCounter.current}`;
+  };
+
+  const clearFilter = () => {
+    initFilters();
+  };
+
+  const onGlobalFilterChange = (e) => {
+    const value = e.target.value;
+    setFilters((prevFilters) => ({
+      ...prevFilters,
+      global: { ...prevFilters.global, value },
+    }));
+    setGlobalFilterValue(value);
+  };
+
+  const initFilters = () => {
+    setFilters({
+      global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+      numfactura: {
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+      },
+      referencia: {
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+      },
+      nombreproducto: {
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+      },
+      nombrecliente: {
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+      },
+      vendedor: {
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+      },
+      saldo: {
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+      },
+      identidad: {
+        operator: FilterOperator.AND,
+        constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+      },
+    });
+  };
+
+  const onRowSelect = (event) => {
+    toast.current.show({
+      severity: "info",
+      summary: "Producto Seleccionado",
+      detail: event.data.nombreproducto,
+      life: 3000,
+    });
+  };
+
+  const stockBodyTemplate = (rowData) => {
+    const stockClassName = classNames(
+      "border-circle w-4rem h-2rem inline-flex font-bold justify-content-center align-items-center text-sm",
+      {
+        "bg-teal-100 text-teal-900": rowData.saldo > 1 && rowData.saldo < 10,
+        "bg-blue-100 text-blue-900": rowData.saldo > 10 && rowData.saldo < 20,
+        "bg-red-100 text-red-900": rowData.saldo > 20,
+      }
+    );
+
+    return (
+      <div className={stockClassName}>
+        {parseFloat(rowData.saldo).toFixed(2)}
+      </div>
+    );
+  };
+
+  const header = (
+    <div className="flex justify-content-between align-items-center">
+      <Button
+        type="button"
+        icon="pi pi-filter-slash"
+        label="Limpiar"
+        outlined
+        onClick={clearFilter}
+      />
+      <div className="flex align-items-center gap-2">
+        <div className="flex align-items-center gap-1">
+          <InputSwitch
+            checked={exportAllColumns}
+            onChange={(e) => setExportAllColumns(e.value)}
+            tooltip="Exportar todas las columnas"
+          />
+          <label className="text-sm">
+            {exportAllColumns ? "Todas" : "Visibles"}
+          </label>
+        </div>
+        <Button
+          icon="pi pi-file-excel"
+          severity="success"
+          label="Exportar"
+          tooltip="Exportar a Excel"
+          outlined
+          raised
+          onClick={handleExportExcel}
+        />
+        <span className="p-input-icon-right">
+          <IconField iconPosition="left">
+            <InputIcon className="pi pi-search" />
+            <InputText
+              value={globalFilterValue}
+              onChange={onGlobalFilterChange}
+              placeholder="Palabra clave"
+            />
+          </IconField>
+        </span>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ paddingTop: "5px" }}>
+      <Panel header="Consulta Referencias Pendientes por Entregar" toggleable>
+        <Toolbar
+          start={
+            <Calendar
+              value={dates}
+              onChange={handleDateChange}
+              selectionMode="range"
+              showIcon
+              readOnlyInput
+              dateFormat="dd/mm/yy"
+              numberOfMonths={2}
+              hideOnRangeSelection
+            />
+          }
+          end={
+            <Button
+              label="Buscar"
+              icon="pi pi-search"
+              className="p-mt-2"
+              loading={loading}
+              onClick={handleSearch}
+            />
+          }
+        />
+      </Panel>
+      <Toast ref={toast} />
+      <div style={{ paddingTop: "5px" }}>
+        <DataTable
+          ref={dt}
+          value={pendientes}
+          emptyMessage="No se han encontrado resultados"
+          loading={loading}
+          dataKey="id"
+          showGridlines
+          stripedRows
+          paginator
+          rows={10}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          filters={filters}
+          globalFilterFields={[
+            "numfactura",
+            "referencia",
+            "nombreproducto",
+            "nombrecliente",
+            "saldo",
+            "identidad",
+          ]}
+          header={header}
+          columnResizeMode="fit"
+          scrollable
+          scrollHeight="flex"
+          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+          selectionMode="single"
+          selection={selectedProduct}
+          onSelectionChange={(e) => setSelectedProduct(e.value)}
+          onRowSelect={onRowSelect}
+          metaKeySelection={false}
+          tableStyle={{ minWidth: "50rem" }}
+          removableSort
+          rowGroupMode="rowspan"
+          groupRowsBy="numfactura"
+          sortMode="single"
+          sortField="numfactura"
+          sortOrder={0}
+        >
+          <Column
+            field="numfactura"
+            header="Documento"
+            filter
+            filterPlaceholder="Buscar por documento"
+            filterField="numfactura"
+            sortable
+          />
+          <Column
+            field="referencia"
+            header="Referencia"
+            filter
+            filterPlaceholder="Buscar por referencia"
+            filterField="referencia"
+            sortable
+          />
+          <Column
+            field="nombreproducto"
+            header="Nombre Articulo"
+            filter
+            filterPlaceholder="Buscar por nombre"
+            filterField="nombreproducto"
+            sortable
+          />
+          <Column
+            field="vendedor"
+            header="Vendedor"
+            filter
+            filterPlaceholder="Buscar por nombre"
+            filterField="vendedor"
+            sortable
+          />
+          <Column
+            field="saldo"
+            header="Cant. Pendiente"
+            filter
+            filterPlaceholder="Buscar por saldo"
+            filterField="saldo"
+            sortable
+            body={stockBodyTemplate}
+            align={"center"}
+          />
+          <Column
+            field="nombrecliente"
+            header="Cliente"
+            filter
+            filterPlaceholder="Buscar por nombre"
+            filterField="nombrecliente"
+            sortable
+          />
+          <Column
+            field="identidad"
+            header="Identidad"
+            filter
+            filterPlaceholder="Buscar por identidad"
+            filterField="identidad"
+            sortable
+          />
+        </DataTable>
+      </div>
+      <Dialog
+        visible={errorState}
+        onHide={handleCloseErrorDialog}
+        header="Error"
+        modal
+        style={{ width: "300px" }}
+      >
+        <div>
+          <p>{errorMessage}</p>
+          <Button
+            label="Cerrar"
+            icon="pi pi-times"
+            severity="danger"
+            text
+            style={{ marginTop: "10px" }}
+            size="small"
+            onClick={handleCloseErrorDialog}
+          />
+        </div>
+      </Dialog>
+    </div>
+  );
+};
+
+export default ConsultaPendientesEntrega;

@@ -1,0 +1,104 @@
+import React, { useState, useRef } from 'react';
+import { Toast } from 'primereact/toast';
+import { Panel } from 'primereact/panel';
+import SearchBar from './SearchBar';
+import EntregasList from './EntregasList';
+
+function Entregas() {
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [products, setProducts] = useState([]);
+    const toast = useRef(null);
+    const uniqueIdCounter = useRef(0);
+
+    const handleSearch = async () => {
+        try {
+            const requestData = {
+                fechaFactura: selectedDate.toLocaleDateString("es-CO"),
+                criterio: searchTerm,
+            };
+
+            const response = await fetchEntregas(requestData);
+
+            if (response.status === 200) {
+                const data = await response.json();
+                // Agrega un identificador único a cada detalle
+                const newData = data.result.map(entrega => {
+                    entrega.DETALLE = entrega.DETALLE.map(detalle => {
+                        const id = generateUniqueId();
+                        // console.log('Generated ID:', id);
+                        return {
+                            ...detalle,
+                            id: id,
+                        };
+                    });
+                    return entrega;
+                });
+
+                setProducts(newData);
+                console.log("newData:", newData);
+            } else {
+                console.error("Error al buscar entregas:", response.statusText);
+            }
+        } catch (error) {
+            console.error("Error en la búsqueda de entregas:", error);
+        }
+    };
+
+    const fetchEntregas = async (requestData) => {
+        try {
+            const response = await fetch(
+                "http://LocalHost:8080/Datasnap/rest/TServerMethods1/entregas",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(requestData),
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error("La respuesta de la red no fue exitosa");
+            }
+
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    };
+
+    function generateUniqueId() {
+        //Para que el id sea unico
+        uniqueIdCounter.current += 1;
+        return `unique-id-${uniqueIdCounter.current}`;
+    }
+
+    const ref = useRef(null);
+
+    return (
+        <div>
+            <Panel ref={ref} header="Búsqueda de Facturas" toggleable>
+                <div className="card">
+                    <SearchBar
+                        selectedDate={selectedDate}
+                        setSelectedDate={setSelectedDate}
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                        handleSearch={handleSearch}
+                    />
+                </div>
+            </Panel>
+
+            <Toast ref={toast} />
+            <EntregasList
+                products={products}
+                setProducts={setProducts}
+                toast={toast}
+                handleSearch={handleSearch}
+            />
+        </div>
+    );
+}
+
+export default Entregas;

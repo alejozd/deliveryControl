@@ -1,0 +1,80 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
+import { Password } from 'primereact/password';
+import './Login.css';
+
+const Login = ({ onLoginSuccess }) => {
+    const [errorMessage, setErrorMessage] = useState('');
+
+    const validationSchema = Yup.object({
+        nombre: Yup.string().required('El nombre de usuario es obligatorio'),
+        clave: Yup.string().required('La contraseña es obligatoria'),
+    });
+
+    const formik = useFormik({
+        initialValues: {
+            nombre: '',
+            clave: '',
+        },
+        validationSchema: validationSchema,
+        onSubmit: async (values) => {
+            try {
+                console.log('JSON enviado al backend:', values);
+
+                const response = await axios.post('http://localhost:8080/Datasnap/rest/TServerMethods1/Login', values);
+
+                if (response.data.status === 200) {
+                    onLoginSuccess();
+                    const user = response.data.user;
+                    console.log(`Inicio de sesión exitoso para el usuario: ${user.nombre}`);
+                } else {
+                    setErrorMessage(response.data.error);
+                    console.error(response.data.error);
+                }
+            } catch (error) {
+                console.error('Error al realizar la solicitud:', error.message);
+            }
+        },
+    });
+
+    return (
+        <div className="login-container">
+            <h2>Login</h2>
+            {errorMessage && <p className="error-message">{errorMessage}</p>}
+            <form className="login-form" onSubmit={formik.handleSubmit}>
+                <label>
+                    Usuario:
+                    <input
+                        type="text"
+                        id="nombre"
+                        name="nombre"
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        value={formik.values.nombre}
+                    />
+                    {formik.touched.nombre && formik.errors.nombre && <div className="error-message">{formik.errors.nombre}</div>}
+                </label>
+                <br />
+                <label>
+                    Contraseña:
+                    <Password
+                        id="clave"
+                        name="clave"
+                        feedback={false}
+                        toggleMask
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        value={formik.values.clave}
+                    />
+                    {formik.touched.clave && formik.errors.clave && <div className="error-message">{formik.errors.clave}</div>}
+                </label>
+                <br />
+                <button type="submit">Iniciar Sesión</button>
+            </form>
+        </div>
+    );
+};
+
+export default Login;

@@ -1,0 +1,77 @@
+/* src/Login.css */
+
+body {
+  margin: 0;
+  font-family: 'Arial', sans-serif;
+  background: linear-gradient(to right, #2980b9, #6dd5fa, #fffff2);
+}
+
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.login-card {
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 340px;
+}
+
+.input-group {
+  margin-bottom: 1rem;
+}
+
+.input-field {
+  width: 100%;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.input-field:focus {
+  border-color: #6d5eac;
+  box-shadow: 0 0 5px rgba(109, 94, 172, 0.5);
+}
+
+.input-error {
+  border-color: red;
+}
+
+.error-message {
+  color: red;
+  font-size: 0.8rem;
+}
+
+.login-button {
+  width: 100%;
+  /* border-radius: 5px;
+  background-color: #007bff; 
+  color: white; */
+}
+
+.login-button:hover {
+  background-color: #0056b3; /* Cambia a un tono más oscuro de azul */
+}
+
+.password-group {
+  position: relative;
+}
+
+.password-input-container {
+  display: flex;
+  align-items: center;
+}
+
+.password-toggle-icon {
+  position: absolute;
+  right: 10px;
+  cursor: pointer;
+  color: #999;
+}
+
+.password-toggle-icon:hover {
+  color: #666;
+}

@@ -1,0 +1,102 @@
+import React, { useState, useEffect } from "react";
+import { Sidebar } from "primereact/sidebar";
+import { PanelMenu } from "primereact/panelmenu";
+import { useNavigate } from "react-router-dom";
+import packageJson from "../../../package.json";
+// import './SideBar.css';
+
+const SideBar = ({ sidebarVisible, user, onLogout }) => {
+  // const [visibleLeft, setVisibleLeft] = useState(false);
+  const navigate = useNavigate();
+  const [visible, setVisible] = useState(false);
+  const version = "Versión: " + packageJson.version;
+
+  const toggleSidebar = () => {
+    // console.log('Toggle sidebar');
+    setVisible(true);
+  };
+
+  useEffect(() => {
+    // console.log(`La barra lateral está ${sidebarVisible ? 'visible' : 'oculta'}.`);
+    toggleSidebar();
+  }, [sidebarVisible]);
+
+  const isAllowedUser = () => {
+    const allowedUsers = ["ADMINISTRADOR", "SISTEMAS"];
+    return user && allowedUsers.includes(user);
+  };
+
+  const items = [
+    {
+      label: "Entregas",
+      icon: "pi pi-fw pi-truck",
+      command: () => {
+        setVisible(false);
+        navigate("/entregas");
+      },
+    },
+    {
+      label: "Productos",
+      icon: "pi pi-fw pi-box",
+      command: () => {
+        setVisible(false);
+        navigate("/productos");
+      },
+    },
+    {
+      label: "Clientes",
+      icon: "pi pi-fw pi-users",
+      command: () => {
+        setVisible(false);
+        navigate("/clientes");
+      },
+      visible: isAllowedUser(),
+    },
+    {
+      label: "Consulta Entregas",
+      icon: "pi pi-fw pi-briefcase",
+      command: async () => {
+        setVisible(false);
+        await navigate("/consultaentregas");
+      },
+    },
+    {
+      label: "Pendientes por Entregar",
+      icon: "pi pi-clock",
+      command: async () => {
+        setVisible(false);
+        await navigate("/consultapendientes");
+      },
+    },
+    {
+      label: "Cerrar Sesión",
+      icon: "pi pi-fw pi-sign-out",
+      command: () => {
+        setVisible(false);
+        onLogout(); // Llama a la función de logout pasada por las props
+      },
+    },
+  ];
+
+  return (
+    <div className="card flex justify-content-left">
+      <Sidebar
+        visible={visible}
+        position="left"
+        onHide={() => setVisible(false)}
+        header={version}
+        closeIcon="pi pi-times"
+      >
+        <h2>Control de Entregas</h2>
+        <div className="card flex justify-content-center">
+          <PanelMenu model={items} className="w-full md:w-30rem" />
+        </div>
+      </Sidebar>
+      {/* <div>
+        <Button onClick={() => setVisible(true)} icon="pi pi-bars" />
+      </div> */}
+    </div>
+  );
+};
+
+export default SideBar;

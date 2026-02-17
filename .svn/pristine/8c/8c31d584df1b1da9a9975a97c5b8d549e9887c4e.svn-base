@@ -1,0 +1,250 @@
+import React, { useState, useRef } from 'react';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Toast } from 'primereact/toast';
+import { InputText } from 'primereact/inputtext';
+import { Button } from 'primereact/button';
+import { Toolbar } from 'primereact/toolbar';
+import { Panel } from 'primereact/panel';
+import SearchBar from './SearchBar';
+import EntregasList from './EntregasList';
+import 'primereact/resources/primereact.css';
+import 'primeicons/primeicons.css';
+import 'primeflex/primeflex.css';
+// import 'primereact/resources/themes/nova/theme.css';
+import 'primereact/resources/themes/saga-blue/theme.css';
+// import 'primereact/resources/themes/lara-light-indigo/theme.css';
+
+
+function Entregas() {
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [expandedRows, setExpandedRows] = useState(null);
+    const [products, setProducts] = useState([]);
+    const toast = useRef(null);
+
+    const handleSearch = async () => {
+        try {
+            const requestData = {
+                fechaFactura: selectedDate.toLocaleDateString("es-CO"),
+                criterio: searchTerm,
+            };
+
+            const response = await fetchEntregas(requestData);
+
+            if (response.status === 200) {
+                const data = await response.json();
+                setProducts(data.result);
+            } else {
+                console.error("Error al buscar entregas:", response.statusText);
+            }
+        } catch (error) {
+            console.error("Error en la búsqueda de entregas:", error);
+        }
+    };
+
+    const fetchEntregas = async (requestData) => {
+        try {
+            const response = await fetch(
+                "http://localhost:8080/Datasnap/rest/TServerMethods1/entregas",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(requestData),
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error("La respuesta de la red no fue exitosa");
+            }
+
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    };
+
+    const onRowExpand = (event) => {
+        toast.current.show({ severity: 'info', summary: 'Entrega Expanded', detail: event.data.NUMFACTURA, life: 3000 });
+    };
+
+    const onRowCollapse = (event) => {
+        toast.current.show({ severity: 'success', summary: 'Entrega Collapsed', detail: event.data.NUMFACTURA, life: 3000 });
+    };
+
+    const handleShowAll = (data) => {
+        // console.log('handleShowAll ', data);
+        data.DETALLE.forEach((detalle) => {
+            // console.log('detalle ', detalle);
+            handleTodoButtonClick(detalle);
+        });
+    };
+
+    const rowExpansionTemplate = (data) => {
+        // console.log("Contenido de products al expandir:", products); 
+        data.DETALLE.forEach((detalle, index) => {
+            detalle["Cant. Entregar"] = 0;
+            detalle["selected"] = false;
+            detalle.key = index; // Esta línea no es necesaria
+        });
+        return (
+            <div className="p-3">
+                <Toolbar
+                    start={<h3>Productos de {data.NUMFACTURA}</h3>}
+                    end={<React.Fragment>
+                        <Button className="mr-2" icon="pi pi-check" severity="warning" size="small" label="Marcar todo el documento" rounded onClick={() => handleShowAll(data)} />
+                        <Button className="p-button-success mr-2" icon="pi pi-check" severity="success" size="small" label="Entregar" rounded onClick={() => handleShowAll(data)} />
+                    </React.Fragment>
+                    }
+                    style={{ padding: '4px', height: 'auto' }} />
+                {/* <h5>Productos de {data.NUMFACTURA}</h5> */}
+                <DataTable value={data.DETALLE} dataKey="key">
+                    <Column field="NOMBREPRODUCTOS" header="Nombre de Producto" sortable></Column>
+                    <Column field="CANTFACTURADA" header="Cant. Facturada" sortable></Column>
+                    <Column field="CANT_ENTREGADA" header="Cant. Entregada" sortable></Column>
+                    <Column header="Todo" style={{ width: '3rem' }} body={renderTodoButton}></Column>
+                    <Column header="Cant. Entregar" body={renderCantidadEntregar} sortable></Column>
+                </DataTable>
+            </div>
+        );
+    };
+
+    const renderTodoButton = (rowData) => {
+        return (
+            <button
+                onClick={() => handleTodoButtonClick(rowData)}
+                className="p-button p-component p-button-outlined"
+            >
+                Todo
+            </button>
+        );
+    };
+
+    const handleTodoButtonClick = (rowData) => {
+        // Obtén el valor de SALDO
+        const saldoValue = rowData.SALDO;
+        // Encuentra el inputText correspondiente en la fila
+        const inputTextElement = document.querySelector(`#inputText-${rowData.key}`); // Asegúrate de usar el identificador adecuado
+        // Verifica si se encontró el inputText
+        if (inputTextElement) {
+            // Asigna el valor de SALDO al inputText
+            inputTextElement.value = saldoValue;
+        }
+        // const value = rowData["Cant. Entregar"];
+        // toast.current.show({ severity: 'success', summary: 'Cant. Entregar ', detail: value, life: 3000 });
+        // console.log("Cant. Entregar: ", rowData["Cant. Entregar"]);
+    };
+
+    const renderCantidadEntregar = (rowData) => {
+        return (
+            <InputText
+                id={`inputText-${rowData.key}`} // Asigna un ID único basado en la propiedad "key"
+                // value={rowData["Cant. Entregar"]}
+                onChange={(e) => handleCantidadEntregarChange(e, rowData)}
+            />
+        );
+    };
+
+    const handleCantidadEntregarChange = (e, rowData) => {
+        const value = e.target.value;
+        console.log("Cant. Entregar inicial: ", rowData["Cant. Entregar"]);
+        if (/^\d*$/.test(value)) {
+            // Actualiza el valor en rowData
+            rowData["Cant. Entregar"] = parseInt(value, 10);
+            console.log("Cant. Entregar: ", rowData["Cant. Entregar"]);
+
+            // encontrar índice del producto 
+            const index = products.findIndex(product => {
+                return product.CODIGO === rowData.CODIGO && product.SUBCODIGO === rowData.SUBCODIGO
+            });
+
+            console.log("Index encontrado:", index);
+            // actualizar el producto
+            if (index > -1) {
+                const updatedProducts = [...products]; // Clona el array para no mutar el estado directamente
+                updatedProducts[index]["Cant. Entregar"] = value;
+                setProducts(updatedProducts);
+            } else {
+                console.error("No se encontró el producto");
+            }
+
+        } else {
+            // Si no es un número válido, puedes manejarlo aquí (por ejemplo, mostrar un mensaje de error)
+        }
+        console.log("Cant. Entregar luego: ", rowData["Cant. Entregar"]);
+        console.log("rowData actualizado en handleCantidadEntregarChange:", rowData);
+        console.log("products actualizado en setProducts:", products);
+    };
+
+    const allowExpansion = (rowData) => {
+        return rowData.DETALLE && rowData.DETALLE.length > 0;
+    };
+
+    const expandAll = () => {
+        let expanded = [];
+        products.forEach((product) => expanded.push(product));
+        setExpandedRows(expanded);
+    };
+
+    const collapseAll = () => {
+        setExpandedRows([]);
+    };
+
+    const header = (
+        <div className="flex flex-wrap justify-content-end gap-2">
+            <Button icon="pi pi-plus" label="Expandir Todo" onClick={expandAll} text />
+            <Button icon="pi pi-minus" label="Contraer Todo" onClick={collapseAll} text />
+        </div>
+    );
+
+    const ref = useRef(null);
+
+    return (
+        <div>
+            <Panel ref={ref} header="Búsqueda de Entregas" toggleable>
+                <div className="card">
+                    {/* Integra el componente SearchBar aquí */}
+                    <SearchBar
+                        selectedDate={selectedDate}
+                        setSelectedDate={setSelectedDate}
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                        handleSearch={handleSearch}
+                    />
+                </div>
+            </Panel>
+
+            <Toast ref={toast} />
+            <DataTable
+                value={products}
+                expandedRows={expandedRows}
+                onRowToggle={(e) => setExpandedRows(e.data)}
+                onRowExpand={onRowExpand}
+                onRowCollapse={onRowCollapse}
+                rowExpansionTemplate={rowExpansionTemplate}
+                header={header} responsive="true"
+                dataKey="NUMFACTURA"
+            >
+                <Column expander={allowExpansion} style={{ width: '5rem' }} />
+                <Column field="NUMFACTURA" header="Número de Factura" sortable />
+                <Column field="FECHAFACTURA" header="Fecha de Factura" sortable />
+                <Column field="NOMBRECLIENTE" header="Nombre del Cliente" sortable />
+            </DataTable>
+            <EntregasList
+                products={products}
+                expandedRows={expandedRows}
+                setExpandedRows={setExpandedRows}
+                onRowExpand={onRowExpand}
+                onRowCollapse={onRowCollapse}
+                allowExpansion={allowExpansion}
+                header={header}
+                setProducts={setProducts}
+                toast={toast}
+            />
+        </div>
+    );
+}
+
+export default Entregas;

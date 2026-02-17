@@ -1,0 +1,87 @@
+import React from "react";
+import { Card } from "primereact/card";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
+const ComprobantePDF = ({ datos }) => {
+  console.log("ComprobantePDF", datos);
+  if (!datos || !datos.cliente || !datos.productos) {
+    return <p>Datos de la cotización no disponibles.</p>;
+  }
+  const { cliente, productos, total } = datos;
+
+  const generatePDF = () => {
+    const input = document.getElementById("comprobante");
+    html2canvas(input, { scale: 2 }).then((canvas) => {
+      // Escala aumentada para mejorar la calidad
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF();
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight(); //Para centrar verticalmente
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfRatio = imgProps.width / imgProps.height;
+      const imgWidth = pdfWidth - 40; // Ajuste según el margen o tamaño del PDF
+      const imgHeight = imgWidth / pdfRatio;
+      const xPos = (pdfWidth - imgWidth) / 2;
+      const yPos = 20; //(pdfHeight - imgHeight) / 2;
+      pdf.addImage(imgData, "PNG", xPos, yPos, imgWidth, imgHeight);
+      pdf.save("comprobante.pdf");
+    });
+  };
+
+  return (
+    <div style={styles.container}>
+      <div id="comprobante" style={styles.comprobante}>
+        <Card title="Comprobante de Venta" style={styles.card}>
+          <p>
+            <strong>Cliente:</strong> {cliente.nombre}
+          </p>
+          <p>
+            <strong>Dirección:</strong> {cliente.direccion}
+          </p>
+          <p>
+            <strong>Fecha:</strong> {new Date().toLocaleDateString()}
+          </p>
+        </Card>
+
+        <Card title="Detalle de Productos" style={styles.card}>
+          <DataTable value={productos}>
+            <Column field="nombre" header="Producto" />
+            <Column field="referencia" header="Referencia" />
+            <Column field="precio" header="Precio" />
+            <Column field="cantidad" header="Cantidad" />
+            <Column field="total" header="Total" />
+          </DataTable>
+        </Card>
+
+        <Card title="Resumen" style={styles.card}>
+          <p>
+            <strong>Total:</strong> {total}
+          </p>
+        </Card>
+      </div>
+      <Button label="Generar PDF" icon="pi pi-file-pdf" onClick={generatePDF} />
+    </div>
+  );
+};
+
+const styles = {
+  container: {
+    padding: "20px",
+    backgroundColor: "#f0f0f0", // Color de fondo general
+  },
+  comprobante: {
+    marginBottom: "20px",
+  },
+  card: {
+    marginBottom: "20px",
+    backgroundColor: "white", // Color de fondo de las tarjetas
+    border: "1px solid #ccc", // Borde de las tarjetas
+    boxShadow: "none", // Quita la sombra si no la quieres
+  },
+};
+
+export default ComprobantePDF;

@@ -1,0 +1,89 @@
+import React, { useState, useRef } from 'react';
+import { Toast } from 'primereact/toast';
+import { Panel } from 'primereact/panel';
+import SearchBar from './SearchBar';
+import EntregasList from './EntregasList';
+import 'primereact/resources/primereact.css';
+import 'primeicons/primeicons.css';
+import 'primeflex/primeflex.css';
+// import 'primereact/resources/themes/nova/theme.css';
+import 'primereact/resources/themes/saga-blue/theme.css';
+// import 'primereact/resources/themes/lara-light-indigo/theme.css';
+
+
+function Entregas() {
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [products, setProducts] = useState([]);
+    const toast = useRef(null);
+
+    const handleSearch = async () => {
+        try {
+            const requestData = {
+                fechaFactura: selectedDate.toLocaleDateString("es-CO"),
+                criterio: searchTerm,
+            };
+
+            const response = await fetchEntregas(requestData);
+
+            if (response.status === 200) {
+                const data = await response.json();
+                setProducts(data.result);
+            } else {
+                console.error("Error al buscar entregas:", response.statusText);
+            }
+        } catch (error) {
+            console.error("Error en la búsqueda de entregas:", error);
+        }
+    };
+
+    const fetchEntregas = async (requestData) => {
+        try {
+            const response = await fetch(
+                "http://localhost:8080/Datasnap/rest/TServerMethods1/entregas",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(requestData),
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error("La respuesta de la red no fue exitosa");
+            }
+
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    };
+
+    const ref = useRef(null);
+
+    return (
+        <div>
+            <Panel ref={ref} header="Búsqueda de Entregas" toggleable>
+                <div className="card">
+                    <SearchBar
+                        selectedDate={selectedDate}
+                        setSelectedDate={setSelectedDate}
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                        handleSearch={handleSearch}
+                    />
+                </div>
+            </Panel>
+
+            <Toast ref={toast} />
+            <EntregasList
+                products={products}
+                setProducts={setProducts}
+                toast={toast}
+            />
+        </div>
+    );
+}
+
+export default Entregas;

@@ -1,0 +1,44 @@
+// EntregasList.js
+import React, { useState, useRef } from 'react';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Toast } from 'primereact/toast';
+import DetalleEntrega from './DetalleEntrega'; // Asegúrate de que la ruta sea correcta según tu estructura de directorios.
+
+function EntregasList(props) {
+    const toast = props.toast;
+    return (
+        <div>
+            <Toast ref={toast} />
+            <DataTable
+                value={props.products}
+                expandedRows={props.expandedRows}
+                onRowToggle={(e) => props.setExpandedRows(e.data)}
+                // onRowExpand={onRowExpand}
+                onRowExpand={(e) => onRowExpand(e, props.toast)}
+                onRowCollapse={onRowCollapse}
+                rowExpansionTemplate={(data) => (
+                    <DetalleEntrega data={data} /> // Renderiza el componente DetalleEntrega aquí
+                )}
+                header={props.header}
+                responsive="true"
+                dataKey="NUMFACTURA"
+            >
+                <Column expander={props.allowExpansion} style={{ width: '5rem' }} />
+                <Column field="NUMFACTURA" header="Número de Factura" sortable />
+                <Column field="FECHAFACTURA" header="Fecha de Factura" sortable />
+                <Column field="NOMBRECLIENTE" header="Nombre del Cliente" sortable />
+            </DataTable>
+        </div>
+    );
+}
+
+const onRowExpand = (event, toast) => {
+    toast.current.show({ severity: 'info', summary: 'Entrega Expanded', detail: event.data.NUMFACTURA, life: 3000 });
+};
+
+const onRowCollapse = (event) => {
+    //toast.current.show({ severity: 'success', summary: 'Entrega Collapsed', detail: event.data.NUMFACTURA, life: 3000 });
+};
+
+export default EntregasList;

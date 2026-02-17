@@ -1,0 +1,137 @@
+// EntregasList.js
+import React, { useState } from 'react';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Toast } from 'primereact/toast';
+import { Button } from 'primereact/button';
+import { Toolbar } from 'primereact/toolbar';
+import { InputNumber } from 'primereact/inputnumber';
+// import DetalleEntrega from './DetalleEntrega';
+
+function EntregasList(props) {
+    const [expandedRows, setExpandedRows] = useState(null);
+    const toast = props.toast;
+    const [cantidadesEntregar, setCantidadesEntregar] = useState({});
+
+    const handleShowAll = (data) => {
+        data.DETALLE.forEach((detalle) => {
+            handleTodoButtonClick(detalle);
+        });
+    };
+
+    const rowExpansionTemplate = (data) => {
+        return (
+            <div className="p-3">
+                <Toolbar
+                    start={<h3>Productos de {data.NUMFACTURA}</h3>}
+                    end={<React.Fragment>
+                        <Button className="mr-2" icon="pi pi-check" severity="warning" size="small" label="Marcar todo el documento" rounded onClick={() => handleShowAll(data)} />
+                        <Button className="p-button-success mr-2" icon="pi pi-check" severity="success" size="small" label="Entregar" rounded onClick={() => handleShowAll(data)} />
+                    </React.Fragment>
+                    }
+                    style={{ padding: '2px', height: 'auto' }} />
+                <DataTable value={data.DETALLE} dataKey="id" >
+                    <Column field="NOMBREPRODUCTOS" header="Nombre de Producto" sortable></Column>
+                    <Column field="CANTFACTURADA" header="Cant. Facturada" sortable></Column>
+                    <Column field="CANT_ENTREGADA" header="Cant. Entregada" sortable></Column>
+                    <Column header="Todo" style={{ width: '3rem' }} body={(rowData) => renderTodoButton(rowData)}></Column>
+                    <Column header="Cant. Entregar" body={(rowData) => renderCantidadEntregar(rowData)}></Column>
+                </DataTable>
+            </div>
+        );
+    };
+
+    const renderTodoButton = (rowData) => {
+        return (
+            <Button
+                label='Todo'
+                onClick={() => handleTodoButtonClick(rowData)}
+                className="p-button p-component p-button-outlined"
+            />
+        );
+    };
+
+    const handleTodoButtonClick = (rowData) => {
+        const saldo = rowData.SALDO.toString();
+        // Actualiza el estado solo después de hacer clic en el botón Todo
+        if (saldo !== undefined) {
+            setCantidadesEntregar((prev) => ({
+                ...prev,
+                [rowData.id]: saldo,
+            }));
+        }
+    };
+
+    const renderCantidadEntregar = (rowData) => {
+        const isReadOnly = rowData.SALDO === 0;
+        const inputValue = cantidadesEntregar[rowData.id] || '';
+        const max = rowData.SALDO;
+        return (
+            <InputNumber
+                readOnly={isReadOnly}
+                value={inputValue}
+                max={max}
+                onChange={(e) => handleCantidadEntregarInput(e, rowData)}
+            />
+        );
+    };
+
+    const handleCantidadEntregarInput = (e, rowData) => {
+        const inputValue = e.value || '';
+        const updatedState = { ...cantidadesEntregar, [rowData.id]: inputValue };
+        setCantidadesEntregar(updatedState);
+    };
+
+    const allowExpansion = (rowData) => {
+        return rowData.DETALLE && rowData.DETALLE.length > 0;
+    };
+
+    const expandAll = () => {
+        let expanded = [];
+        props.products.forEach((product) => expanded.push(product));
+        setExpandedRows(expanded);
+    };
+
+    const collapseAll = () => {
+        setExpandedRows([]);
+    };
+
+    const header = (
+        <div className="flex flex-wrap justify-content-end gap-2">
+            <Button icon="pi pi-plus" label="Expandir Todo" onClick={expandAll} text />
+            <Button icon="pi pi-minus" label="Contraer Todo" onClick={collapseAll} text />
+        </div>
+    );
+
+    return (
+        <div>
+            <Toast ref={toast} />
+            <DataTable
+                value={props.products}
+                expandedRows={expandedRows}
+                onRowToggle={(e) => setExpandedRows(e.data)}
+                onRowExpand={(e) => onRowExpand(e, props.toast)}
+                onRowCollapse={(e) => onRowCollapse(e, props.toast)}
+                rowExpansionTemplate={rowExpansionTemplate}
+                header={header}
+                responsive="true"
+                dataKey="NUMFACTURA"
+            >
+                <Column expander={allowExpansion} style={{ width: '5rem' }} />
+                <Column field="NUMFACTURA" header="Número de Factura" sortable />
+                <Column field="FECHAFACTURA" header="Fecha de Factura" sortable />
+                <Column field="NOMBRECLIENTE" header="Nombre del Cliente" sortable />
+            </DataTable>
+        </div>
+    );
+}
+
+const onRowExpand = (event, toast) => {
+    toast.current.show({ severity: 'info', summary: 'Entrega Expanded', detail: event.data.NUMFACTURA, life: 3000 });
+};
+
+const onRowCollapse = (event, toast) => {
+    toast.current.show({ severity: 'success', summary: 'Entrega Collapsed', detail: event.data.NUMFACTURA, life: 3000 });
+};
+
+export default EntregasList;

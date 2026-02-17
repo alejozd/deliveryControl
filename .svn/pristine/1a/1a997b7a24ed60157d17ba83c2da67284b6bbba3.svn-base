@@ -1,0 +1,111 @@
+import React, { useState, useEffect } from "react";
+import { Dropdown } from "primereact/dropdown";
+import { Checkbox } from "primereact/checkbox";
+import config from "../Config";
+import axios from "axios";
+
+const ClientCreationComercialData = ({}) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [regimenList, setRegimenList] = useState([]);
+  const [selectedRegimen, setSelectedRegimen] = useState(null);
+  const [formaPagoList, setFormaPagoList] = useState([]);
+  const [selectedFormaPago, setSelectedFormaPago] = useState(null);
+  const [areaIcaChecked, setAreaIcaChecked] = useState(false);
+  const [aplicaReteFteChecked, setAplicaReteFteChecked] = useState(false);
+  const [aplicaBaseretefteChecked, setAplicaBaseretefteChecked] =
+    useState(false);
+  const [aplicaBasereteIVAChecked, setAplicaBasereteIVAChecked] =
+    useState(false);
+  const [aplicaBasereteICAChecked, setAplicaBasereteICAChecked] =
+    useState(false);
+
+  return (
+    <div className="flex flex-column">
+      <div className="labelinput">
+        <label htmlFor="idregimen">Régimen</label>
+        <Dropdown
+          className="inputtext"
+          id="idregimen"
+          value={selectedRegimen}
+          onChange={(e) => setSelectedRegimen(e.value)}
+          options={regimenList}
+          optionLabel="label"
+          placeholder="Seleccionar Régimen"
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idformadepago">Forma de pago</label>
+        <Dropdown
+          className="inputtext"
+          id="idformadepago"
+          value={selectedFormaPago}
+          onChange={(e) => setSelectedFormaPago(e.value)}
+          options={formaPagoList}
+          optionLabel="label"
+          placeholder="Seleccionar Forma de pago"
+        />
+      </div>
+      <div className="checkbox-container">
+        <div className="flex align-items-center">
+          <Checkbox
+            inputId="idareaica"
+            onChange={(e) => setAreaIcaChecked(e.areaIcaChecked)}
+            checked={areaIcaChecked}
+          ></Checkbox>
+          <label htmlFor="idareaica" className="ml-2">
+            Área ICA
+          </label>
+        </div>
+        <div className="flex align-items-center">
+          <Checkbox
+            inputId="idaplicaretefte"
+            onChange={(e) => setAplicaReteFteChecked(e.aplicaReteFteChecked)}
+            checked={aplicaReteFteChecked}
+          ></Checkbox>
+          <label htmlFor="idaplicaretefte" className="ml-2">
+            Aplica retención en la fuente
+          </label>
+        </div>
+        <div className="flex align-items-center">
+          <Checkbox
+            inputId="idaplicabaseretefte"
+            onChange={(e) =>
+              setAplicaBaseretefteChecked(e.aplicaBaseretefteChecked)
+            }
+            checked={aplicaBaseretefteChecked}
+          ></Checkbox>
+          <label htmlFor="idaplicabaseretefte" className="ml-2">
+            Aplica base de retención en la fuente
+          </label>
+        </div>
+        <div className="flex align-items-center">
+          <Checkbox
+            inputId="idaplicabasereteIVA"
+            onChange={(e) =>
+              setAplicaBasereteIVAChecked(e.aplicaBasereteIVAChecked)
+            }
+            checked={aplicaBasereteIVAChecked}
+          ></Checkbox>
+          <label htmlFor="idaplicabasereteIVA" className="ml-2">
+            Aplica base en retención de IVA
+          </label>
+        </div>
+        <div className="flex align-items-center">
+          <Checkbox
+            inputId="idaplicabasereteICA"
+            onChange={(e) =>
+              setAplicaBasereteICAChecked(e.aplicaBasereteICAChecked)
+            }
+            checked={aplicaBasereteICAChecked}
+          ></Checkbox>
+          <label htmlFor="idaplicabasereteICA" className="ml-2">
+            Aplica base en retención de ICA
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ClientCreationComercialData;

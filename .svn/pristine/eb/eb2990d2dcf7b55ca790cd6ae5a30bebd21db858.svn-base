@@ -1,0 +1,148 @@
+import React, { useEffect, useState } from "react";
+import config from "../Config";
+import { Panel } from "primereact/panel";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Toolbar } from "primereact/toolbar";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { classNames } from "primereact/utils";
+import Potradatos from "./Potradatos";
+import axios from "axios";
+
+const Clientes = () => {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClientes`;
+  const [clientes, setClientes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [errorState, setErrorState] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [selectedCliente, setSelectedCliente] = useState(null);
+
+  const handleSearch = async () => {
+    try {
+      setLoading(true);
+      const requestData = {
+        criterio: searchTerm,
+      };
+
+      const response = await axios.put(apiUrl, requestData);
+      console.log(response.data);
+      if (response.data.status === 200) {
+        setClientes(response.data.data);
+      } else {
+        console.error("Error en la respuesta:", response.data.error);
+        setErrorMessage(response.data.error);
+      }
+    } catch (error) {
+      if (error.message === "Network Error") {
+        setErrorState(true);
+        setErrorMessage(
+          "Error de red: No se puede conectar al servidor. Por favor, verifica tu conexión a Internet o inténtalo más tarde."
+        );
+      } else {
+        setErrorState(true);
+        setErrorMessage(`Error al realizar la solicitud: ${error.message}`);
+      }
+      console.error("Error al realizar la solicitud:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAcceptTreatment = (cliente) => {
+    setSelectedCliente(cliente);
+    setDialogVisible(true);
+  };
+
+  useEffect(() => {
+    // Realizar la búsqueda inicial al cargar el componente
+    //handleSearch();
+  }, []);
+
+  const verifiedBodyTemplate = (rowData) => {
+    return (
+      <i
+        className={classNames("pi", {
+          "text-green-500 pi-check-circle": rowData.ACEPTAPOTRADATOS,
+          "text-red-500 pi-times-circle": !rowData.ACEPTAPOTRADATOS,
+        })}
+        onClick={() => {
+          console.log("Selected row:", rowData);
+          if (rowData.ACEPTAPOTRADATOS === 0) {
+            handleAcceptTreatment(rowData);
+          }
+        }}
+        style={{ cursor: "pointer" }}
+      ></i>
+    );
+  };
+
+  return (
+    <div>
+      <h1>Clientes</h1>
+      <Panel header="Listado de Clientes" toggleable>
+        <Toolbar
+          start={
+            <>
+              <InputText
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <Button icon="pi pi-search" onClick={handleSearch} />
+            </>
+          }
+        ></Toolbar>
+      </Panel>
+      <div className="card">
+        <DataTable
+          value={clientes}
+          dataKey="IDCLIENTE"
+          loading={loading}
+          stripedRows
+          emptyMessage="No se han encontrado resultados"
+          paginator
+          rows={10}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          scrollable
+          scrollHeight="flex"
+          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+          onSelectionChange={(e) => setSelectedCliente(e.value)}
+        >
+          <Column hidden field="IDCLIENTE" header="ID Cliente" />
+          <Column field="NOMBRECLIENTE" header="Nombres" />
+          <Column field="IDENTIDAD" header="Identidad" />
+          <Column field="DIRECCION" header="Dirección" />
+          <Column field="TELMOVIL" header="Teléfono" />
+          <Column
+            field="ACEPTAPOTRADATOS"
+            header="Acepta Política de tratamiento de datos"
+            bodyClassName="text-center"
+            style={{
+              width: "10rem",
+              wordWrap: "break-word",
+              textAlign: "center",
+            }}
+            body={verifiedBodyTemplate}
+          />
+        </DataTable>
+      </div>
+      <Potradatos
+        visible={dialogVisible}
+        onHide={() => setDialogVisible(false)}
+        idCliente={selectedCliente ? selectedCliente.IDCLIENTE : null}
+        aceptaTratamiento={
+          selectedCliente ? selectedCliente.ACEPTAPOTRADATOS : null
+        }
+        onAccept={() => {
+          handleSearch(); // Refrescar la grilla después de aceptar el tratamiento
+        }}
+      />
+    </div>
+  );
+};
+
+export default Clientes;

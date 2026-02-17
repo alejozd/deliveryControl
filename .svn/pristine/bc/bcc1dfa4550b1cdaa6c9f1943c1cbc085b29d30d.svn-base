@@ -1,0 +1,57 @@
+// mockData.js
+
+export const segments = [
+  { id: 1, label: "Persona Natural", value: "persona_natural" },
+  { id: 2, label: "Persona Jurídica", value: "persona_juridica" },
+  { id: 3, label: "Constructora", value: "constructora" },
+  { id: 4, label: "Distribuidor/Depósito", value: "distribuidor_deposito" },
+  { id: 5, label: "Maestro/Contratista", value: "maestro_contratista" },
+  { id: 6, label: "Arq/Diseñador", value: "arq_disenador" },
+  { id: 7, label: "Consorcio", value: "consorcio" },
+];
+
+// Datos de ventas por segmento
+export const salesData = [
+  { segment: "persona_natural", amount: 50000, count: 10 },
+  { segment: "persona_juridica", amount: 120000, count: 20 },
+  { segment: "constructora", amount: 200000, count: 15 },
+  { segment: "distribuidor_deposito", amount: 180000, count: 12 },
+  { segment: "maestro_contratista", amount: 75000, count: 8 },
+  { segment: "arq_disenador", amount: 60000, count: 5 },
+  { segment: "consorcio", amount: 90000, count: 9 },
+];
+
+export const clients = [
+  {
+    id: 1,
+    name: "Cliente A",
+    segment: "PERSONA NATURAL",
+    totalSales: 500000, // Total de ventas en pesos colombianos
+    lastSale: "2024-02-10", // Última venta (formato YYYY-MM-DD)
+  },
+  {
+    id: 2,
+    name: "Cliente B",
+    segment: "CONSTRUCTORA",
+    totalSales: 1200000,
+    lastSale: "2024-02-15",
+  },
+  {
+    id: 3,
+    name: "Cliente C",
+    segment: "DISTRIBUIDOR/DEPOSITO",
+    totalSales: 750000,
+    lastSale: "2024-02-12",
+  },
+];
+
+export const productsData = {
+  labels: ["Cemento", "Piso", "Sanitario", "Lavamanos"],
+  datasets: [
+    {
+      data: [40, 30, 20, 10],
+      backgroundColor: ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"],
+      hoverBackgroundColor: ["#64B5F6", "#81C784", "#FFB74D", "#FFA07A"],
+    },
+  ],
+};

@@ -1,0 +1,190 @@
+import React, { useState } from "react";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Dialog } from "primereact/dialog";
+import { Panel } from "primereact/panel";
+
+const Quoter = () => {
+  const [customer, setCustomer] = useState({
+    nombre: "",
+    identificacion: "",
+    correo: "",
+    telefono: "",
+    direccion: "",
+  });
+  const [additionalContact, setAdditionalContact] = useState({
+    nombre: "",
+    telefono: "",
+    correo: "",
+    cargo: "",
+  });
+  const [products, setProducts] = useState([]);
+  const [showDialog, setShowDialog] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // Función para agregar un producto
+  const addProduct = () => {
+    // Aquí puedes agregar la lógica para agregar un producto a la lista de productos
+  };
+
+  // Función para guardar la cotización
+  const saveQuotation = () => {
+    // Aquí puedes agregar la lógica para guardar la cotización
+  };
+
+  return (
+    <div>
+      <div className="grid">
+        {/* Sección para el cliente */}
+        <div className="col-12 md:col-6">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Información del cliente
+            </h3>
+            <div className="field labelinput">
+              <label htmlFor="customernombre">Nombre</label>
+              <InputText
+                className="inputtext"
+                id="customernombre"
+                value={customer.nombre}
+              />
+            </div>
+            <div className="field labelinput">
+              <label htmlFor="customeridentificacion">Identificación</label>
+              <InputText
+                className="inputtext"
+                id="customeridentificacion"
+                value={customer.identificacion}
+              />
+            </div>
+            <div className="field labelinput">
+              <label htmlFor="customercorreo">Correo</label>
+              <InputText
+                className="inputtext"
+                id="customercorreo"
+                value={customer.correo}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Sección para el contacto adicional */}
+        <div className="col-12 md:col-6">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Contacto adicional
+            </h3>
+            <div className="field">
+              <label htmlFor="additionalContactNombre">Nombre</label>
+              <InputText
+                id="additionalContactNombre"
+                value={additionalContact.nombre}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="additionalContactTelefono">Teléfono</label>
+              <InputText
+                id="additionalContactTelefono"
+                value={additionalContact.telefono}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="additionalContactCorreo">Correo</label>
+              <InputText
+                id="additionalContactCorreo"
+                value={additionalContact.correo}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sección para buscar productos */}
+      <div className="p-col-12 p-md-6">
+        <div className="p-inputgroup">
+          <InputText
+            placeholder="Buscar producto..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+          <Button icon="pi pi-search" className="p-button-rounded" />
+        </div>
+      </div>
+
+      {/* Lista de productos */}
+      <div className="p-col-12">
+        <DataTable
+          value={products}
+          selectionMode="single"
+          selection={selectedProduct}
+          onSelectionChange={(e) => setSelectedProduct(e.value)}
+          paginator
+          rows={5}
+          rowsPerPageOptions={[5, 10, 25]}
+          emptyMessage="No hay productos disponibles"
+        >
+          <Column field="nombre" header="Nombre" />
+          <Column field="precio" header="Precio" />
+          <Column field="cantidad" header="Cantidad" />
+        </DataTable>
+      </div>
+
+      {/* Botón para agregar un nuevo producto */}
+      <div className="p-col-12">
+        <Button
+          label="Agregar Producto"
+          onClick={addProduct}
+          className="p-button-raised p-button-primary"
+        />
+      </div>
+
+      {/* Botón para guardar la cotización */}
+      <div className="p-col-12">
+        <Button
+          label="Guardar Cotización"
+          onClick={saveQuotation}
+          className="p-button-raised p-button-success"
+          disabled={!customer}
+        />
+      </div>
+
+      {/* Diálogo de confirmación */}
+      <Dialog
+        visible={showDialog}
+        onHide={() => setShowDialog(false)}
+        header="Confirmación"
+      >
+        <div>¿Estás seguro que deseas guardar la cotización?</div>
+        <div className="p-grid p-justify-center">
+          <Button
+            label="Sí"
+            onClick={saveQuotation}
+            className="p-button-raised p-button-success"
+          />
+          <Button
+            label="No"
+            onClick={() => setShowDialog(false)}
+            className="p-button-raised p-button-danger"
+          />
+        </div>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Quoter;

@@ -1,0 +1,148 @@
+import React, { useState } from "react";
+import axios from "axios";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { Card } from "primereact/card";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import config from "./Config";
+import "./Login.css";
+
+const Login = ({ onLoginSuccess }) => {
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [formValues, setFormValues] = useState({
+    nombre: "",
+    clave: "",
+  });
+  const [formErrors, setFormErrors] = useState({
+    nombre: "",
+    clave: "",
+  });
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/Login`;
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormValues((prevValues) => ({
+      ...prevValues,
+      [name]: value,
+    }));
+    validateField(name, value);
+  };
+
+  const validateField = (name, value) => {
+    let error = "";
+    switch (name) {
+      case "nombre":
+        if (!value) {
+          error = "El nombre de usuario es obligatorio";
+        }
+        break;
+      case "clave":
+        if (!value) {
+          error = "La contraseña es obligatoria";
+        }
+        break;
+      default:
+        break;
+    }
+    setFormErrors((prevErrors) => ({
+      ...prevErrors,
+      [name]: error,
+    }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    try {
+      setLoading(true);
+      const response = await axios.post(apiUrl, formValues);
+      if (response.data.status === 200) {
+        const user = {
+          name: response.data.nombre,
+          codigo: response.data.codigo,
+          modvencli: response.data.modvencli,
+        };
+        onLoginSuccess(user);
+      } else {
+        setErrorMessage(response.data.error);
+      }
+    } catch (error) {
+      const errorMsg =
+        error.message === "Network Error"
+          ? "Error de red: No se puede conectar al servidor."
+          : `Error: ${error.message}`;
+      setErrorMessage(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  return (
+    <div className="login-container">
+      <Card title="Iniciar Sesión" className="login-card">
+        <form onSubmit={handleSubmit}>
+          <div className="input-group">
+            <label htmlFor="nombre">Usuario</label>
+            <InputText
+              id="nombre"
+              name="nombre"
+              type="text"
+              placeholder="Ingresa tu usuario"
+              value={formValues.nombre}
+              onChange={handleInputChange}
+              className={`input-field ${
+                formErrors.nombre ? "input-error" : ""
+              }`}
+            />
+            {formErrors.nombre && (
+              <div className="error-message">{formErrors.nombre}</div>
+            )}
+          </div>
+
+          <div className="input-group password-group">
+            <label htmlFor="clave">Contraseña</label>
+            <div className="password-input-container">
+              <InputText
+                id="clave"
+                name="clave"
+                type={showPassword ? "text" : "password"}
+                placeholder="Ingresa tu contraseña"
+                value={formValues.clave}
+                onChange={handleInputChange}
+                className={`input-field ${
+                  formErrors.clave ? "input-error" : ""
+                }`}
+              />
+              <div
+                className="password-toggle-icon"
+                onClick={togglePasswordVisibility}
+              >
+                <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+              </div>
+            </div>
+            {formErrors.clave && (
+              <div className="error-message">{formErrors.clave}</div>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            label="Iniciar Sesión"
+            icon="pi pi-user"
+            className="login-button"
+            loading={loading}
+          />
+          {errorMessage && <p className="error-message">{errorMessage}</p>}
+        </form>
+      </Card>
+    </div>
+  );
+};
+
+export default React.memo(Login);

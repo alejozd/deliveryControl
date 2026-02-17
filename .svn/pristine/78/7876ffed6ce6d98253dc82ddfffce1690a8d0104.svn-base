@@ -1,0 +1,150 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import SideBar from "./components/sidebar/SideBar";
+import Content from "./components/content/Content";
+import axios from "axios";
+import Login from "./Login";
+import config from "./Config";
+import "./App.css";
+
+function App() {
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+  const [empresa, setEmpresa] = useState({ codigo: "", nombre: "" });
+  const [showMessage, setShowMessage] = useState(false); //Cartera
+  const [estadoAutorizacion, setEstadoAutorizacion] = useState("autorizado"); //Cartera
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/GetNombreEmpresa`;
+  const navigate = useNavigate();
+
+  // Función para manejar el inicio de sesión exitoso
+  const handleLoginSuccess = async (user) => {
+    try {
+      setUser(user);
+      setIsLoggedIn(true);
+      // setShowMessage(true); // Cartera Mostrar el mensaje después de iniciar sesión
+      const response = await axios.get(apiUrl);
+      if (response.data.status === 200) {
+        const { codigo, nombre } = response.data;
+        // console.log("codigo:", codigo, "nombre:", nombre);
+        setEmpresa({ codigo, nombre });
+      } else {
+        console.error("Error al obtener la información de la empresa");
+      }
+    } catch (error) {
+      console.error(
+        "Error al obtener la información de la empresa:",
+        error.message
+      );
+      setEstadoAutorizacion("autorizado");
+    }
+  };
+
+  //Cartera
+  const consultarAutorizacion = async (id) => {
+    try {
+      const response = await axios.get(
+        `https://zetamini.ddns.net/api/autorizacion/estado/${id}`
+      );
+      if (response.data.estado) {
+        setEstadoAutorizacion(response.data.estado); // Almacenamos el estado de autorización
+        console.log("estadoAutorizacion:", response.data.estado);
+      } else {
+        console.error("No se obtuvo el estado de autorización");
+      }
+    } catch (error) {
+      console.error(
+        "Error al consultar el estado de autorización:",
+        error.message
+      );
+    }
+  };
+
+  useEffect(() => {
+    // console.log("empresa:", empresa);
+    if (isLoggedIn) {
+      // Por ejemplo, puedes consultar el estado de autorización para el ID de "metroceramicas"
+      consultarAutorizacion(1); // Aquí pasas el ID que deseas consultar
+    }
+  }, [isLoggedIn]);
+
+  // Nuevo useEffect para controlar la visibilidad del mensaje
+  useEffect(() => {
+    // Mostrar overlay solo si es "no_autorizado" o "bloqueado"
+    setShowMessage(
+      estadoAutorizacion === "no_autorizado" ||
+        estadoAutorizacion === "bloqueado"
+    );
+  }, [estadoAutorizacion]);
+
+  //Cartera
+  const MessageOverlay = ({ message, onClose }) => (
+    <div className="overlay">
+      <div className="message-box">
+        <p>{message}</p>
+        <button onClick={onClose}>Cerrar</button>
+      </div>
+    </div>
+  );
+
+  const handleLogout = () => {
+    // Realiza las acciones necesarias para cerrar sesión, como limpiar el estado, redirigir, etc.
+    setUser(null);
+    setIsLoggedIn(false);
+    navigate("/");
+  };
+
+  // Modificar el mensaje que se muestra en función del estado de autorización
+  // const mensajeCartera =
+  //   estadoAutorizacion === "no_autorizado"
+  //     ? "Estimado usuario, puede acceder a las opciones del sistema advirtiendo que hay un tema pendiente de cartera. Por favor, comuníquese con el departamento de sistemas para obtener más información."
+  //     : "Estimado usuario, no es posible acceder a las opciones del sistema debido a un problema de cartera. Por favor, comuníquese con el departamento de sistemas para obtener más información.";
+
+  const mensajes = {
+    no_autorizado:
+      "Estimado usuario, puede acceder a las opciones del sistema advirtiendo que hay un tema pendiente de cartera. Por favor, comuníquese con el departamento de sistemas para obtener más información.",
+    bloqueado:
+      "Estimado usuario, no es posible acceder a las opciones del sistema debido a un problema de cartera. Por favor, comuníquese con el departamento de sistemas para obtener más información.",
+    autorizado: null,
+  };
+
+  const mensajeCartera = mensajes[estadoAutorizacion];
+
+  return (
+    // console.log("isLoggedIn:", isLoggedIn),
+    <div>
+      {isLoggedIn ? ( // Mostrar la aplicación principal si el usuario ha iniciado sesión
+        <>
+          <div className="App">
+            <SideBar
+              sidebarVisible={sidebarVisible}
+              user={user}
+              onLogout={() => handleLogout()}
+            />
+            <Content
+              setSidebarVisible={setSidebarVisible}
+              user={user}
+              empresa={empresa}
+            />
+          </div>
+          {/* Mensaje de cartera */}
+          {showMessage && (
+            <MessageOverlay
+              message={mensajeCartera}
+              onClose={
+                estadoAutorizacion === "no_autorizado"
+                  ? () => setShowMessage(false)
+                  : null
+              } // Solo cierra si está autorizado
+            />
+          )}
+        </>
+      ) : (
+        // Mostrar el formulario de inicio de sesión si el usuario no ha iniciado sesión
+        <Login onLoginSuccess={handleLoginSuccess} />
+      )}
+    </div>
+  );
+}
+
+export default App;

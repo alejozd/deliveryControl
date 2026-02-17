@@ -1,0 +1,50 @@
+import React, { useState, useEffect } from 'react';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import axios from 'axios';
+
+const DetalleEntrega = ({ idEntrega, onHide }) => {
+    const [detalleEntrega, setDetalleEntrega] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const response = await axios.get(`http://localhost:8080/Datasnap/rest/TServerMethods1/DetalleEntregas?idEntrega=${idEntrega}`);
+
+                if (response.data.status === 200) {
+                    setDetalleEntrega(response.data.data);
+                } else {
+                    console.error('Error en la respuesta:', response.data.error);
+                }
+            } catch (error) {
+                console.error('Error al realizar la solicitud:', error.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [idEntrega]);
+
+    return (
+        <div>
+            <h2>Detalle de Entrega</h2>
+            <DataTable
+                value={detalleEntrega}
+                showGridlines
+                stripedRows
+                className="p-datatable-sm"
+            >
+                <Column field="nombreProducto" header="Nombre Producto" />
+                <Column field="cantidad" header="Cantidad" />
+                <Column field="precio" header="Precio" />
+                {/* Agrega más columnas según la estructura de tu detalle de entrega */}
+            </DataTable>
+            <button onClick={onHide}>Cerrar</button>
+        </div>
+    );
+};
+
+export default DetalleEntrega;

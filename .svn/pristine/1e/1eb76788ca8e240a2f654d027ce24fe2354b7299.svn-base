@@ -1,0 +1,200 @@
+import React, { useState } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Panel } from "primereact/panel";
+import { Toolbar } from "primereact/toolbar";
+import { Calendar } from "primereact/calendar";
+import config from "../../Config";
+import axios from "axios";
+import Quoter from "./Quoter";
+
+const QuoterList = () => {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaEntregas`;
+  const [selectedQuotation, setSelectedQuotation] = useState(null);
+  const [showDialog, setShowDialog] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [quotations, setQuotations] = useState([]); // Aquí debes tener la lista de cotizaciones
+  const [fechaIni, setFechaIni] = useState(null);
+  const [fechaFin, setFechaFin] = useState(null);
+  const [dates, setDates] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [errorState, setErrorState] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [quoters, setQuoters] = useState([]);
+
+  // Función para abrir el diálogo para crear una nueva cotización
+  const openCreateDialog = () => {
+    // Aquí puedes realizar las acciones necesarias para crear una nueva cotización
+    setShowDialog(true);
+  };
+
+  // Función para filtrar las cotizaciones según el texto de búsqueda
+  const filteredQuotations = quotations.filter((quotation) => {
+    return (
+      quotation.numero.includes(searchText) ||
+      quotation.identificacion.includes(searchText) ||
+      quotation.numeroPedido.includes(searchText) ||
+      quotation.fecha.includes(searchText)
+    );
+  });
+
+  const handleSearch = async () => {
+    try {
+      setLoading(true);
+      const requestData = {
+        fechaIni: fechaIni.toLocaleDateString("es-CO", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+        fechaFin: fechaFin.toLocaleDateString("es-CO", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+      };
+      // console.log('JSON enviado al backend:', requestData);
+      // const response = await axios.put('http://192.168.20.38:8080/Datasnap/rest/TServerMethods1/ListaEntregas', requestData);
+      const response = await axios.put(apiUrl, requestData);
+
+      if (response.data.status === 200) {
+        setQuoters(response.data.data);
+        console.log("Entregas:", response.data.data);
+      } else {
+        console.error("Error en la respuesta:", response.data.error);
+        setErrorMessage(response.data.error);
+      }
+    } catch (error) {
+      if (error.message === "Network Error") {
+        setErrorState(true);
+        setErrorMessage(
+          "Error de red: No se puede conectar al servidor. Por favor, verifica tu conexión a Internet o inténtalo más tarde."
+        );
+      } else {
+        setErrorState(true);
+        setErrorMessage(`Error al realizar la solicitud: ${error.message}`);
+      }
+      console.error("Error al realizar la solicitud:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDateChange = (e) => {
+    setDates(e.value);
+
+    if (e.value && e.value.length > 0) {
+      setFechaIni(e.value[0]);
+      if (e.value.length === 2) {
+        setFechaFin(e.value[1]);
+      } else {
+        setFechaFin(e.value[0]);
+      }
+    } else {
+      setFechaIni(null);
+      setFechaFin(null);
+    }
+  };
+
+  return (
+    <div className="p-grid">
+      {/* Barra de búsqueda */}
+      <div>
+        <Panel header="Cotizaciones" toggleable>
+          <Toolbar
+            start={
+              <span className="p-float-label">
+                <Calendar
+                  style={{ marginTop: "10px" }}
+                  value={dates}
+                  onChange={handleDateChange}
+                  // locale="es"
+                  selectionMode="range"
+                  showIcon
+                  readOnlyInput
+                  dateFormat="dd/mm/yy"
+                  hideOnRangeSelection
+                  placeholder="Rango de fechas"
+                  showButtonBar
+                />
+                <label htmlFor="fechaCotizaciones">Rango de fechas</label>
+              </span>
+            }
+            end={
+              <>
+                <span className="p-float-label">
+                  <InputText
+                    style={{ width: "320px" }}
+                    id="searchCriteria"
+                    // placeholder="Cotización, cédula/nit o nombre cliente"
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    className="mobile-input"
+                  />
+                  <label htmlFor="searchCriteria">
+                    Cotización, cédula/nit o nombre cliente
+                  </label>
+                  <Button
+                    label="Buscar"
+                    icon="pi pi-search"
+                    className="p-mt-2"
+                    loading={loading}
+                    onClick={handleSearch}
+                  />
+                </span>
+              </>
+            }
+          />
+        </Panel>
+        <div className="p-col-12" style={{ marginTop: "5px" }}>
+          <Panel>
+            <Toolbar
+              end={
+                <Button
+                  label="Nueva Cotización"
+                  onClick={openCreateDialog}
+                  className="p-button-raised p-button-primary"
+                  style={{ marginTop: "-10px", marginBottom: "-10px" }}
+                />
+              }
+            />
+          </Panel>
+        </div>
+      </div>
+
+      {/* Grilla de cotizaciones */}
+      <div className="p-col-12">
+        <DataTable
+          value={filteredQuotations}
+          selectionMode="single"
+          selection={selectedQuotation}
+          onSelectionChange={(e) => setSelectedQuotation(e.value)}
+          paginator
+          rows={10}
+          rowsPerPageOptions={[5, 10, 25]}
+          emptyMessage="No hay cotizaciones disponibles"
+        >
+          <Column field="numero" header="Número de Pedido" sortable />
+          <Column field="identificacion" header="Identificación" sortable />
+          <Column field="numeroPedido" header="Nombre del Cliente" sortable />
+          <Column field="fecha" header="Fecha" sortable />
+        </DataTable>
+      </div>
+
+      {/* Diálogo para crear una nueva cotización */}
+      <Dialog
+        visible={showDialog}
+        onHide={() => setShowDialog(false)}
+        header="Crear Nueva Cotización"
+      >
+        {/* Aquí puedes agregar los campos para crear una nueva cotización */}
+        <Quoter />
+      </Dialog>
+    </div>
+  );
+};
+
+export default QuoterList;

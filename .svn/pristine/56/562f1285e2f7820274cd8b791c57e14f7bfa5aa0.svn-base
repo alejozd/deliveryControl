@@ -1,0 +1,81 @@
+import React, { useState } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+
+const Quoter = () => {
+  const [selectedQuotation, setSelectedQuotation] = useState(null);
+  const [showDialog, setShowDialog] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [quotations, setQuotations] = useState([]); // Aquí debes tener la lista de cotizaciones
+
+  // Función para abrir el diálogo para crear una nueva cotización
+  const openCreateDialog = () => {
+    // Aquí puedes realizar las acciones necesarias para crear una nueva cotización
+    setShowDialog(true);
+  };
+
+  // Función para filtrar las cotizaciones según el texto de búsqueda
+  const filteredQuotations = quotations.filter((quotation) => {
+    return (
+      quotation.numero.includes(searchText) ||
+      quotation.identificacion.includes(searchText) ||
+      quotation.numeroPedido.includes(searchText) ||
+      quotation.fecha.includes(searchText)
+    );
+  });
+
+  return (
+    <div className="p-grid">
+      {/* Barra de búsqueda */}
+      <div className="p-col-12">
+        <InputText
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder="Buscar cotización..."
+        />
+      </div>
+
+      {/* Botón para crear una nueva cotización */}
+      <div className="p-col-12">
+        <Button
+          label="Nueva Cotización"
+          onClick={openCreateDialog}
+          className="p-button-raised p-button-primary"
+        />
+      </div>
+
+      {/* Grilla de cotizaciones */}
+      <div className="p-col-12">
+        <DataTable
+          value={filteredQuotations}
+          selectionMode="single"
+          selection={selectedQuotation}
+          onSelectionChange={(e) => setSelectedQuotation(e.value)}
+          paginator
+          rows={10}
+          rowsPerPageOptions={[5, 10, 25]}
+          emptyMessage="No hay cotizaciones disponibles"
+        >
+          <Column field="numero" header="Número" sortable />
+          <Column field="identificacion" header="Identificación" sortable />
+          <Column field="numeroPedido" header="Número de Pedido" sortable />
+          <Column field="fecha" header="Fecha" sortable />
+        </DataTable>
+      </div>
+
+      {/* Diálogo para crear una nueva cotización */}
+      <Dialog
+        visible={showDialog}
+        onHide={() => setShowDialog(false)}
+        header="Crear Nueva Cotización"
+      >
+        {/* Aquí puedes agregar los campos para crear una nueva cotización */}
+      </Dialog>
+    </div>
+  );
+};
+
+export default Quoter;

@@ -1,0 +1,870 @@
+import React, { useState, useEffect } from "react";
+import { Dialog } from "primereact/dialog";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { Checkbox } from "primereact/checkbox";
+import { Dropdown } from "primereact/dropdown";
+import { TabView, TabPanel } from "primereact/tabview";
+import config from "../Config";
+import axios from "axios";
+import Potradatos from "./Potradatos";
+import ClientCreationAddiData from "./ClientCreationAddiData";
+import ClientCreationComercialData from "./ClientCreationComercialData";
+import ClientCreationFELData from "./ClientCreationFELData";
+
+const ClientCreation = ({
+  visible,
+  onHide,
+  onCustomerCreated,
+  selectedCustomer,
+}) => {
+  const apiUrlCrearCliente = `${config.apiUrl}/Datasnap/rest/TServerMethods1/NewCliente`;
+  const apiUrlVendedores = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaVendedores`;
+  const apiUrlSegmentacion = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaSegmentacion`;
+  const apiUrlClaseIdentidad = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClaseIdentidad`;
+
+  const apiUrlRegimenes = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaRegimenes`;
+  const apiUrlFormaPago = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaFormadePago`;
+  const apiUrlListaPrecios = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaPrecios`;
+
+  const apiUrlRegimenFiscal = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaRegimenFiscal`;
+  const apiUrlResponsabilidadTributaria = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaRespTributaria`;
+  const apiUrlCarteras = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaCarteras`;
+  const apiUrlNaturalezas = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaNaturalezas`;
+  const apiUrlActividades = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaActividades`;
+  const apiUrlCiudades = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaCiudades`;
+
+  const [nombrecliente, setNombreCliente] = useState("");
+  const [identidad, setIdentidad] = useState("");
+  const [iddigverif, setIdDigVerif] = useState("");
+  const [telefonoFijo, setTelefonoFijo] = useState("");
+  const [telmovil, setTelmovil] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [email, setEmail] = useState("");
+  const [aceptapotradatos, setAceptapotradatos] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [vendedores, setVendedores] = useState([]);
+  const [selectedVendedor, setSelectedVendedor] = useState(null);
+  const [segmentList, setSegmentList] = useState([]);
+  const [selectedSegment, setSelectedSegment] = useState(null);
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [claseidentidadList, setClaseidentidadList] = useState([]);
+  const [selectedClaseidentidad, setSelectedClaseidentidad] = useState(null);
+
+  const [carteraList, setCarteraList] = useState([]);
+  const [naturalezaList, setNaturalezaList] = useState([]);
+  const [actividadList, setActividadList] = useState([]);
+  const [ciudadList, setCiudadList] = useState([]);
+  const [selectedCartera, setSelectedCartera] = useState(null);
+  const [selectedNaturaleza, setSelectedNaturaleza] = useState(null);
+  const [selectedActividad, setSelectedActividad] = useState(null);
+  const [selectedCiudad, setSelectedCiudad] = useState(null);
+
+  const [regimenList, setRegimenList] = useState([]);
+  const [formaPagoList, setFormaPagoList] = useState([]);
+  const [listaPreciosList, setListaPreciosList] = useState([]);
+  const [selectedRegimen, setSelectedRegimen] = useState(null);
+  const [selectedFormaPago, setSelectedFormaPago] = useState(null);
+  const [selectedListaPrecios, setSelectedListaPrecios] = useState(null);
+  const [selectedAreaIca, setSelectedAreaIca] = useState(false);
+  const [selectedaplicaReteFte, setSelectedAplicaReteFte] = useState(false);
+  const [selectedaplicaBaseretefte, setSelectedAplicaBaseretefte] =
+    useState(false);
+  const [selectedaplicaBasereteIVA, setSelectedAplicaBasereteIVA] =
+    useState(false);
+  const [selectedaplicaBasereteICA, setSelectedAplicaBasereteICA] =
+    useState(false);
+
+  const [regimenFiscalList, setRegimenFiscalList] = useState([]);
+  const [responsabilidadTributariaList, setResponsabilidadTributariaList] =
+    useState([]);
+  const [selectedRegimenFiscal, setSelectedRegimenFiscal] = useState(null);
+  const [
+    selectedResponsabilidadTributaria,
+    setSelectedResponsabilidadTributaria,
+  ] = useState(null);
+
+  const resetForm = () => {
+    setNombreCliente("");
+    setIdentidad("");
+    setTelmovil("");
+    setDireccion("");
+    setEmail("");
+    setAceptapotradatos(false);
+    setSelectedVendedor(null);
+    setSelectedSegment(null);
+    setSelectedClaseidentidad(null);
+  };
+
+  // Efecto para cargar los datos una sola vez
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [regimenResponse, responsabilidadResponse] = await Promise.all([
+          axios.get(apiUrlRegimenFiscal),
+          axios.get(apiUrlResponsabilidadTributaria),
+        ]);
+
+        const formattedRegimenFiscal = (regimenResponse.data.result || []).map(
+          (regimen) => ({
+            label: regimen.nombreregfiscal,
+            value: regimen.codigoregfiscal,
+          })
+        );
+
+        const formattedResponsabilidadTributaria = (
+          responsabilidadResponse.data.result || []
+        ).map((resp) => ({
+          label: resp.nombreresponsabilidad,
+          value: resp.codigoresponsabilidad,
+        }));
+
+        setRegimenFiscalList(formattedRegimenFiscal);
+        setResponsabilidadTributariaList(formattedResponsabilidadTributaria);
+
+        // Opcional: Seleccionar el primer elemento como predeterminado
+        if (formattedRegimenFiscal.length > 0) {
+          setSelectedRegimenFiscal(formattedRegimenFiscal[0].value);
+        }
+
+        if (formattedResponsabilidadTributaria.length > 0) {
+          setSelectedResponsabilidadTributaria(
+            formattedResponsabilidadTributaria[3].value
+          );
+        }
+      } catch (error) {
+        console.error("Error al cargar los datos:", error);
+      }
+    };
+
+    fetchData();
+  }, [apiUrlRegimenFiscal, apiUrlResponsabilidadTributaria]);
+
+  // Efecto para cargar los regímenes y formas de pago
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [regimenResponse, formaPagoResponse, listapreciosResponse] =
+          await Promise.all([
+            axios.get(apiUrlRegimenes),
+            axios.get(apiUrlFormaPago),
+            axios.get(apiUrlListaPrecios),
+          ]);
+
+        const formattedRegimenes = regimenResponse.data.result.map(
+          (regimen) => ({
+            label: regimen.nombreregimen,
+            value: regimen.codigoregimen,
+          })
+        );
+
+        const formattedFormaPago = formaPagoResponse.data.result.map(
+          (formaPago) => ({
+            label: formaPago.nombrefpago,
+            value: formaPago.codigofpago,
+          })
+        );
+
+        const formattedListaPrecios = listapreciosResponse.data.result.map(
+          (listaprecios) => ({
+            label: listaprecios.nombrelistaprecios,
+            value: listaprecios.codigolistaprecios,
+          })
+        );
+
+        setRegimenList(formattedRegimenes);
+        setFormaPagoList(formattedFormaPago);
+        setListaPreciosList(formattedListaPrecios);
+      } catch (error) {
+        console.error("Error al cargar los datos:", error);
+      }
+    };
+
+    fetchData();
+  }, [apiUrlRegimenes, apiUrlFormaPago, apiUrlListaPrecios]);
+
+  // useEffect para cargar datos iniciales
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const responseCarteras = await axios.get(apiUrlCarteras);
+        const responseNaturalezas = await axios.get(apiUrlNaturalezas);
+        const responseActividades = await axios.get(apiUrlActividades);
+        const responseCiudades = await axios.get(apiUrlCiudades);
+
+        const dataCartera = responseCarteras.data.result;
+        const formattedCarteras = dataCartera.map((cartera) => ({
+          label: cartera.nombrecartera,
+          value: cartera.codigocartera,
+        }));
+        setCarteraList(formattedCarteras);
+
+        const dataNaturalezas = responseNaturalezas.data.result;
+        // Formatear los datos para el Dropdown
+        const formattedNaturalezas = dataNaturalezas.map((naturaleza) => ({
+          label: naturaleza.nombrenaturaleza,
+          value: naturaleza.codigonaturaleza,
+        }));
+        setNaturalezaList(formattedNaturalezas);
+
+        const dataActividades = responseActividades.data.result;
+
+        // Formatear los datos para el Dropdown
+        const formattedActividades = dataActividades.map((actividad) => ({
+          label: actividad.nombreactividadfull,
+          value: actividad.codigoactividad,
+        }));
+        setActividadList(formattedActividades);
+
+        const dataciudades = responseCiudades.data.result;
+
+        const formattedCiudades = dataciudades.map((ciudad) => ({
+          label: ciudad.nombreciudad,
+          value: ciudad.codigociudad,
+        }));
+
+        setCiudadList(formattedCiudades);
+        // Busca la ciudad con el código 11001
+        const defaultCity = formattedCiudades.find(
+          (ciudad) => ciudad.value === "11001"
+        );
+
+        // Si existe, selecciona esa ciudad, de lo contrario selecciona la primera
+        if (defaultCity) {
+          setSelectedCiudad(defaultCity.value);
+        } else if (formattedCiudades.length > 0) {
+          setSelectedCiudad(formattedCiudades[0].value);
+        }
+
+        // setCiudadList(formattedCiudades);
+      } catch (error) {
+        setError("Error al cargar los datos");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    const fetchVendedores = async () => {
+      try {
+        const response = await axios.get(apiUrlVendedores);
+        if (response.status === 200) {
+          setVendedores(response.data.result);
+        } else {
+          console.error("Error fetching vendedores:", response.data.error);
+        }
+      } catch (error) {
+        console.error("Error fetching vendedores:", error);
+      }
+    };
+
+    const fetchSegments = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(apiUrlSegmentacion);
+        if (response.status === 200) {
+          const formattedSegments = response.data.result.map((segment) => ({
+            label: segment.nombresegmento,
+            value: segment.idsegmento,
+          }));
+          setSegmentList(formattedSegments);
+        } else {
+          console.error("Error fetching segments:", response.data.error);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching segments:", error);
+        setLoading(false);
+      }
+    };
+
+    const fetchClaseIdentidad = async () => {
+      // Nuevo efecto para ClaseIdentidad
+      try {
+        setLoading(true);
+        const response = await axios.get(apiUrlClaseIdentidad);
+        if (response.status === 200) {
+          const formattedClaseIdentidad = response.data.result.map((clase) => ({
+            label: clase.nombreclaseidentidad,
+            value: clase.codigoclaseidentidad,
+          }));
+          setClaseidentidadList(formattedClaseIdentidad);
+        } else {
+          console.error("Error fetching clase identidad:", response.data.error);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching clase identidad:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchVendedores();
+    fetchSegments();
+    fetchClaseIdentidad();
+  }, [apiUrlSegmentacion, apiUrlVendedores, apiUrlClaseIdentidad]);
+
+  useEffect(() => {
+    if (selectedCustomer) {
+      setNombreCliente(selectedCustomer.nombrecliente);
+      setIdentidad(selectedCustomer.identidad);
+      setIdDigVerif(selectedCustomer.iddigverif);
+      setTelefonoFijo(selectedCustomer.telefonoFijo);
+      setTelmovil(selectedCustomer.telmovil);
+      setDireccion(selectedCustomer.direccion);
+      setEmail(selectedCustomer.email);
+      setAceptapotradatos(selectedCustomer.aceptapotradatos === 1);
+      setSelectedAreaIca(selectedCustomer.selectedareaIca === "S");
+      setSelectedAplicaReteFte(selectedCustomer.selectedaplicaReteFte === "S");
+      setSelectedAplicaBaseretefte(
+        selectedCustomer.selectedaplicaBaseretefte === "S"
+      );
+      setSelectedAplicaBasereteIVA(
+        selectedCustomer.selectedaplicaBasereteIVA === "S"
+      );
+      setSelectedAplicaBasereteICA(
+        selectedCustomer.selectedaplicaBasereteICA === "S"
+      );
+
+      // console.log("selectedCustomer", selectedCustomer);
+      if (claseidentidadList.length > 0) {
+        const claseIdentidadSeleccionada = claseidentidadList.find(
+          (clase) => clase.value === selectedCustomer.codigoclaseidentidad
+        );
+
+        // Verificación antes de acceder a claseIdentidadSeleccionada.value
+        if (claseIdentidadSeleccionada) {
+          setSelectedClaseidentidad(claseIdentidadSeleccionada.value);
+        } else {
+          // Manejo de caso cuando no se encuentra la clase de identidad
+          setSelectedClaseidentidad(null); // o cualquier valor por defecto apropiado
+        }
+      }
+
+      // Espera hasta que los datos de vendedores y segmentos estén disponibles
+      if (vendedores.length > 0) {
+        const vendedorSeleccionado = vendedores.find(
+          (vendedor) => vendedor.identidadve === selectedCustomer.identidadve
+        );
+
+        // Verificación antes de asignar el vendedor seleccionado
+        if (vendedorSeleccionado) {
+          setSelectedVendedor(vendedorSeleccionado);
+        } else {
+          setSelectedVendedor(null); // o cualquier valor por defecto apropiado
+        }
+      }
+
+      if (segmentList.length > 0) {
+        const segmentoSeleccionado = segmentList.find(
+          (segment) => segment.value === selectedCustomer.idsegmento
+        );
+        if (segmentoSeleccionado) {
+          setSelectedSegment(segmentoSeleccionado.value);
+        } else {
+          setSelectedSegment(null); // o cualquier valor por defecto apropiado
+        }
+      }
+
+      if (carteraList.length > 0) {
+        const carteraSeleccionada = carteraList.find(
+          (cartera) => cartera.value === String(selectedCustomer.codigocartera)
+        );
+        if (carteraSeleccionada) {
+          setSelectedCartera(carteraSeleccionada.value);
+        } else {
+          setSelectedCartera(null); // o cualquier valor por defecto apropiado
+        }
+      }
+      if (naturalezaList.length > 0) {
+        const naturalezaSeleccionada = naturalezaList.find(
+          (naturaleza) =>
+            naturaleza.value === String(selectedCustomer.codigonaturaleza)
+        );
+        if (naturalezaSeleccionada) {
+          setSelectedNaturaleza(naturalezaSeleccionada.value);
+        } else {
+          setSelectedNaturaleza(null); // o cualquier valor por defecto apropiado
+        }
+      }
+      if (actividadList.length > 0) {
+        const actividadSeleccionada = actividadList.find(
+          (actividad) =>
+            actividad.value === String(selectedCustomer.codigoactividad)
+        );
+        if (actividadSeleccionada) {
+          setSelectedActividad(actividadSeleccionada.value);
+        } else {
+          setSelectedActividad(null); // o cualquier valor por defecto apropiado
+        }
+      }
+      if (ciudadList.length > 0) {
+        const ciudadSeleccionada = ciudadList.find(
+          (ciudad) => ciudad.value === selectedCustomer.codigociudad
+        );
+        if (ciudadSeleccionada) {
+          setSelectedCiudad(ciudadSeleccionada.value);
+        } else {
+          setSelectedCiudad(null); // o cualquier valor por defecto apropiado
+        }
+      }
+
+      //Comerciales
+      if (regimenList.length > 0) {
+        const regimenSeleccionado = regimenList.find(
+          (regimen) => regimen.value === selectedCustomer.codigoregimen
+        );
+        if (regimenSeleccionado) {
+          setSelectedRegimen(regimenSeleccionado.value);
+        } else {
+          setSelectedRegimen(null); // o cualquier valor por defecto apropiado
+        }
+      }
+      if (formaPagoList.length > 0) {
+        const formaPagoSeleccionada = formaPagoList.find(
+          (formaPago) =>
+            formaPago.value === String(selectedCustomer.codigofpago)
+        );
+        if (formaPagoSeleccionada) {
+          setSelectedFormaPago(formaPagoSeleccionada.value);
+        } else {
+          setSelectedFormaPago(null); // o cualquier valor por defecto apropiado
+        }
+      }
+      if (listaPreciosList.length > 0) {
+        const listaPreciosSeleccionada = listaPreciosList.find(
+          (listaPrecios) =>
+            listaPrecios.value === String(selectedCustomer.codigolistaprecios)
+        );
+        if (listaPreciosSeleccionada) {
+          setSelectedListaPrecios(listaPreciosSeleccionada.value);
+        } else {
+          setSelectedListaPrecios(null); // o cualquier valor por defecto apropiado
+        }
+      }
+    } else {
+      resetForm();
+    }
+  }, [
+    selectedCustomer,
+    vendedores,
+    segmentList,
+    claseidentidadList,
+    carteraList,
+    naturalezaList,
+    actividadList,
+    ciudadList,
+    regimenList,
+    formaPagoList,
+    listaPreciosList,
+  ]);
+
+  useEffect(() => {
+    if (
+      nombrecliente.trim() !== "" &&
+      identidad.trim() !== "" &&
+      iddigverif.trim() !== "" &&
+      telefonoFijo.trim() !== "" &&
+      telmovil.trim() !== "" &&
+      direccion.trim() !== "" &&
+      email.trim() !== "" &&
+      aceptapotradatos &&
+      selectedVendedor !== null &&
+      selectedSegment !== null &&
+      selectedClaseidentidad !== null
+    ) {
+      setIsFormValid(true);
+    } else {
+      setIsFormValid(false);
+    }
+  }, [
+    nombrecliente,
+    identidad,
+    iddigverif,
+    telefonoFijo,
+    telmovil,
+    direccion,
+    email,
+    aceptapotradatos,
+    selectedVendedor,
+    selectedSegment,
+    selectedClaseidentidad,
+  ]);
+
+  const handleCreate = async () => {
+    setLoading(true);
+    // console.log("selectedSegment", selectedSegment);
+
+    // Datos adicionales
+    const adicionales = {
+      cartera: selectedCartera, // Asegúrate de definir estos valores en tu estado o como variables
+      naturaleza: selectedNaturaleza,
+      actividad: selectedActividad,
+      ciudad: selectedCiudad,
+    };
+
+    // Datos comerciales
+    const comerciales = {
+      regimen: selectedRegimen,
+      formaPago: selectedFormaPago,
+      areaIca: selectedAreaIca ? 1 : 0,
+      aplicaReteFte: selectedaplicaReteFte ? 1 : 0,
+      aplicaBaseretefte: selectedaplicaBaseretefte ? 1 : 0,
+      aplicaBasereteIVA: selectedaplicaBasereteIVA ? 1 : 0,
+      aplicaBasereteICA: selectedaplicaBasereteICA ? 1 : 0,
+    };
+
+    // Datos FEL
+    const fel = {
+      regimenfiscal: selectedRegimenFiscal,
+      responsabilidadtributaria: selectedResponsabilidadTributaria,
+    };
+
+    const newCustomer = {
+      esnuevo: selectedCustomer ? 0 : 1,
+      idcliente: selectedCustomer ? selectedCustomer.idcliente : null,
+      nombrecliente: nombrecliente,
+      idclaseidentidad: selectedClaseidentidad,
+      identidad: identidad,
+      digitoverif: iddigverif,
+      telefonoFijo: telefonoFijo,
+      telmovil: telmovil,
+      direccion: direccion,
+      email: email,
+      aceptapotradatos: aceptapotradatos ? 1 : 0,
+      identidadve: selectedVendedor.identidadve,
+      idsegmento: selectedSegment,
+      adicionales: adicionales,
+      comerciales: comerciales,
+      fel: fel,
+    };
+
+    console.log("datos Cliente:", newCustomer);
+    try {
+      const response = await axios.put(apiUrlCrearCliente, newCustomer);
+      if (response.data.status === 200) {
+        onCustomerCreated(newCustomer);
+        onHide();
+      } else {
+        setError(response.data.error || "Error en la respuesta");
+        console.error(response.data.error);
+      }
+    } catch (error) {
+      setError("Error al realizar la solicitud: " + error.message);
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckboxChange = (e) => {
+    console.log("aceptapotradatos", e.checked);
+    if (!e.checked) {
+      setAceptapotradatos(false);
+    } else {
+      setDialogVisible(true);
+    }
+  };
+
+  const handleAcceptPolicy = () => {
+    setAceptapotradatos(true);
+    setDialogVisible(false);
+  };
+
+  const handleRejectPolicy = () => {
+    setAceptapotradatos(false);
+    setDialogVisible(false);
+  };
+
+  const footerContent = (
+    <div style={{ marginTop: "1em" }}>
+      <Button
+        label="Crear"
+        severity="success"
+        onClick={handleCreate}
+        autoFocus
+        size="small"
+        icon="pi pi-check"
+        disabled={!isFormValid || loading}
+      />
+      <Button
+        label="Cancelar"
+        severity="danger"
+        onClick={onHide}
+        text
+        raised
+        size="small"
+        icon="pi pi-times"
+        disabled={loading}
+      />
+    </div>
+  );
+
+  return (
+    <>
+      <Dialog
+        visible={visible}
+        style={{ width: "50vw" }}
+        onHide={onHide}
+        header={selectedCustomer ? "Editar Cliente" : "Crear Nuevo Cliente"}
+        modal
+        className="p-fluid"
+        footer={footerContent}
+      >
+        <div
+          className="card"
+          style={{
+            paddingtop: "10px",
+            paddingLeft: "1px",
+            paddingRight: "1px",
+            paddingBottom: "1px",
+          }}
+        >
+          <div className="flex mb-2 gap-2 justify-content-end">
+            <Button
+              onClick={() => setActiveIndex(0)}
+              className="w-2rem h-2rem p-0"
+              rounded
+              outlined={activeIndex !== 0}
+              label="1"
+            />
+            <Button
+              onClick={() => setActiveIndex(1)}
+              className="w-2rem h-2rem p-0"
+              rounded
+              outlined={activeIndex !== 1}
+              label="2"
+            />
+            <Button
+              onClick={() => setActiveIndex(2)}
+              className="w-2rem h-2rem p-0"
+              rounded
+              outlined={activeIndex !== 2}
+              label="3"
+            />
+            <Button
+              onClick={() => setActiveIndex(3)}
+              className="w-2rem h-2rem p-0"
+              rounded
+              outlined={activeIndex !== 3}
+              label="4"
+            />
+          </div>
+          <TabView
+            activeIndex={activeIndex}
+            onTabChange={(e) => setActiveIndex(e.index)}
+          >
+            <TabPanel header="Basicos">
+              <div className="card">
+                {error && <p style={{ color: "red" }}>{error}</p>}
+                <div className="labelinput">
+                  <label htmlFor="nombreCliente">Nombre del Cliente</label>
+                  <InputText
+                    className="inputtext"
+                    id="nombreCliente"
+                    value={nombrecliente}
+                    onChange={(e) => setNombreCliente(e.target.value)}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div className="labelinput">
+                  <label htmlFor="idclaseidentidad">Tipo de Identidad</label>
+                  <Dropdown
+                    className="inputtext"
+                    id="idclaseidentidad"
+                    value={selectedClaseidentidad}
+                    onChange={(e) => setSelectedClaseidentidad(e.value)}
+                    options={claseidentidadList}
+                    optionLabel="label"
+                    placeholder="Seleccionar Tipo de Identidad"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                <div className="p-fluid flex">
+                  <div className="labelinput">
+                    <label htmlFor="identidad">Identidad</label>
+                    <InputText
+                      className="inputtext"
+                      id="identidad"
+                      value={identidad}
+                      onChange={(e) => setIdentidad(e.target.value)}
+                    />
+                  </div>
+                  <div style={{ width: "15%", marginRight: "10px" }}>
+                    <label htmlFor="iddigverif">Dig ver.</label>
+                    <InputText
+                      className="inputtext"
+                      id="iddigverif"
+                      value={iddigverif}
+                      onChange={(e) => setIdDigVerif(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="p-fluid flex">
+                  <div className="labelinput">
+                    <label htmlFor="telefonofijo">Teléfono fijo</label>
+                    <InputText
+                      className="inputtext"
+                      id="telefonofijo"
+                      value={telefonoFijo}
+                      onChange={(e) => setTelefonoFijo(e.target.value)}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                  <div className="labelinput">
+                    <label htmlFor="telmovil">Teléfono móvil</label>
+                    <InputText
+                      className="inputtext"
+                      id="telmovil"
+                      value={telmovil}
+                      onChange={(e) => setTelmovil(e.target.value)}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                </div>
+                <div className="labelinput">
+                  <label htmlFor="direccion">Dirección</label>
+                  <InputText
+                    className="inputtext"
+                    id="direccion"
+                    value={direccion}
+                    onChange={(e) => setDireccion(e.target.value)}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div className="labelinput">
+                  <label htmlFor="email">Correo electrónico</label>
+                  <InputText
+                    className="inputtext"
+                    id="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div className="labelinput">
+                  <label htmlFor="vendedorId">Vendedor</label>
+                  <Dropdown
+                    className="inputtext"
+                    id="vendedorId"
+                    value={selectedVendedor}
+                    onChange={(e) => setSelectedVendedor(e.value)}
+                    options={vendedores}
+                    optionLabel="nombreve"
+                    placeholder="Seleccione un vendedor"
+                    required
+                  />
+                </div>
+                <div className="labelinput">
+                  <label htmlFor="idsegmento">Segmento</label>
+                  <Dropdown
+                    className="inputtext"
+                    id="idsegmento"
+                    value={selectedSegment}
+                    onChange={(e) => setSelectedSegment(e.value)}
+                    options={segmentList}
+                    optionLabel="label"
+                    placeholder="Seleccionar Segmento"
+                    required
+                  />
+                </div>
+                <div style={{ marginTop: "1em" }}>
+                  <Checkbox
+                    style={{ marginRight: "0.5em" }}
+                    inputId="aceptapotradatos"
+                    checked={aceptapotradatos}
+                    onChange={handleCheckboxChange}
+                  />
+                  <label htmlFor="aceptapotradatos">
+                    Acepta política de tratamiento de datos
+                  </label>
+                </div>
+              </div>
+            </TabPanel>
+            <TabPanel header="Adicionales">
+              <div className="card">
+                <ClientCreationAddiData
+                  carteraList={carteraList}
+                  selectedCartera={selectedCartera}
+                  setSelectedCartera={setSelectedCartera}
+                  naturalezaList={naturalezaList}
+                  selectedNaturaleza={selectedNaturaleza}
+                  setSelectedNaturaleza={setSelectedNaturaleza}
+                  actividadList={actividadList}
+                  selectedActividad={selectedActividad}
+                  setSelectedActividad={setSelectedActividad}
+                  ciudadList={ciudadList}
+                  selectedCiudad={selectedCiudad}
+                  setSelectedCiudad={setSelectedCiudad}
+                />
+              </div>
+            </TabPanel>
+            <TabPanel header="Comerciales">
+              <div className="card">
+                <ClientCreationComercialData
+                  regimenList={regimenList}
+                  selectedRegimen={selectedRegimen}
+                  setSelectedRegimen={setSelectedRegimen}
+                  formaPagoList={formaPagoList}
+                  selectedFormaPago={selectedFormaPago}
+                  setSelectedFormaPago={setSelectedFormaPago}
+                  listapreciosList={listaPreciosList}
+                  selectedlistaprecios={selectedListaPrecios}
+                  setSelectedlistaprecios={setSelectedListaPrecios}
+                  selectedareaIca={selectedAreaIca}
+                  setSelectedareaIca={setSelectedAreaIca}
+                  selectedaplicaReteFte={selectedaplicaReteFte}
+                  setSelectedAplicaReteFte={setSelectedAplicaReteFte}
+                  selectedaplicaBaseretefte={selectedaplicaBaseretefte}
+                  setSelectedAplicaBaseretefte={setSelectedAplicaBaseretefte}
+                  selectedaplicaBasereteIVA={selectedaplicaBasereteIVA}
+                  setSelectedAplicaBasereteIVA={setSelectedAplicaBasereteIVA}
+                  selectedaplicaBasereteICA={selectedaplicaBasereteICA}
+                  setSelectedAplicaBasereteICA={setSelectedAplicaBasereteICA}
+                />
+              </div>
+            </TabPanel>
+            <TabPanel header="F.E.L.">
+              <div className="card">
+                {/* <ClientCreationFELData onDataChange={handleFELDataChange} /> */}
+                <ClientCreationFELData
+                  regimenFiscalList={regimenFiscalList}
+                  selectedRegimenFiscal={selectedRegimenFiscal}
+                  setSelectedRegimenFiscal={setSelectedRegimenFiscal}
+                  responsabilidadTributariaList={responsabilidadTributariaList}
+                  selectedResponsabilidadTributaria={
+                    selectedResponsabilidadTributaria
+                  }
+                  setSelectedResponsabilidadTributaria={
+                    setSelectedResponsabilidadTributaria
+                  }
+                />
+              </div>
+            </TabPanel>
+          </TabView>
+        </div>
+      </Dialog>
+
+      <Potradatos
+        visible={dialogVisible}
+        onHide={() => setDialogVisible(false)}
+        idCliente={selectedCustomer ? selectedCustomer.idcliente : null}
+        aceptaTratamiento={
+          selectedCustomer ? selectedCustomer.aceptapotradatos : 0
+        }
+        onAccept={handleAcceptPolicy}
+      />
+    </>
+  );
+};
+
+export default ClientCreation;

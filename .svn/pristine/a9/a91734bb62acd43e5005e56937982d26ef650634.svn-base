@@ -1,0 +1,167 @@
+import React, { useState, useRef } from "react";
+import { Toast } from "primereact/toast";
+import { Panel } from "primereact/panel";
+import SearchBar from "./SearchBar";
+import EntregasList from "./EntregasList";
+import { Dialog } from "primereact/dialog";
+import { Button } from "primereact/button";
+import { v4 as uuidv4 } from "uuid";
+import axios from "axios";
+
+import config from "../../Config";
+
+function Entregas() {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/entregas`;
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [products, setProducts] = useState([]);
+  const [errorState, setErrorState] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const toast = useRef(null);
+
+  const handleCloseErrorDialog = () => {
+    setErrorState(false);
+    setErrorMessage("");
+  };
+
+  const handleSearch = async () => {
+    try {
+      setLoading(true);
+      const requestData = {
+        fechaFactura: selectedDate.toLocaleDateString("es-CO", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+        criterio: searchTerm,
+      };
+      console.log("requestData:", requestData);
+      const response = await fetchEntregas(requestData);
+      console.log("response:", response);
+      if (response.status === 200) {
+        const data = await response.data;
+        console.log("data:", data);
+        // Agrega un identificador único a cada detalle
+        const newData = data.result.map((entrega) => {
+          entrega.detalle = entrega.detalle.map((detalle) => {
+            const id = generateUniqueId();
+            // console.log('Generated ID:', id);
+            return {
+              ...detalle,
+              id: id,
+            };
+          });
+          return entrega;
+        });
+        // console.log("newData: ", newData);
+        setProducts(newData);
+      } else {
+        console.error("Error al buscar entregas:", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error en la búsqueda de entregas:", error);
+    } finally {
+      setLoading(false); // Establecer el estado de carga a false después de completar la solicitud
+    }
+  };
+
+  const fetchEntregas = async (requestData) => {
+    try {
+      const response = await axios.post(apiUrl, requestData, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      return response;
+    } catch (error) {
+      // Manejar errores de conexión u otros errores
+      if (error.message.includes("Network Error")) {
+        setErrorState(true);
+        setErrorMessage(
+          "No se pudo conectar con el servidor. Por favor, verifica tu conexión e inténtalo de nuevo más tarde."
+        );
+      } else {
+        setErrorState(true);
+        setErrorMessage(
+          "Ocurrió un error. Por favor, inténtalo de nuevo más tarde."
+        );
+      }
+    }
+  };
+
+  function generateUniqueId() {
+    //Para que el id sea unico
+    // uniqueIdCounter.current += 1;
+    // return `unique-id-${uniqueIdCounter.current}`;
+    return uuidv4();
+  }
+
+  const handleUpdateAceptapotradatos = (idcliente, accepted) => {
+    // Encuentra el cliente correspondiente en los datos y actualiza aceptapotradatos
+    const updatedProducts = products.map((product) => {
+      if (product.idcliente === idcliente) {
+        return {
+          ...product,
+          aceptapotradatos: accepted ? 1 : 0,
+        };
+      }
+      return product;
+    });
+    // Actualiza los productos en el estado
+    setProducts(updatedProducts);
+  };
+
+  const ref = useRef(null);
+
+  return (
+    <div style={{ paddingTop: "5px" }}>
+      <Panel ref={ref} header="Búsqueda de Facturas" toggleable>
+        <div className="card">
+          <SearchBar
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            handleSearch={handleSearch}
+            loading={loading}
+          />
+        </div>
+      </Panel>
+
+      <Toast ref={toast} />
+      <EntregasList
+        products={products}
+        setProducts={setProducts}
+        toast={toast}
+        handleSearch={handleSearch}
+        onUpdateAceptapotradatos={handleUpdateAceptapotradatos}
+        loading={loading}
+      />
+      {/* Dialog de error */}
+      <Dialog
+        visible={errorState}
+        onHide={handleCloseErrorDialog}
+        header="Error"
+        modal
+        style={{ width: "300px" }}
+      >
+        <div>
+          <p>{errorMessage}</p>
+          <Button
+            label="Cerrar"
+            icon="pi pi-times"
+            severity="danger"
+            text
+            style={{ marginTop: "10px" }}
+            size="small"
+            onClick={handleCloseErrorDialog}
+          />
+        </div>
+      </Dialog>
+    </div>
+  );
+}
+
+export default Entregas;

@@ -1,0 +1,482 @@
+import React, { useRef, useState, useEffect } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Panel } from "primereact/panel";
+import { Toolbar } from "primereact/toolbar";
+import { Calendar } from "primereact/calendar";
+import { locale, addLocale } from "primereact/api";
+import { PrintQuote } from "./PrintQuote";
+import config from "../../Config";
+import axios from "axios";
+import Quoter from "./Quoter";
+
+const QuoterList = () => {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaCotizaciones`;
+  const apiUrlDelCotizacion = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DeleteCotizacionByID`;
+  const apiUrlCotizacionByID = `${config.apiUrl}/Datasnap/rest/TServerMethods1/CotizacionByID`;
+  const [selectedQuotation, setSelectedQuotation] = useState(null);
+  const [showDialog, setShowDialog] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [quotations, setQuotations] = useState([]); // Aquí debes tener la lista de cotizaciones
+  const [fechaIni, setFechaIni] = useState(new Date());
+  const [fechaFin, setFechaFin] = useState(new Date());
+  const [dates, setDates] = useState([new Date(), new Date()]);
+  const [loading, setLoading] = useState(false);
+  const [errorState, setErrorState] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [quoters, setQuoters] = useState([]);
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [quotationToDelete, setQuotationToDelete] = useState(null);
+  const [error, setError] = useState(null);
+
+  addLocale("es", {
+    firstDayOfWeek: 1,
+    showMonthAfterYear: true,
+    dayNames: [
+      "domingo",
+      "lunes",
+      "martes",
+      "miércoles",
+      "jueves",
+      "viernes",
+      "sábado",
+    ],
+    dayNamesShort: ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"],
+    dayNamesMin: ["D", "L", "M", "X", "J", "V", "S"],
+    monthNames: [
+      "enero",
+      "febrero",
+      "marzo",
+      "abril",
+      "mayo",
+      "junio",
+      "julio",
+      "agosto",
+      "septiembre",
+      "octubre",
+      "noviembre",
+      "diciembre",
+    ],
+    monthNamesShort: [
+      "ene",
+      "feb",
+      "mar",
+      "abr",
+      "may",
+      "jun",
+      "jul",
+      "ago",
+      "sep",
+      "oct",
+      "nov",
+      "dic",
+    ],
+    today: "Hoy",
+    clear: "Limpiar",
+    startsWith: "Comienza con",
+    contains: "Contiene",
+    notContains: "No contiene",
+    endsWith: "Termina con",
+    equals: "Igual",
+    notEquals: "No igual",
+    addRule: "Agregar regla",
+    removeRule: "quitar regla",
+    accept: "Aceptar",
+    reject: "Rechazar",
+    edit: "Editar",
+    apply: "Aplicar",
+    matchAll: "Coincidir todo",
+    matchAny: "Coincidir cualquiera",
+    empty: "Vacio",
+    notEmpty: "No vacío",
+    loading: "Cargando...",
+    selectAll: "Seleccionar todo",
+    selectAllFiltered: "Seleccionar todo filtrado",
+    unselect: "Des-seleccionar",
+    clearFilter: "Limpiar filtro",
+    applyFilter: "Aplicar filtro",
+    filter: "Filtro",
+    cancel: "Cancelar",
+    reset: "Reiniciar",
+    noFilter: "Sin filtro",
+    lt: "Menor que",
+    lte: "Menor o igual que",
+    gt: "Mayor que",
+    gte: "Mayor o igual que",
+    is: "Es",
+    isNot: "No es",
+    before: "Antes",
+    after: "Después",
+    dateIs: "Fecha es",
+    dateIsNot: "Fecha no es",
+    dateBefore: "Fecha antes de",
+    dateAfter: "Fecha después de",
+  });
+
+  useEffect(() => {
+    // Si solo se selecciona una fecha, asignarla tanto como fecha inicial como fecha final
+    if (fechaIni && !fechaFin) {
+      setFechaFin(fechaIni);
+    } else if (!fechaIni && fechaFin) {
+      setFechaIni(fechaFin);
+    }
+
+    locale("es"); //Para el idioma
+  }, [fechaIni, fechaFin]);
+
+  // Función para abrir el diálogo para crear una nueva cotización
+  const openCreateDialog = () => {
+    // Aquí puedes realizar las acciones necesarias para crear una nueva cotización
+    setSelectedQuotation(null);
+    setShowDialog(true);
+  };
+
+  // Función para filtrar las cotizaciones según el texto de búsqueda
+  const filteredQuotations = quotations.filter((quotation) => {
+    return (
+      quotation.numero.includes(searchText) ||
+      quotation.identificacion.includes(searchText) ||
+      quotation.numeroPedido.includes(searchText) ||
+      quotation.fecha.includes(searchText)
+    );
+  });
+
+  const handleSearch = async () => {
+    try {
+      setLoading(true);
+      const requestData = {
+        fechaIni: fechaIni.toLocaleDateString("es-CO", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+        fechaFin: fechaFin.toLocaleDateString("es-CO", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+      };
+      // console.log('JSON enviado al backend:', requestData);
+      // const response = await axios.put('http://192.168.20.38:8080/Datasnap/rest/TServerMethods1/ListaEntregas', requestData);
+      const response = await axios.put(apiUrl, requestData);
+
+      if (response.data.status === 200) {
+        setQuoters(response.data.data);
+        // console.log("Cotizaciones:", response.data.data);
+      } else {
+        console.error("Error en la respuesta:", response.data.error);
+        setErrorMessage(response.data.error);
+      }
+    } catch (error) {
+      if (error.message === "Network Error") {
+        setErrorState(true);
+        setErrorMessage(
+          "Error de red: No se puede conectar al servidor. Por favor, verifica tu conexión a Internet o inténtalo más tarde."
+        );
+      } else {
+        setErrorState(true);
+        setErrorMessage(`Error al realizar la solicitud: ${error.message}`);
+      }
+      console.error("Error al realizar la solicitud:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    try {
+      console.log(quotationToDelete);
+      const requestData = {
+        idcotizacion: quotationToDelete.idcotizacion,
+      };
+      const response = await axios.put(apiUrlDelCotizacion, requestData);
+      if (response.data.status === 200) {
+        // Actualizar la lista de cotizaciones después de la eliminación
+        setQuoters(
+          quoters.filter(
+            (quotation) =>
+              quotation.idcotizacion !== quotationToDelete.idcotizacion
+          )
+        );
+        setDeleteDialogVisible(false);
+        setQuotationToDelete(null);
+      } else {
+        console.error("Error al borrar la cotización:", response.data.error);
+      }
+    } catch (error) {
+      console.error("Error al realizar la solicitud:", error);
+    }
+  };
+
+  const handleDateChange = (e) => {
+    setDates(e.value);
+
+    if (e.value && e.value.length > 0) {
+      setFechaIni(e.value[0]);
+      if (e.value.length === 2) {
+        setFechaFin(e.value[1]);
+      } else {
+        setFechaFin(e.value[0]);
+      }
+    } else {
+      setFechaIni(null);
+      setFechaFin(null);
+    }
+  };
+
+  const editQuotation = (rowData) => {
+    setSelectedQuotation(rowData);
+    console.log("rowData: ", rowData);
+    setShowDialog(true);
+  };
+
+  const deleteQuotation = (rowData) => {
+    setQuotationToDelete(rowData);
+    // console.log("rowData: ", rowData);
+    setDeleteDialogVisible(true);
+  };
+
+  const printQuotation = async (rowData) => {
+    try {
+      setLoading(true);
+      const idcotizacion = rowData.idcotizacion;
+      const response = await axios.put(apiUrlCotizacionByID, { idcotizacion });
+      console.log("response:", response.data);
+      if (response.data.status === 200) {
+        const { cliente, contacto, productos } = response.data;
+
+        const quotation = {
+          numerocotizacion: cliente.numerocotizacion || "N/A",
+          fecha: cliente.fechacotizacion || "N/A",
+          nombrecliente: cliente.nombrecliente || "N/A",
+          identidad: cliente.identidad || "N/A",
+          direccion: cliente.direccion || "N/A",
+          telmovil: cliente.telmovil || "N/A",
+          email: cliente.email || "N/A",
+          productos: productos.map((productos) => ({
+            nombreproductos: productos.nombreproductos,
+            referencia: productos.referencia,
+            precio: productos.precio,
+            cantidad: productos.cantidad,
+            total: productos.total,
+          })),
+        };
+        console.log("quotation:", quotation);
+        setTimeout(() => {
+          PrintQuote({ quoteData: quotation });
+        }, 100); // Se añade un pequeño retraso para asegurar que el estado se actualice antes de imprimir
+      } else {
+        setError(response.data.error || "Error en la respuesta");
+      }
+    } catch (error) {
+      setError("Error al realizar la solicitud: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveQuotation = () => {
+    setShowDialog(false);
+    handleSearch();
+  };
+
+  const actionbodyTemplate = (rowData) => {
+    return (
+      <React.Fragment>
+        <Button
+          icon="pi pi-pencil"
+          rounded
+          text
+          onClick={() => editQuotation(rowData)}
+        />
+        <Button
+          icon="pi pi-trash"
+          rounded
+          text
+          severity="danger"
+          onClick={() => {
+            deleteQuotation(rowData);
+          }}
+        />
+        <Button
+          icon="pi pi-print"
+          rounded
+          text
+          severity="warning"
+          onClick={() => {
+            printQuotation(rowData);
+          }}
+        />
+      </React.Fragment>
+    );
+  };
+
+  const formatCurrency = (value) => {
+    return value.toLocaleString("es-CO", {
+      style: "currency",
+      currency: "COP",
+    });
+  };
+
+  const totalBodyTemplate = (quoters) => {
+    return formatCurrency(quoters.total);
+  };
+
+  return (
+    <div className="p-grid">
+      {/* Barra de búsqueda */}
+      <div>
+        <Panel header="Cotizaciones" toggleable>
+          <Toolbar
+            start={
+              <span className="p-float-label">
+                <Calendar
+                  id="fechaCotizaciones"
+                  style={{ marginTop: "10px" }}
+                  value={dates}
+                  onChange={handleDateChange}
+                  // locale="es"
+                  selectionMode="range"
+                  showIcon
+                  readOnlyInput
+                  dateFormat="dd/mm/yy"
+                  hideOnRangeSelection
+                  placeholder="Rango de fechas"
+                />
+                <label htmlFor="fechaCotizaciones">Rango de fechas</label>
+              </span>
+            }
+            end={
+              <>
+                <span className="p-float-label">
+                  <InputText
+                    style={{ width: "320px" }}
+                    id="searchCriteria"
+                    // placeholder="Cotización, cédula/nit o nombre cliente"
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    className="mobile-input"
+                  />
+                  <label htmlFor="searchCriteria">
+                    Cotización, cédula/nit o nombre cliente
+                  </label>
+                  <Button
+                    label="Buscar"
+                    icon="pi pi-search"
+                    className="p-mt-2"
+                    loading={loading}
+                    onClick={handleSearch}
+                    style={{ marginLeft: "5px" }}
+                  />
+                </span>
+              </>
+            }
+          />
+        </Panel>
+        <div className="p-col-12" style={{ marginTop: "5px" }}>
+          <Panel>
+            <Toolbar
+              end={
+                <Button
+                  label="Nueva Cotización"
+                  icon="pi pi-plus"
+                  severity="success"
+                  onClick={openCreateDialog}
+                  className="p-button-raised p-button-primary"
+                  style={{ marginTop: "-10px", marginBottom: "-10px" }}
+                />
+              }
+            />
+          </Panel>
+        </div>
+      </div>
+
+      {/* Grilla de cotizaciones */}
+      <div className="p-col-12">
+        <DataTable
+          value={quoters}
+          selectionMode="single"
+          selection={selectedQuotation}
+          onSelectionChange={(e) => setSelectedQuotation(e.value)}
+          paginator
+          rows={10}
+          rowsPerPageOptions={[5, 10, 25]}
+          emptyMessage="No hay cotizaciones disponibles"
+          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+        >
+          <Column field="idcotizacion" header="ID" hidden />
+          <Column
+            field="numerocotizacion"
+            header="Número de Cotización"
+            sortable
+            style={{ width: "131px", minWidth: "130px" }}
+          />
+          <Column field="nit" header="Identificación" sortable />
+          <Column field="nombrecliente" header="Nombre del Cliente" sortable />
+          <Column field="fechacotizacion" header="Fecha" sortable />
+          <Column
+            field="total"
+            header="Total"
+            body={totalBodyTemplate}
+            sortable
+            align={"right"}
+          />
+          <Column header="Acciones" body={actionbodyTemplate} />
+        </DataTable>
+      </div>
+
+      {/* Diálogo para crear una nueva cotización */}
+      <Dialog
+        visible={showDialog}
+        onHide={() => setShowDialog(false)}
+        header={
+          selectedQuotation ? "Editar Cotización" : "Crear Nueva Cotización"
+        }
+        style={{ width: "80vw" }}
+      >
+        <Quoter
+          onSave={handleSaveQuotation}
+          quotationData={selectedQuotation}
+        />
+      </Dialog>
+      {/* 
+
+      {/* Diálogo de confirmación */}
+      <Dialog
+        visible={deleteDialogVisible}
+        onHide={() => setDeleteDialogVisible(false)}
+        footer={
+          <div>
+            <Button
+              label="No"
+              icon="pi pi-times"
+              className="p-button-text"
+              onClick={() => setDeleteDialogVisible(false)}
+            />
+            <Button
+              label="Sí"
+              icon="pi pi-check"
+              onClick={confirmDelete}
+              severity="danger"
+            />
+          </div>
+        }
+        header="Confirmar Eliminación"
+      >
+        <p className="m-0">
+          <i
+            className="pi pi-exclamation-triangle mr-2"
+            style={{ fontSize: "2rem" }}
+          ></i>
+          ¿Está seguro de que desea eliminar esta cotización?
+        </p>
+      </Dialog>
+    </div>
+  );
+};
+
+export default QuoterList;

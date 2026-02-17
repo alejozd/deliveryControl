@@ -1,0 +1,321 @@
+import { useState, useRef } from "react";
+import { MultiSelect } from "primereact/multiselect";
+import { Card } from "primereact/card";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Sidebar } from "primereact/sidebar";
+import { Button } from "primereact/button";
+import { Chart } from "primereact/chart"; // Importa el componente Chart de PrimeReact
+import { Calendar } from "primereact/calendar";
+import { Toast } from "primereact/toast";
+import CardDashboard from "./CardDashboard";
+import ChartDataLabels from "chartjs-plugin-datalabels"; // Importa el plugin para los labels
+import "./SalesDashboard.css";
+import { segments, clients, salesData, productsData } from "./mockData"; // Importa los datos
+
+const SalesDashboard = () => {
+  const [selectedSegments, setSelectedSegments] = useState([]);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [date, setDate] = useState(null);
+  const modalRef = useRef(null);
+  const toast = useRef(null);
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top", // Posición de la leyenda
+      },
+      datalabels: {
+        display: true, // Habilitar labels
+        color: "#000", // Color del texto
+        font: {
+          size: 14, // Tamaño de la fuente
+        },
+        formatter: (value, context) => {
+          // const label = context.chart.data.labels[context.dataIndex]; // Nombre del producto
+          return `${value}`; // Combina el nombre y el valor
+        },
+      },
+    },
+  };
+
+  const options = {
+    scales: {
+      y: {
+        beginAtZero: true,
+        min: 0, // Valor mínimo
+        max: 220000, // Valor máximo del eje Y
+        ticks: {
+          stepSize: 10000, // Intervalo entre valores del eje Y
+        },
+      },
+    },
+  };
+
+  // Colores predefinidos para los segmentos
+  const segmentColors = [
+    "rgba(255, 99, 132, 0.5)", // Rojo
+    "rgba(54, 162, 235, 0.5)", // Azul
+    "rgba(255, 206, 86, 0.5)", // Amarillo
+    "rgba(75, 192, 192, 0.5)", // Verde
+    "rgba(153, 102, 255, 0.5)", // Morado
+    "rgba(255, 159, 64, 0.5)", // Naranja
+  ];
+
+  // Colores de borde para cada segmento
+  const segmentBorderColors = [
+    "rgba(255, 99, 132, 1)",
+    "rgba(54, 162, 235, 1)",
+    "rgba(255, 206, 86, 1)",
+    "rgba(75, 192, 192, 1)",
+    "rgba(153, 102, 255, 1)",
+    "rgba(255, 159, 64, 1)",
+  ];
+
+  // Filtrar ventas según los segmentos seleccionados
+  const filteredSales =
+    selectedSegments.length > 0
+      ? salesData.filter((sale) =>
+          selectedSegments.some((seg) => seg.value === sale.segment)
+        )
+      : salesData; // Si no hay selección, mostrar todas las ventas
+
+  // Calcular el total de ventas (suma de `amount`)
+  const totalSales = filteredSales.reduce((acc, sale) => acc + sale.amount, 0);
+
+  // Calcular la cantidad de ventas por segmento (suma de `count`)
+  const totalSalesCount = filteredSales.reduce(
+    (acc, sale) => acc + sale.count,
+    0
+  );
+
+  // Filtrar clientes por segmento
+  const filteredClients = clients.filter(
+    (client) =>
+      selectedSegments.length === 0 || selectedSegments.includes(client.segment)
+  );
+
+  // Agrupar ventas por segmento correctamente
+  const salesBySegmentMap = filteredSales.reduce((acc, sale) => {
+    acc[sale.segment] = (acc[sale.segment] || 0) + sale.amount;
+    return acc;
+  }, {});
+
+  // Obtener los segmentos seleccionados
+  const segmentLabels = Object.keys(salesBySegmentMap);
+  const segmentValues = Object.values(salesBySegmentMap);
+
+  // Asignar colores dinámicamente según el segmento
+  const backgroundColors = segmentLabels.map(
+    (_, index) => segmentColors[index % segmentColors.length]
+  );
+  const borderColors = segmentLabels.map(
+    (_, index) => segmentBorderColors[index % segmentBorderColors.length]
+  );
+
+  // Datos para el gráfico
+  const salesBySegmentData = {
+    labels: segmentLabels,
+    datasets: [
+      {
+        label: "Ventas",
+        data: segmentValues,
+        backgroundColor: backgroundColors,
+        borderColor: borderColors,
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const openSidebar = (client) => {
+    setSelectedClient(client);
+    setShowSidebar(true);
+  };
+
+  const formatDatesForBackend = (range) => {
+    if (!range || range.length !== 2) return null;
+
+    const startDate = new Date(range[0]);
+    const endDate = new Date(range[1]);
+
+    // Establecer el primer día del mes
+    const fecha_ini = `${startDate.getFullYear()}-${(startDate.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-01`;
+
+    // Obtener el último día del mes seleccionado
+    const lastDay = new Date(
+      endDate.getFullYear(),
+      endDate.getMonth() + 1,
+      0
+    ).getDate();
+    const fecha_fin = `${endDate.getFullYear()}-${(endDate.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${lastDay}`;
+
+    return { fecha_ini, fecha_fin };
+  };
+
+  const onClick = () => {
+    if (modalRef.current) {
+      modalRef.current.show(); // Asegurarse de que modalRef.current no sea null
+    } else {
+      console.error("modalRef es null");
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="mb-4">Dashboard de Ventas</h2>
+      <Toast ref={toast} />
+      {/* Filtros */}
+      <Card className="p-4 flex gap-4 mb-2">
+        <MultiSelect
+          value={selectedSegments}
+          options={segments}
+          onChange={(e) => setSelectedSegments(e.value)}
+          optionLabel="label"
+          placeholder="Selecciona un segmento"
+          display="chip"
+          className="w-60 mr-2"
+        />
+        <Calendar
+          value={date}
+          onChange={(e) => setDate(e.value)}
+          view="month"
+          dateFormat="mm/yy"
+          selectionMode="range"
+          className="mr-2"
+          placeholder="Selecciona un rango de meses"
+        />
+        <Button
+          label="Buscar"
+          icon="pi pi-search"
+          severity="info"
+          onClick={() => {
+            const formattedDates = formatDatesForBackend(date);
+            console.log("Fechas enviadas al backend:", formattedDates);
+
+            if (formattedDates) {
+              toast.current.show({
+                severity: "info",
+                summary: "Fechas Seleccionadas",
+                detail: `Desde: ${formattedDates.fecha_ini} - Hasta: ${formattedDates.fecha_fin}`,
+              });
+            } else {
+              toast.current.show({
+                severity: "warn",
+                summary: "Error",
+                detail: "Selecciona un rango válido de fechas",
+              });
+            }
+          }}
+        />
+      </Card>
+
+      {/* KPIs */}
+      <Card className="p-4 mb-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <CardDashboard
+            title="Cantidad Ventas"
+            value={totalSalesCount}
+            icon={<i className="pi pi-inbox text-green-500 text-2xl"></i>}
+            description='<span class="highlight">50 nuevas</span> este mes'
+          />
+          <CardDashboard
+            title="Total de Ventas"
+            value={new Intl.NumberFormat("es-CO", {
+              style: "currency",
+              currency: "COP",
+            }).format(totalSales)}
+            icon={<i className="pi pi-money-bill text-yellow-500 text-2xl"></i>}
+          />
+          <CardDashboard
+            title="Clientes Activos"
+            value="200"
+            icon={<i className="pi pi-users text-orange-500 text-2xl"></i>}
+          />
+        </div>
+      </Card>
+
+      {/* Tabla de Clientes */}
+      <Card className="p-1 mb-4">
+        <h3 className="text-xl font-semibold">Clientes del Segmento</h3>
+        <DataTable
+          value={filteredClients}
+          responsiveLayout="scroll"
+          paginator
+          rows={5}
+          className="mt-3"
+        >
+          <Column field="segment" header="Segmento" sortable></Column>
+          <Column
+            field="name"
+            header="Cliente"
+            sortable
+            body={(rowData) => (
+              <span
+                className="cursor-pointer text-blue-500"
+                onClick={() => openSidebar(rowData)}
+              >
+                {rowData.name}
+              </span>
+            )}
+          />
+          <Column
+            field="totalSales"
+            header="Total de Ventas"
+            body={(rowData) =>
+              new Intl.NumberFormat("es-CO", {
+                style: "currency",
+                currency: "COP",
+              }).format(rowData.totalSales)
+            }
+          ></Column>
+          <Column field="lastSale" header="Última Venta"></Column>
+        </DataTable>
+      </Card>
+
+      {/* Gráficos */}
+      <Card className="p-1 mb-2 ">
+        {/* Gráfica de Ventas por Segmento */}
+        <Card className="mb-4">
+          <h2 className="text-xl font-bold mb-4">Ventas por Segmento</h2>
+          <Chart type="bar" data={salesBySegmentData} options={options} />
+        </Card>
+
+        {/* Gráfica de Productos Más Vendidos */}
+        <Card>
+          <h2 className="text-xl font-bold mb-4">Productos Más Vendidos</h2>
+
+          <Chart
+            type="pie"
+            data={productsData}
+            options={chartOptions}
+            plugins={[ChartDataLabels]} // Usa el plugin para los labels
+          />
+        </Card>
+      </Card>
+
+      {/* Sidebar con Detalle del Cliente */}
+      <Sidebar
+        visible={showSidebar}
+        position="right"
+        onHide={() => setShowSidebar(false)}
+      >
+        {selectedClient && (
+          <>
+            <h3>{selectedClient.nombre}</h3>
+            <p>Total Compras: {selectedClient.compras}</p>
+            <p>Última Compra: {selectedClient.ultimaCompra}</p>
+          </>
+        )}
+      </Sidebar>
+    </div>
+  );
+};
+
+export default SalesDashboard;

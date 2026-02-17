@@ -1,0 +1,112 @@
+import React, { useState, useEffect } from "react";
+import { Dropdown } from "primereact/dropdown";
+import { Checkbox } from "primereact/checkbox";
+import config from "../Config";
+import axios from "axios";
+
+const ClientCreationFELData = ({}) => {
+  const apiUrlRegimenFiscal = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaRegimenFiscal`;
+  const apiUrlResponsabilidadTributaria = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaRespTributaria`;
+  const [loading, setLoading] = useState(false);
+  const [regimenfiscalList, setRegimenFiscalList] = useState([]);
+  const [selectedRegimenFiscal, setSelectedRegimenFiscal] = useState(null);
+  const [responsabilidadtributariaList, setResponsabilidadTributariaList] =
+    useState([]);
+  const [
+    selectedResponsabilidadTributaria,
+    setSelectedResponsabilidadTributaria,
+  ] = useState(null);
+
+  // Efecto para cargar los regímenes fiscales
+  useEffect(() => {
+    const fetchRegimenFiscal = async () => {
+      try {
+        const response = await axios.get(apiUrlRegimenFiscal);
+        const data = response.data.result;
+
+        const formattedRegimenFiscal = data.map((regimen) => ({
+          label: regimen.nombreregfiscal,
+          value: regimen.codigoregfiscal,
+        }));
+
+        setRegimenFiscalList(formattedRegimenFiscal);
+
+        // Puedes establecer un régimen fiscal predeterminado aquí si es necesario
+        if (formattedRegimenFiscal.length > 0) {
+          setSelectedRegimenFiscal(formattedRegimenFiscal[0].value); // Por defecto selecciona el primero
+        }
+      } catch (error) {
+        console.error("Error al cargar los regímenes fiscales", error);
+      }
+    };
+
+    fetchRegimenFiscal();
+  }, [apiUrlRegimenFiscal]);
+
+  // Efecto para cargar las responsabilidades tributarias
+  useEffect(() => {
+    const fetchResponsabilidadTributaria = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(apiUrlResponsabilidadTributaria);
+        const data = response.data.result;
+
+        const formattedResponsabilidadTributaria = data.map((resp) => ({
+          label: resp.nombreresponsabilidad,
+          value: resp.codigoresponsabilidad,
+        }));
+
+        setResponsabilidadTributariaList(formattedResponsabilidadTributaria);
+
+        // Puedes establecer una responsabilidad tributaria predeterminada aquí si es necesario
+        if (formattedResponsabilidadTributaria.length > 0) {
+          setSelectedResponsabilidadTributaria(
+            formattedResponsabilidadTributaria[0].value
+          ); // Por defecto selecciona el primero
+        }
+      } catch (error) {
+        console.error(
+          "Error al cargar las responsabilidades tributarias",
+          error
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResponsabilidadTributaria();
+  }, [apiUrlResponsabilidadTributaria]);
+
+  return (
+    <div className="flex flex-column">
+      <div className="labelinput">
+        <label htmlFor="idregfiscal">Régimen Fiscal</label>
+        <Dropdown
+          className="inputtext"
+          id="idregfiscal"
+          value={selectedRegimenFiscal}
+          onChange={(e) => setSelectedRegimenFiscal(e.value)}
+          options={regimenfiscalList}
+          optionLabel="label"
+          placeholder="Seleccionar Régimen Fiscal"
+          disabled={loading}
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idresptri">Responsabilidad Tributaria</label>
+        <Dropdown
+          className="inputtext"
+          id="idresptri"
+          value={selectedResponsabilidadTributaria}
+          onChange={(e) => setSelectedResponsabilidadTributaria(e.value)}
+          options={responsabilidadtributariaList}
+          optionLabel="label"
+          placeholder="Seleccionar Responsabilidad Tributaria"
+          disabled={loading}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default ClientCreationFELData;

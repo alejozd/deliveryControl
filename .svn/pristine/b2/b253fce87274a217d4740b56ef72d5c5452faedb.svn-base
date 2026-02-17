@@ -1,0 +1,4 @@
+/* CustomCard.css */
+.p-card-content[data-pc-section="content"] {
+    padding: 0 !important;
+}

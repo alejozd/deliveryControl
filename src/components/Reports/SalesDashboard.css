@@ -1,0 +1,63 @@
+.sales-dashboard {
+  padding: 20px;
+}
+
+.charts-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  @media (min-width: 768px) {
+    .charts-container {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  
+  .chart-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .chart-container {
+    flex: 1; /* Cada contenedor ocupa la mitad del ancho en pantallas grandes */
+    min-width: 300px; /* Ancho mínimo para evitar que los gráficos se hagan demasiado pequeños */
+    display: flex; /* Usamos Flexbox para igualar las alturas */
+    flex-direction: column; /* Asegura que el contenido esté en columna */
+  }
+
+  .chart-container .p-card {
+    flex: 1; /* Hace que las tarjetas ocupen toda la altura disponible */
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .section {
+    margin-bottom: 20px;
+  }
+  
+  .charts-section {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap; /* Permite que los gráficos se apilen en pantallas pequeñas */
+  }
+
+  .kpi-section {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap; /* Permite que las tarjetas se ajusten en pantallas pequeñas */
+  }
+  
+  .datatable-section {
+    width: 100%;
+  }
+
+  .segment-dropdown {
+    margin-bottom: 15px;
+  }
+
+  .segment-dropdown .p-dropdown {
+    width: 100%;
+  }

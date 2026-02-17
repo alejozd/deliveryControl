@@ -1,0 +1,48 @@
+import React from "react";
+import { Card } from "primereact/card";
+import { Routes, Route } from "react-router-dom";
+import Inicio from "../Inicio";
+import Clientes from "../Clientes";
+import Productos from "../Productos";
+import Entregas from "../delivery/Entregas";
+import ConsultaEntregas from "../delivery/ConsultaEntregas";
+import ConsultaPendientes from "../delivery/ConsultaPendientesEntrega";
+import QuoterList from "../Quoter/QuoterList";
+import ContactoAdicional from "../ContactoAdicional";
+import ClientContactAssociation from "../ClientContactAssociation";
+import UserPermission from "../UserPermission";
+import NavBar from "./Navbar";
+import "./CustomCard.css";
+
+const Content = ({ setSidebarVisible, user, empresa }) => {
+  // const [sidebarVisible, setSidebarVisible] = useState(false);
+
+  return (
+    <Card className="content-container">
+      <NavBar
+        setSidebarVisible={setSidebarVisible}
+        user={user}
+        empresa={empresa}
+      />
+      <div>
+        <Routes>
+          <Route path="/" element={<Inicio />} />
+          <Route path="/entregas" element={<Entregas />} />
+          <Route path="/productos" element={<Productos />} />
+          <Route path="/clientes" element={<Clientes />} />
+          <Route path="/contactoadicional" element={<ContactoAdicional />} />
+          <Route
+            path="/clientcontactassociation"
+            element={<ClientContactAssociation />}
+          />
+          <Route path="/consultaentregas" element={<ConsultaEntregas />} />
+          <Route path="/consultapendientes" element={<ConsultaPendientes />} />
+          <Route path="/quoterlist" element={<QuoterList />} />
+          <Route path="/userpermission" element={<UserPermission />} />
+        </Routes>
+      </div>
+    </Card>
+  );
+};
+
+export default Content;

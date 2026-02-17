@@ -1,0 +1,25 @@
+/* Estilos para la lista de clientes */
+.clientes-container {
+    margin: 20px;
+  }
+  
+  /* Estilos para cada elemento de la lista */
+  .cliente-item {
+    margin-bottom: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    background-color: #f5f5f5;
+    border-radius: 5px;
+  }
+  
+  /* Estilos para los títulos */
+  .cliente-title {
+    font-weight: bold;
+  }
+  
+  /* Estilos para el separador horizontal */
+  .cliente-divider {
+    border-top: 1px solid #ccc;
+    margin-top: 10px;
+  }
+  

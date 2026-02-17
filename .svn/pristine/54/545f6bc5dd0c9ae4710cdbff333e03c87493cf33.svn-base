@@ -1,0 +1,84 @@
+// DetalleEntrega.js
+import React from 'react';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { InputText } from 'primereact/inputtext';
+import { Toolbar } from 'primereact/toolbar';
+import { Button } from 'primereact/button';
+
+function DetalleEntrega(props) {
+    const handleShowAll = (data) => {
+        // console.log('handleShowAll ', data);
+        data.DETALLE.forEach((detalle) => {
+            // console.log('detalle ', detalle);
+            handleTodoButtonClick(detalle);
+        });
+    };
+
+    return (
+        <div className="p-3">
+            <Toolbar
+                start={<h3>Productos de {props.data.NUMFACTURA}</h3>}
+                end={<React.Fragment>
+                    <Button className="mr-2" icon="pi pi-check" severity="warning" size="small" label="Marcar todo el documento" rounded onClick={() => handleShowAll(props.data)} />
+                    <Button className="p-button-success mr-2" icon="pi pi-check" severity="success" size="small" label="Entregar" rounded onClick={() => handleShowAll(props.data)} />
+                </React.Fragment>
+                }
+                style={{ padding: '4px', height: 'auto' }} />
+            <DataTable value={props.data.DETALLE} dataKey="key">
+                <Column field="NOMBREPRODUCTOS" header="Nombre de Producto" sortable></Column>
+                <Column field="CANTFACTURADA" header="Cant. Facturada" sortable></Column>
+                <Column field="CANT_ENTREGADA" header="Cant. Entregada" sortable></Column>
+                <Column header="Todo" style={{ width: '3rem' }} body={renderTodoButton}></Column>
+                <Column header="Cant. Entregar" body={renderCantidadEntregar} sortable></Column>
+            </DataTable>
+        </div>
+    );
+
+    function renderTodoButton(rowData) {
+        return (
+            <button
+                onClick={() => handleTodoButtonClick(rowData)}
+                className="p-button p-component p-button-outlined"
+            >
+                Todo
+            </button>
+        );
+    }
+
+    function handleTodoButtonClick(rowData) {
+        const saldoValue = rowData.SALDO;
+        const inputTextElement = document.querySelector(`#inputText-${rowData.key}`);
+        if (inputTextElement) {
+            inputTextElement.value = saldoValue;
+        }
+    }
+
+    function renderCantidadEntregar(rowData) {
+        return (
+            <InputText
+                id={`inputText-${rowData.key}`}
+                onChange={(e) => handleCantidadEntregarChange(e, rowData)}
+            />
+        );
+    }
+
+    function handleCantidadEntregarChange(e, rowData) {
+        const value = e.target.value;
+        if (/^\d*$/.test(value)) {
+            rowData["Cant. Entregar"] = parseInt(value, 10);
+            const index = props.products.findIndex(product => {
+                return product.CODIGO === rowData.CODIGO && product.SUBCODIGO === rowData.SUBCODIGO
+            });
+            if (index > -1) {
+                const updatedProducts = [...props.products];
+                updatedProducts[index]["Cant. Entregar"] = value;
+                props.setProducts(updatedProducts);
+            } else {
+                console.error("No se encontró el producto");
+            }
+        }
+    }
+}
+
+export default DetalleEntrega;

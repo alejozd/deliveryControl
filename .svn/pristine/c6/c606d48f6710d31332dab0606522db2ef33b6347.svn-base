@@ -1,0 +1,160 @@
+import React, { useState } from "react";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Dialog } from "primereact/dialog";
+
+const Quoter = () => {
+  const [customer, setCustomer] = useState(null);
+  const [additionalContact, setAdditionalContact] = useState({
+    name: "",
+    phone: "",
+    email: "",
+  });
+  const [products, setProducts] = useState([]);
+  const [showDialog, setShowDialog] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // Función para agregar un producto
+  const addProduct = () => {
+    // Aquí puedes agregar la lógica para agregar un producto a la lista de productos
+  };
+
+  // Función para guardar la cotización
+  const saveQuotation = () => {
+    // Aquí puedes agregar la lógica para guardar la cotización
+  };
+
+  return (
+    <div className="p-grid">
+      {/* Sección para el cliente */}
+      <div className="p-col-12">
+        <div className="p-field">
+          <label htmlFor="customer">Cliente</label>
+          <InputText
+            id="customer"
+            value={customer}
+            onChange={(e) => setCustomer(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Sección para el contacto adicional */}
+      <div className="p-col-12">
+        <div className="p-field">
+          <label htmlFor="additionalContactName">Nombre</label>
+          <InputText
+            id="additionalContactName"
+            value={additionalContact.name}
+            onChange={(e) =>
+              setAdditionalContact({
+                ...additionalContact,
+                name: e.target.value,
+              })
+            }
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="additionalContactPhone">Teléfono</label>
+          <InputText
+            id="additionalContactPhone"
+            value={additionalContact.phone}
+            onChange={(e) =>
+              setAdditionalContact({
+                ...additionalContact,
+                phone: e.target.value,
+              })
+            }
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="additionalContactEmail">Email</label>
+          <InputText
+            id="additionalContactEmail"
+            value={additionalContact.email}
+            onChange={(e) =>
+              setAdditionalContact({
+                ...additionalContact,
+                email: e.target.value,
+              })
+            }
+          />
+        </div>
+      </div>
+
+      {/* Sección para buscar productos */}
+      <div className="p-col-12">
+        <div className="p-inputgroup">
+          <InputText
+            placeholder="Buscar producto..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+          <Button icon="pi pi-search" className="p-button-rounded" />
+        </div>
+      </div>
+
+      {/* Lista de productos */}
+      <div className="p-col-12">
+        <DataTable
+          value={products}
+          selectionMode="single"
+          selection={selectedProduct}
+          onSelectionChange={(e) => setSelectedProduct(e.value)}
+          paginator
+          rows={5}
+          rowsPerPageOptions={[5, 10, 25]}
+          emptyMessage="No hay productos disponibles"
+        >
+          <Column field="nombre" header="Nombre" />
+          <Column field="precio" header="Precio" />
+          <Column field="cantidad" header="Cantidad" />
+        </DataTable>
+      </div>
+
+      {/* Botón para agregar un nuevo producto */}
+      <div className="p-col-12">
+        <Button
+          label="Agregar Producto"
+          onClick={addProduct}
+          className="p-button-raised p-button-primary"
+        />
+      </div>
+
+      {/* Botón para guardar la cotización */}
+      <div className="p-col-12">
+        <Button
+          label="Guardar Cotización"
+          onClick={saveQuotation}
+          className="p-button-raised p-button-success"
+          disabled={!customer}
+        />
+      </div>
+
+      {/* Diálogo de confirmación */}
+      <Dialog
+        visible={showDialog}
+        onHide={() => setShowDialog(false)}
+        header="Confirmación"
+      >
+        <div>¿Estás seguro que deseas guardar la cotización?</div>
+        <div className="p-grid p-justify-center">
+          <Button
+            label="Sí"
+            onClick={saveQuotation}
+            className="p-button-raised p-button-success"
+          />
+          <Button
+            label="No"
+            onClick={() => setShowDialog(false)}
+            className="p-button-raised p-button-danger"
+          />
+        </div>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Quoter;

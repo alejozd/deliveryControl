@@ -1,0 +1,160 @@
+import React, { useState, useEffect } from "react";
+import { Dialog } from "primereact/dialog";
+import { ListBox } from "primereact/listbox";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { IconField } from "primereact/iconfield";
+import { InputIcon } from "primereact/inputicon";
+import ClientCreation from "../ClientCreation";
+import { Toolbar } from "primereact/toolbar";
+import "./SearchDialogListBox.css";
+
+const CustomerSearchDialog = ({
+  showDialogCustomer,
+  setShowDialogCustomer,
+  customers,
+  onAcceptSelection,
+  onCustomerCreated,
+  user,
+}) => {
+  const [selectedCustomer, setSelectedCustomer] = useState([]);
+  const [filteredCustomers, setFilteredCustomers] = useState(customers);
+  const [filter, setFilter] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
+
+  // Reiniciar los productos seleccionados cada vez que showDialogProduct cambie
+  useEffect(() => {
+    if (!showDialogCustomer) {
+      setSelectedCustomer([]);
+    }
+  }, [showDialogCustomer]);
+
+  useEffect(() => {
+    const lowerCaseFilter = filter.toLowerCase();
+    const filtered = customers.filter(
+      (cliente) =>
+        cliente.nombrecliente.toLowerCase().includes(lowerCaseFilter) ||
+        cliente.identidad.toLowerCase().includes(lowerCaseFilter)
+    );
+    setFilteredCustomers(filtered);
+  }, [filter, customers]);
+
+  const handleAccept = () => {
+    // console.log("Customer-selectedCustomer", selectedCustomer);
+    // Extraer el cliente seleccionado
+    const selectedCustomerData = selectedCustomer;
+    // Llama a la función de devolución de llamada para pasar los datos del cliente seleccionado a Quoter
+    // console.log("selectedCustomerData", selectedCustomerData);
+    onAcceptSelection(selectedCustomerData);
+    // Cierra el diálogo después de aceptar
+    setShowDialogCustomer(false);
+  };
+
+  const handleCancel = () => {
+    // Cierra el diálogo sin realizar ninguna acción
+    setShowDialogCustomer(false);
+  };
+
+  const handleCustomerCreated = (newCustomer) => {
+    setFilteredCustomers([...filteredCustomers, newCustomer]);
+    setSelectedCustomer(newCustomer);
+    setShowNewCustomerDialog(false);
+    onCustomerCreated(newCustomer);
+  };
+
+  const footerContent = (
+    <div style={{ marginTop: "1em" }}>
+      <Toolbar
+        start={
+          <Button
+            label="Crear Cliente Nuevo"
+            severity="primary"
+            onClick={() => setShowNewCustomerDialog(true)}
+            size="small"
+            icon="pi pi-plus"
+          />
+        }
+        end={
+          <React.Fragment>
+            <Button
+              label="Aceptar"
+              severity="success"
+              onClick={handleAccept}
+              autoFocus
+              size="small"
+              icon="pi pi-check"
+            />
+            <Button
+              label="Cancelar"
+              severity="danger"
+              onClick={handleCancel}
+              text
+              raised
+              size="small"
+              icon="pi pi-times"
+            />
+          </React.Fragment>
+        }
+      />
+    </div>
+  );
+
+  const itemTemplate = (item) => {
+    return (
+      <div className="item">
+        <span className="item-name">{item.nombrecliente}</span>
+        <span className="item-reference">{item.identidad}</span>
+      </div>
+    );
+  };
+
+  const onFilterChange = (e) => {
+    setFilter(e.target.value);
+  };
+
+  return (
+    <Dialog
+      visible={showDialogCustomer}
+      onHide={() => setShowDialogCustomer(false)}
+      header="Clientes Encontrados"
+      footer={footerContent}
+      closeOnEscape={false}
+    >
+      <div>
+        <div className="sticky-input">
+          <IconField iconPosition="right">
+            <InputIcon className="pi pi-search" />
+            <InputText
+              type="text"
+              value={filter}
+              onChange={onFilterChange}
+              placeholder="Buscar cliente por nombre o identidad..."
+              aria-label="Filtrar clientes"
+              className="p-inputtext p-component"
+              style={{ width: "100%" }}
+            />
+          </IconField>
+        </div>
+        <ListBox
+          value={selectedCustomer}
+          options={filteredCustomers}
+          onChange={(e) => setSelectedCustomer(e.value)}
+          optionLabel="nombrecliente"
+          itemTemplate={itemTemplate}
+          // className="w-full md:w-30rem"
+          emptyMessage="No hay registros para mostrar en la lista"
+        />
+      </div>
+      <ClientCreation
+        visible={showNewCustomerDialog}
+        onHide={() => setShowNewCustomerDialog(false)}
+        onCustomerCreated={handleCustomerCreated}
+        selectedCustomer={null}
+        user={user}
+      />
+    </Dialog>
+  );
+};
+
+export default CustomerSearchDialog;

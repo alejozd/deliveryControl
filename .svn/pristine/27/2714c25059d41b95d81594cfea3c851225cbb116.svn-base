@@ -1,0 +1,13 @@
+// Archivo: Inicio.js
+import React from 'react';
+
+const Inicio = () => {
+    return (
+        <div>
+            {/* Contenido de tu página de inicio en blanco */}
+            <p>Bienvenido, esta es la página de inicio en blanco.</p>
+        </div>
+    );
+};
+
+export default Inicio;

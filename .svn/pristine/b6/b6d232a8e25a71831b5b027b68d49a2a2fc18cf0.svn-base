@@ -1,0 +1,345 @@
+import React, { useEffect, useState, useRef } from "react";
+import config from "../Config";
+import { Panel } from "primereact/panel";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Toolbar } from "primereact/toolbar";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { Toast } from "primereact/toast";
+import { MultiSelect } from "primereact/multiselect";
+import { Tooltip } from "primereact/tooltip";
+import { InputSwitch } from "primereact/inputswitch";
+import NewContactDialog from "./Quoter/NewContactDialog";
+import axios from "axios";
+
+const ContactoAdicional = () => {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaContactos`;
+  const apiUrlSegmentacion = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaSegmentacion`;
+  const toast = useRef(null);
+  const [contactos, setContactos] = useState([]);
+  const [filteredContactos, setFilteredContactos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [errorState, setErrorState] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [selectedContacto, setSelectedContacto] = useState(null);
+  const [segmentos, setSegmentos] = useState([]); // Estado para almacenar los segmentos
+  const [selectedSegmentos, setSelectedSegmentos] = useState(null); // Estado para el filtro de segmentos
+  const [exportAllColumns, setExportAllColumns] = useState(false); // Estado para el toggle
+  const dt = useRef(null); // Creamos una referencia al DataTable
+
+  // Definir los títulos de columna personalizados
+  const columnTitles = {
+    idcontacto: "ID de Contacto",
+    nombreCa: "Nombre",
+    identificacionCa: "Identificación",
+    telmovilCa: "Teléfono",
+    correoCa: "Email",
+    direccionCa: "Dirección",
+    nombresegmento: "Segmento",
+    nombreve: "Vendedor",
+  };
+
+  useEffect(() => {
+    // Cargar contactos
+    handleSearch();
+
+    // Cargar segmentos
+    axios
+      .get(apiUrlSegmentacion)
+      .then((response) => {
+        // console.log("Segmentos cargados:", response.data.result);
+        setSegmentos(response.data.result); // Asume que la respuesta es un array de segmentos
+      })
+      .catch((error) => {
+        console.error("Error al cargar segmentos:", error);
+      });
+  }, []);
+
+  useEffect(() => {
+    // Filtrar contactos cuando cambien los segmentos seleccionados o el término de búsqueda
+    filterContactos();
+  }, [contactos, selectedSegmentos]);
+
+  const handleSearch = async () => {
+    try {
+      setLoading(true);
+      const requestData = {
+        criterio: searchTerm,
+      };
+
+      const response = await axios.put(apiUrl, requestData);
+      if (response.data.status === 200) {
+        setContactos(response.data.data);
+      } else {
+        console.error("Error en la respuesta:", response.data.error);
+        setErrorMessage(response.data.error);
+      }
+    } catch (error) {
+      if (error.message === "Network Error") {
+        setErrorState(true);
+        setErrorMessage(
+          "Error de red: No se puede conectar al servidor. Por favor, verifica tu conexión a Internet o inténtalo más tarde."
+        );
+      } else {
+        setErrorState(true);
+        setErrorMessage(`Error al realizar la solicitud: ${error.message}`);
+      }
+      console.error("Error al realizar la solicitud:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filterContactos = () => {
+    let filtered = contactos;
+
+    if (selectedSegmentos && selectedSegmentos.length > 0) {
+      filtered = filtered.filter((contacto) =>
+        selectedSegmentos.includes(contacto.nombresegmento)
+      );
+    }
+
+    setFilteredContactos(filtered);
+  };
+
+  const segmentoFilterTemplate = (options) => {
+    // Maneja cambios en el MultiSelect
+    const handleSegmentoChange = (e) => {
+      const selectedSegmentos = e.value
+        ? e.value.map((segmento) => segmento.nombresegmento)
+        : []; // Asegúrate de que sea un array vacío si e.value es null
+      // console.log("Segmentos seleccionados:", selectedSegmentos);
+
+      setSelectedSegmentos(selectedSegmentos);
+
+      // Aplica el filtro como un array para que se maneje correctamente en el DataTable
+      options.filterApplyCallback(selectedSegmentos);
+    };
+
+    // Asegúrate de que selectedSegmentos no sea null
+    const filteredSelectedSegmentos = selectedSegmentos || [];
+
+    return (
+      <MultiSelect
+        value={segmentos.filter((seg) =>
+          filteredSelectedSegmentos.includes(seg.nombresegmento)
+        )} // Muestra los elementos seleccionados actualmente
+        options={segmentos}
+        onChange={handleSegmentoChange}
+        placeholder="Seleccionar Segmentos"
+        className="p-column-filter"
+        optionLabel="nombresegmento"
+        // style={{ minWidth: "14rem" }}
+        filter
+        filterBy="nombresegmento"
+        showClear
+      />
+    );
+  };
+
+  const handleCreateContact = () => {
+    setSelectedContacto(null); // Limpiar contacto seleccionado para creación
+    setDialogVisible(true);
+  };
+
+  const handleEditContact = (contacto) => {
+    console.log("Contacto seleccionado: ", contacto);
+    setSelectedContacto(contacto); // Establecer contacto seleccionado para edición
+    setDialogVisible(true);
+  };
+
+  const refreshContacts = (message, severity) => {
+    handleSearch(); // Actualiza la lista de contactos después de crear o actualizar un contacto
+    toast.current.show({
+      severity: severity,
+      summary: message,
+      //   detail: response.data.result,
+      life: 3000,
+    });
+  };
+
+  const exportExcel = () => {
+    import("xlsx").then((xlsx) => {
+      const exportData = dt.current.filteredValue || contactos;
+
+      let dataToExport = exportData;
+
+      if (!exportAllColumns) {
+        if (dt.current && dt.current.props.children) {
+          const visibleColumns = React.Children.toArray(
+            dt.current.props.children
+          ).filter((col) => !col.props.hidden && col.props.field !== undefined); // Excluir columnas sin campo o columnas específicas
+
+          dataToExport = exportData.map((row) => {
+            const filteredRow = {};
+            visibleColumns.forEach((col) => {
+              filteredRow[col.props.field] = row[col.props.field];
+            });
+            return filteredRow;
+          });
+        } else {
+          console.error("No se pudieron obtener las columnas visibles.");
+          return;
+        }
+      }
+
+      // Aplicar títulos de columnas personalizados
+      const customData = dataToExport.map((row) => {
+        const customRow = {};
+        Object.keys(row).forEach((key) => {
+          customRow[columnTitles[key] || key] = row[key];
+        });
+        return customRow;
+      });
+
+      const worksheet = xlsx.utils.json_to_sheet(customData);
+      const workbook = { Sheets: { data: worksheet }, SheetNames: ["data"] };
+      const excelBuffer = xlsx.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+      saveAsExcelFile(excelBuffer, "contactos");
+    });
+  };
+
+  const saveAsExcelFile = (buffer, fileName) => {
+    import("file-saver").then((module) => {
+      if (module && module.default) {
+        let EXCEL_TYPE =
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8";
+        let EXCEL_EXTENSION = ".xlsx";
+        const data = new Blob([buffer], {
+          type: EXCEL_TYPE,
+        });
+
+        module.default.saveAs(
+          data,
+          fileName + "_export_" + new Date().getTime() + EXCEL_EXTENSION
+        );
+      }
+    });
+  };
+
+  return (
+    <div>
+      <Toast ref={toast} />
+      <Tooltip target=".export-buttons>button" position="bottom" />
+      <h1>Contactos Adicionales</h1>
+      <Panel header="Listado de Contactos Adicionales" toggleable>
+        <Toolbar
+          start={
+            <>
+              <InputText
+                placeholder="Buscar contacto..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+                tooltip="Buscar contacto por nombre o identificación"
+                tooltipOptions={{ position: "top" }}
+              />
+              <Button icon="pi pi-search" onClick={handleSearch} />
+            </>
+          }
+          end={
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                severity="help"
+                onClick={handleCreateContact}
+              />
+              <Button
+                label="Editar"
+                icon="pi pi-pencil"
+                severity="warning"
+                disabled={!selectedContacto}
+                onClick={() => handleEditContact(selectedContacto)}
+              />
+              <Button
+                type="button"
+                icon="pi pi-file-excel"
+                severity="success"
+                tooltip="Exportar a Excel"
+                onClick={exportExcel}
+              />
+              <InputSwitch
+                checked={exportAllColumns}
+                onChange={(e) => setExportAllColumns(e.value)}
+                tooltip="Exportar todas las columnas"
+              />
+              <label>
+                {exportAllColumns ? "Exportar todas" : "Exportar visibles"}
+              </label>
+            </div>
+          }
+        ></Toolbar>
+      </Panel>
+      <div className="card">
+        <DataTable
+          ref={dt}
+          // value={contactos}
+          value={filteredContactos}
+          dataKey="idcontacto"
+          loading={loading}
+          stripedRows
+          emptyMessage="No se han encontrado resultados"
+          paginator
+          rows={10}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          scrollable
+          scrollHeight="flex"
+          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+          selection={selectedContacto}
+          onSelectionChange={(e) => setSelectedContacto(e.value)}
+          filterDisplay="menu"
+        >
+          <Column
+            selectionMode="single"
+            headerStyle={{ width: "3rem" }}
+            bodyStyle={{ width: "3rem", textAlign: "center" }}
+          />
+          <Column hidden field="idcontacto" header="ID Contacto" />
+          <Column field="nombreCa" header="Nombre" />
+          <Column field="identificacionCa" header="Identificación" />
+          <Column field="telmovilCa" header="Teléfono" />
+          <Column field="correoCa" header="Email" />
+          <Column field="direccionCa" header="Dirección" />
+          <Column
+            field="nombresegmento"
+            header="Segmento"
+            filter
+            filterMatchMode="in"
+            filterElement={segmentoFilterTemplate}
+            filterField="nombresegmento"
+            // showFilterMenu={false}
+            showClearButton={false}
+            showApplyButton={false}
+            showAddButton={false}
+            showFilterMenuOptions={false}
+            // filterMenuStyle={{ width: "14rem" }}
+            // style={{ minWidth: "14rem" }}
+          />
+          <Column field="nombreve" header="Vendedor" />
+        </DataTable>
+      </div>
+      {dialogVisible && (
+        <NewContactDialog
+          visible={dialogVisible}
+          onHide={() => setDialogVisible(false)}
+          selectedContact={selectedContacto}
+          refreshContacts={refreshContacts}
+        />
+      )}
+    </div>
+  );
+};
+
+export default ContactoAdicional;

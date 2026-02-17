@@ -1,0 +1,372 @@
+import React, { useState, useEffect, useRef } from "react";
+import { Dialog } from "primereact/dialog";
+import { Button } from "primereact/button";
+import { InputNumber } from "primereact/inputnumber";
+import { Column } from "primereact/column";
+import { DataTable } from "primereact/datatable";
+import "./SearchDialogListBox.css";
+
+const ProductSearchDialog = ({
+  showDialogProduct,
+  setShowDialogProduct,
+  products,
+  onAcceptSelection,
+  selectedBodega,
+  initialSelectedProducts = [],
+}) => {
+  const [expandedRows, setExpandedRows] = useState(null);
+  const [localProducts, setLocalProducts] = useState([]);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const showRowExpansion = selectedBodega === -1;
+
+  useEffect(() => {
+    console.log("initialSelectedProducts", initialSelectedProducts);
+    if (showDialogProduct && products.length > 0) {
+      setLoading(true);
+      const initializedProducts = products.map((product) => {
+        const filteredBodegas =
+          selectedBodega > 0
+            ? product.bodegas.filter(
+                (b) => Number(b.codigobodega) === Number(selectedBodega)
+              )
+            : product.bodegas;
+
+        const bodegasConCantidades = filteredBodegas.map((bodega) => {
+          const bodegaExistente = initialSelectedProducts.find(
+            (p) =>
+              p.codigo === product.codigo &&
+              p.subcodigo === product.subcodigo &&
+              Number(p.codigobodega) === Number(bodega.codigobodega)
+          );
+
+          return {
+            ...bodega,
+            cantidad: bodegaExistente?.cantidad || 0,
+            nombrebodega: bodega.s_nombre || bodega.nombrebodega,
+            existencia: bodega.s_existencia || bodega.existencia,
+          };
+        });
+
+        const cantidadTotal = bodegasConCantidades.reduce(
+          (sum, b) => sum + (b.cantidad || 0),
+          0
+        );
+
+        return {
+          ...product,
+          cantidad: cantidadTotal,
+          bodegas: bodegasConCantidades,
+          existencia_total:
+            selectedBodega > 0
+              ? bodegasConCantidades[0]?.existencia || 0
+              : bodegasConCantidades.reduce(
+                  (sum, b) => sum + (b.existencia || 0),
+                  0
+                ),
+          uniqueKey: `${product.codigo}-${product.subcodigo}`,
+        };
+      });
+
+      setLocalProducts(initializedProducts);
+      setExpandedRows(null);
+
+      // También actualizamos los productos seleccionados para marcarlos
+      const agrupados = {};
+      initialSelectedProducts.forEach((item) => {
+        const key = `${item.codigo}-${item.subcodigo}`;
+        if (!agrupados[key]) {
+          agrupados[key] = {
+            ...item,
+            cantidad: 0,
+            bodegas: [],
+            uniqueKey: key,
+          };
+        }
+
+        agrupados[key].cantidad += item.cantidad;
+        agrupados[key].bodegas.push({
+          codigobodega: item.codigobodega,
+          nombrebodega: item.nombrebodega,
+          cantidad: item.cantidad,
+          existencia: item.existencia || 0,
+        });
+      });
+      setSelectedProducts(Object.values(agrupados));
+
+      setLoading(false);
+    }
+  }, [showDialogProduct]);
+
+  const handleCantidadChange = (producto, nuevaCantidad) => {
+    const updatedProducts = localProducts.map((p) => {
+      if (p.uniqueKey === producto.uniqueKey) {
+        return { ...p, cantidad: Math.min(nuevaCantidad, p.existencia_total) };
+      }
+      return p;
+    });
+    setLocalProducts(updatedProducts);
+  };
+
+  const handleCantidadBodegaChange = (producto, bodegaId, nuevaCantidad) => {
+    const updatedProducts = localProducts.map((p) => {
+      if (p.uniqueKey === producto.uniqueKey) {
+        const updatedBodegas = p.bodegas.map((b) => {
+          if (b.codigobodega === bodegaId) {
+            return { ...b, cantidad: Math.min(nuevaCantidad, b.existencia) };
+          }
+          return b;
+        });
+
+        const cantidadTotal = updatedBodegas.reduce(
+          (sum, b) => sum + b.cantidad,
+          0
+        );
+
+        // Actualiza productos seleccionados
+        const alreadySelected = selectedProducts.some(
+          (sp) => sp.uniqueKey === p.uniqueKey
+        );
+        let newSelected = [...selectedProducts];
+
+        if (cantidadTotal > 0 && !alreadySelected) {
+          newSelected.push({
+            ...p,
+            bodegas: updatedBodegas,
+            cantidad: cantidadTotal,
+          });
+        } else if (cantidadTotal === 0 && alreadySelected) {
+          newSelected = newSelected.filter(
+            (sp) => sp.uniqueKey !== p.uniqueKey
+          );
+        }
+
+        setSelectedProducts(newSelected);
+
+        return { ...p, bodegas: updatedBodegas, cantidad: cantidadTotal };
+      }
+      return p;
+    });
+
+    setLocalProducts(updatedProducts);
+  };
+
+  const rowExpansionTemplate = (product) => {
+    return (
+      <div className="p-3">
+        <h5>Disponibilidad en Bodegas</h5>
+        <DataTable
+          value={product.bodegas}
+          size="small"
+          className="p-datatable-sm"
+          lazy
+        >
+          <Column field="nombrebodega" header="Bodega" />
+          <Column field="existencia" header="Existencia" />
+          <Column
+            header="Cantidad"
+            body={(bodega) => (
+              <InputNumber
+                value={bodega.cantidad}
+                onValueChange={(e) =>
+                  handleCantidadBodegaChange(
+                    product,
+                    bodega.codigobodega,
+                    e.value
+                  )
+                }
+                min={0}
+                max={bodega.existencia}
+                showButtons
+                mode="decimal"
+                locale="en-US"
+                decimalSeparator="."
+                thousandSeparator=","
+                inputStyle={{ width: "60px" }} // Ajusta solo el input interno
+                buttonLayout="horizontal" // Opcional: pone los botones + y - a los lados
+                decrementButtonClassName="p-button-secondary"
+                incrementButtonClassName="p-button-secondary"
+              />
+            )}
+          />
+        </DataTable>
+      </div>
+    );
+  };
+
+  const onHide = () => {
+    setShowDialogProduct(false);
+  };
+
+  const desglosarPorBodega = (productos) => {
+    const productosDesglosados = [];
+
+    productos.forEach((producto) => {
+      producto.bodegas.forEach((bodega) => {
+        if (bodega.cantidad > 0) {
+          productosDesglosados.push({
+            codigo: producto.codigo,
+            subcodigo: producto.subcodigo,
+            nombreproducto: producto.nombreproducto,
+            codigo_barras: producto.codigo_barras,
+            referencia: producto.referencia,
+            precio_fijo: producto.precio_fijo,
+            tarifa_iva: producto.tarifa_iva,
+            existencia_total: producto.existencia_total,
+            cantidad: bodega.cantidad,
+            nombrebodega: bodega.nombrebodega,
+            codigobodega: bodega.codigobodega,
+            uniqueKey: `${producto.codigo}-${producto.subcodigo}-${bodega.codigobodega}`,
+          });
+        }
+      });
+    });
+
+    return productosDesglosados;
+  };
+
+  const acceptSelection = () => {
+    console.log("Productos seleccionados:", localProducts);
+    // Seleccionar los productos con cantidades mayores a 0
+    const selectedProducts = localProducts.filter((product) => {
+      if (selectedBodega === -1) {
+        // Si es múltiples bodegas, revisar cada bodega
+        return product.bodegas.some((bodega) => bodega.cantidad > 0);
+      } else {
+        // Si es una sola bodega, revisar la cantidad del producto
+        return product.cantidad > 0;
+      }
+    });
+
+    // Desglosar los productos por bodega utilizando la función desglosarPorBodega
+    const productosDesglosados = desglosarPorBodega(selectedProducts);
+
+    // Si existen productos desglozados, pasar al evento onAcceptSelection
+    if (productosDesglosados.length > 0) {
+      console.log("Productos seleccionados desglosados:", productosDesglosados);
+      onAcceptSelection(productosDesglosados);
+      onHide(); // Cerrar el diálogo
+    } else {
+      alert("Por favor seleccione al menos un producto con cantidad mayor a 0");
+    }
+  };
+
+  return (
+    <Dialog
+      header="Selección de Productos"
+      visible={showDialogProduct}
+      style={{ width: "90vw", maxWidth: "1200px" }}
+      onHide={onHide}
+      footer={
+        <div>
+          <Button
+            label="Aceptar"
+            icon="pi pi-check"
+            onClick={acceptSelection}
+            autoFocus
+            className="p-button-success"
+          />
+          <Button
+            label="Cancelar"
+            icon="pi pi-times"
+            onClick={onHide}
+            className="p-button-secondary"
+          />
+        </div>
+      }
+    >
+      <DataTable
+        value={localProducts}
+        dataKey="uniqueKey"
+        expandedRows={expandedRows}
+        onRowToggle={(e) => setExpandedRows(e.data)}
+        rowExpansionTemplate={rowExpansionTemplate}
+        emptyMessage="No se encontraron productos"
+        scrollable
+        scrollHeight="flex"
+        paginator
+        rows={10}
+        rowsPerPageOptions={[10, 20, 30]}
+        loading={loading}
+        selection={selectedProducts}
+        onSelectionChange={(e) => setSelectedProducts(e.value)}
+        selectionMode="multiple"
+      >
+        <Column selectionMode="multiple" headerStyle={{ width: "3em" }} />
+        <Column expander style={{ width: "3em" }} hidden={selectedBodega > 0} />
+
+        <Column
+          field="nombreproducto"
+          header="Producto"
+          style={{ minWidth: "200px" }}
+        />
+        <Column
+          field="referencia"
+          header="Referencia"
+          style={{ width: "120px" }}
+        />
+        {selectedBodega > 0 && (
+          <Column
+            field="nombrebodega"
+            header="Bodega"
+            body={(products) => {
+              // Filtrar la bodega seleccionada por el ID de la bodega
+              const selectedBodegaData = products.bodegas.find(
+                (bodega) =>
+                  Number(bodega.codigobodega) === Number(selectedBodega)
+              );
+              return (
+                <span>
+                  {selectedBodegaData
+                    ? selectedBodegaData.nombrebodega || "No disponible"
+                    : "No disponible"}
+                </span>
+              );
+            }}
+            style={{ width: "150px" }}
+          />
+        )}
+
+        <Column
+          field="existencia_total"
+          header={selectedBodega === 0 ? "Existencia Total" : "Existencia"}
+          style={{ width: "120px" }}
+        />
+
+        <Column
+          header="Cantidad Total"
+          style={{ width: "100px" }}
+          body={(product) => {
+            if (showRowExpansion) {
+              return (
+                <div className="text-center">
+                  <span className="p-tag">{product.cantidad || 0}</span>
+                </div>
+              );
+            } else {
+              return (
+                <InputNumber
+                  value={product.cantidad}
+                  onValueChange={(e) => handleCantidadChange(product, e.value)}
+                  min={0}
+                  max={product.existencia_total}
+                  showButtons
+                  mode="decimal"
+                  locale="en-US"
+                  decimalSeparator="."
+                  thousandSeparator=","
+                  inputStyle={{ width: "60px" }} // Ajusta solo el input interno
+                  buttonLayout="horizontal" // Opcional: pone los botones + y - a los lados
+                  decrementButtonClassName="p-button-secondary"
+                  incrementButtonClassName="p-button-secondary"
+                />
+              );
+            }
+          }}
+        />
+      </DataTable>
+    </Dialog>
+  );
+};
+
+export default ProductSearchDialog;

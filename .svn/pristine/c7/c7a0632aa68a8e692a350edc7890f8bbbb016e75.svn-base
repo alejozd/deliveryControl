@@ -1,0 +1,79 @@
+import React, { useState, useEffect } from "react";
+import { Dialog } from "primereact/dialog";
+import { ListBox } from "primereact/listbox";
+import { Button } from "primereact/button";
+
+const CustomerSearchDialog = ({
+  showDialogCustomer,
+  setShowDialogCustomer,
+  customers,
+  onAcceptSelection,
+}) => {
+  const [selectedCustomer, setSelectedCustomer] = useState([]);
+
+  // Reiniciar los productos seleccionados cada vez que showDialogProduct cambie
+  useEffect(() => {
+    if (!showDialogCustomer) {
+      setSelectedCustomer([]);
+    }
+  }, [showDialogCustomer]);
+
+  const handleAccept = () => {
+    // console.log("Customer-selectedCustomer", selectedCustomer);
+
+    // Extraer el cliente seleccionado
+    const selectedCustomerData = selectedCustomer;
+    // Llama a la función de devolución de llamada para pasar los datos del cliente seleccionado a Quoter
+    // console.log("selectedCustomerData", selectedCustomerData);
+    onAcceptSelection(selectedCustomerData);
+
+    // Cierra el diálogo después de aceptar
+    setShowDialogCustomer(false);
+  };
+
+  const handleCancel = () => {
+    // Cierra el diálogo sin realizar ninguna acción
+    setShowDialogCustomer(false);
+  };
+
+  const footerContent = (
+    <div>
+      <Button
+        label="Aceptar"
+        className="p-button-success"
+        onClick={handleAccept}
+        autoFocus
+      />
+      <Button
+        label="Cancelar"
+        className="p-button-danger"
+        onClick={handleCancel}
+      />
+    </div>
+  );
+
+  return (
+    <Dialog
+      visible={showDialogCustomer}
+      onHide={() => setShowDialogCustomer(false)}
+      header="Clientes Encontrados"
+      footer={footerContent}
+    >
+      <div>
+        <ListBox
+          value={selectedCustomer}
+          options={customers}
+          onChange={(e) => setSelectedCustomer(e.value)}
+          optionLabel="nombrecliente"
+          //   optionValue={(option) => `${option.IDCLIENTE}`}
+          filter
+          //   style={{ height: "300px" }}
+          //   style={{ width: "100%" }}
+          className="w-full md:w-30rem"
+        />
+      </div>
+    </Dialog>
+  );
+};
+
+export default CustomerSearchDialog;

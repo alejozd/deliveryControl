@@ -1,0 +1,139 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { Dropdown } from "primereact/dropdown";
+import config from "../Config";
+import axios from "axios";
+
+const ClientCreationFELData = ({ onDataChange }) => {
+  const apiUrlRegimenFiscal = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaRegimenFiscal`;
+  const apiUrlResponsabilidadTributaria = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaRespTributaria`;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [regimenfiscalList, setRegimenFiscalList] = useState([]);
+  const [selectedRegimenFiscal, setSelectedRegimenFiscal] = useState(null);
+  const [responsabilidadtributariaList, setResponsabilidadTributariaList] =
+    useState([]);
+  const [
+    selectedResponsabilidadTributaria,
+    setSelectedResponsabilidadTributaria,
+  ] = useState(null);
+
+  // Efecto para cargar los regímenes fiscales
+  useEffect(() => {
+    const fetchRegimenFiscal = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.get(apiUrlRegimenFiscal);
+        const data = response.data.result || [];
+
+        const formattedRegimenFiscal = data.map((regimen) => ({
+          label: regimen.nombreregfiscal,
+          value: regimen.codigoregfiscal,
+        }));
+
+        setRegimenFiscalList(formattedRegimenFiscal);
+
+        if (formattedRegimenFiscal.length > 0) {
+          setSelectedRegimenFiscal(formattedRegimenFiscal[0].value);
+        }
+      } catch (error) {
+        setError("Error al cargar los regímenes fiscales");
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRegimenFiscal();
+
+    // Cleanup function to handle unmounted component scenarios
+    return () => {
+      setLoading(false);
+    };
+  }, [apiUrlRegimenFiscal]);
+
+  // Efecto para cargar las responsabilidades tributarias
+  useEffect(() => {
+    const fetchResponsabilidadTributaria = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.get(apiUrlResponsabilidadTributaria);
+        const data = response.data.result || [];
+
+        const formattedResponsabilidadTributaria = data.map((resp) => ({
+          label: resp.nombreresponsabilidad,
+          value: resp.codigoresponsabilidad,
+        }));
+
+        setResponsabilidadTributariaList(formattedResponsabilidadTributaria);
+
+        if (formattedResponsabilidadTributaria.length > 0) {
+          setSelectedResponsabilidadTributaria(
+            formattedResponsabilidadTributaria[0].value
+          );
+        }
+      } catch (error) {
+        setError("Error al cargar las responsabilidades tributarias");
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResponsabilidadTributaria();
+
+    // Cleanup function to handle unmounted component scenarios
+    return () => {
+      setLoading(false);
+    };
+  }, [apiUrlResponsabilidadTributaria]);
+
+  // Callback para actualizar datos en el padre
+  const handleDataChange = useCallback(() => {
+    if (onDataChange) {
+      onDataChange({
+        selectedRegimenFiscal,
+        selectedResponsabilidadTributaria,
+      });
+    }
+  }, [onDataChange, selectedRegimenFiscal, selectedResponsabilidadTributaria]);
+
+  useEffect(() => {
+    handleDataChange();
+  }, [handleDataChange]);
+
+  return (
+    <div className="flex flex-column">
+      {error && <div className="error-message">{error}</div>}
+      <div className="labelinput">
+        <label htmlFor="idregfiscal">Régimen Fiscal</label>
+        <Dropdown
+          className="inputtext"
+          id="idregfiscal"
+          value={selectedRegimenFiscal}
+          onChange={(e) => setSelectedRegimenFiscal(e.value)}
+          options={regimenfiscalList}
+          optionLabel="label"
+          placeholder="Seleccionar Régimen Fiscal"
+          disabled={loading}
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idresptri">Responsabilidad Tributaria</label>
+        <Dropdown
+          className="inputtext"
+          id="idresptri"
+          value={selectedResponsabilidadTributaria}
+          onChange={(e) => setSelectedResponsabilidadTributaria(e.value)}
+          options={responsabilidadtributariaList}
+          optionLabel="label"
+          placeholder="Seleccionar Responsabilidad Tributaria"
+          disabled={loading}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default ClientCreationFELData;

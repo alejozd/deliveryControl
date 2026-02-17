@@ -1,0 +1,152 @@
+import { useState, useEffect } from "react";
+import { Dialog } from "primereact/dialog";
+import { RadioButton } from "primereact/radiobutton";
+import { Button } from "primereact/button";
+import PrintQuote from "./PrintQuote";
+import config from "../../Config";
+import axios from "axios";
+
+const WhatsAppDialog = ({ visible, onHide, selectedQuote }) => {
+  const apiUrlContactos = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DataContactosCliente`;
+  const apiUrlCotizacionByID = `${config.apiUrl}/Datasnap/rest/TServerMethods1/CotizacionByID`;
+  const [contacts, setContacts] = useState([]);
+  const [cliente, setCliente] = useState({});
+  const [selectedPhoneNumber, setSelectedPhoneNumber] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (selectedQuote) {
+      const fetchContactsAndClient = async () => {
+        try {
+          // Obtener los contactos del cliente
+          const response = await axios.put(apiUrlContactos, {
+            idcliente: selectedQuote.idcliente,
+          });
+
+          if (response.data.status === 200) {
+            setContacts(response.data.contactos);
+            setCliente(response.data.cliente[0]);
+          } else {
+            console.error("Error fetching data:", response.data.error);
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        }
+      };
+      fetchContactsAndClient();
+    }
+  }, [selectedQuote]);
+
+  const handleSendWhatsAppMessage = async () => {
+    try {
+      if (selectedPhoneNumber) {
+        console.log("Selected phone number:", selectedPhoneNumber);
+
+        // Generar el PDF utilizando la estructura de PrintQuote.js
+        const pdfBlob = await generatePDF(selectedQuote);
+        console.log("PDF Blob generated");
+
+        // Abrir la conversación de WhatsApp con el número seleccionado
+        console.log("Opening WhatsApp conversation with:", selectedPhoneNumber);
+        const whatsappURL = `https://wa.me/57${selectedPhoneNumber}`;
+        window.open(whatsappURL, "_blank");
+
+        // You can also send the PDF to the server or attach it in the message
+        console.log("Sending message to:", selectedPhoneNumber);
+      } else {
+        console.error("No phone number selected");
+      }
+    } catch (error) {
+      console.error("Error in handleSendWhatsAppMessage:", error);
+    } finally {
+      onHide();
+    }
+  };
+
+  // Función para generar el PDF utilizando la estructura de PrintQuote.js
+  const generatePDF = async (quoteData) => {
+    console.log("quoteData:", quoteData);
+    // Crear un objeto con los datos necesarios para PrintQuote
+    const idcotizacion = quoteData.idcotizacion;
+    const response = await axios.put(apiUrlCotizacionByID, { idcotizacion });
+    // console.log("response:", response.data);
+    if (response.data.status === 200) {
+      const { cliente, productos } = response.data;
+
+      const quotation = {
+        numerocotizacion: cliente.numerocotizacion || "",
+        fecha: cliente.fechacotizacion || "",
+        nombrecliente: cliente.nombrecliente || "",
+        identidad: cliente.identidad || "",
+        direccion: cliente.direccion || "",
+        telmovil: cliente.telmovil || "",
+        email: cliente.email || "",
+        notas: cliente.notas || "",
+        productos: productos.map((productos) => ({
+          nombreproductos: productos.nombreproductos,
+          referencia: productos.referencia,
+          precio: productos.precio,
+          cantidad: productos.cantidad,
+          total: productos.total,
+        })),
+      };
+
+      // Generar el PDF utilizando PrintQuote
+      const pdfBlob = await PrintQuote({ quoteData: quotation });
+      return pdfBlob;
+    } else {
+      setErrorMessage(response.data.error || "Error en la respuesta");
+    }
+  };
+
+  return (
+    <Dialog
+      visible={visible}
+      onHide={onHide}
+      header="Enviar mensaje por WhatsApp"
+    >
+      <div className="card flex justify-content-center">
+        <div className="flex flex-column gap-3">
+          <h3>Selecciona un número de teléfono</h3>
+          <div className="flex align-items-center">
+            <RadioButton
+              inputId="cliente"
+              name="phoneNumber"
+              value={cliente.telmovilclienteCa}
+              onChange={(e) => setSelectedPhoneNumber(e.value)}
+              checked={selectedPhoneNumber === cliente.telmovilclienteCa}
+            />
+            <label htmlFor="cliente" style={{ marginLeft: "5px" }}>
+              {cliente.nombreclienteCa} (Cliente) -{" "}
+              <strong>{cliente.telmovilclienteCa}</strong>
+            </label>
+          </div>
+          {contacts.map((contact) => (
+            <div key={contact.idcontacto}>
+              <RadioButton
+                inputId={contact.idcontacto}
+                name="phoneNumber"
+                value={contact.telmovilCa}
+                onChange={(e) => setSelectedPhoneNumber(e.value)}
+                checked={selectedPhoneNumber === contact.telmovilCa}
+              />
+              <label htmlFor={contact.idcontacto} style={{ marginLeft: "5px" }}>
+                {contact.nombreCa} - <strong>{contact.telmovilCa}</strong>
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+      <Button
+        label="Enviar"
+        icon="pi pi-check"
+        severity="success"
+        onClick={handleSendWhatsAppMessage}
+        disabled={!selectedPhoneNumber}
+      />
+    </Dialog>
+  );
+};
+
+export default WhatsAppDialog;

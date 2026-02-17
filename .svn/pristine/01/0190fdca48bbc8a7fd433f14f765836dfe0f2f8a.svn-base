@@ -1,0 +1,489 @@
+// EntregasList.js
+import React, { useState, useCallback } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Toast } from "primereact/toast";
+import { Button } from "primereact/button";
+import { Toolbar } from "primereact/toolbar";
+import { InputNumber } from "primereact/inputnumber";
+import { PrintDocument } from "./PrintDocument";
+import { Dialog } from "primereact/dialog";
+import { classNames } from "primereact/utils";
+import debounce from "lodash.debounce";
+import ConfirmationModal from "./ConfirmationModal";
+import Potradatos from "../Potradatos";
+import config from "../../Config";
+
+function EntregasList(props) {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/GetNumEntrega`;
+  const apiUrlN = `${config.apiUrl}/Datasnap/rest/TServerMethods1/NuevaEntrega`;
+  const [loading, setLoading] = useState(false);
+  const [expandedRows, setExpandedRows] = useState(null);
+  const toast = props.toast;
+  const [cantidadesEntregar, setCantidadesEntregar] = useState({});
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [selectedFactura, setSelectedFactura] = useState(null);
+  const [numEntrega, setNumEntrega] = useState(null);
+  const { handleSearch } = props;
+  const [errorState, setErrorState] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [dialogVisible, setDialogVisible] = useState(false);
+
+  const handleShowAll = (data) => {
+    data.detalle.forEach((detalle) => {
+      handleTodoButtonClick(detalle);
+    });
+  };
+
+  const handleCloseErrorDialog = () => {
+    setErrorState(false);
+    setErrorMessage("");
+  };
+
+  const GetEntradaNumero = () => {
+    return new Promise((resolve, reject) => {
+      fetch(apiUrl)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          const status = data.status;
+          if (status === 200) {
+            const numeroEntrega = data.result[0].numero;
+            resolve(numeroEntrega);
+          } else {
+            reject(
+              `Error al obtener el número de entrega. Código de estado: ${status}`
+            );
+          }
+        })
+        .catch((error) => {
+          console.error("Error al obtener el número de entrega:", error);
+          reject(error);
+        });
+    });
+  };
+
+  const handleShowConfirmationModal = async (factura) => {
+    try {
+      setLoading(true);
+      const numeroEntrega = await GetEntradaNumero();
+      setNumEntrega(numeroEntrega);
+
+      const detallesConCantidad = factura.detalle.filter((detalle) => {
+        const cantidadEntregar =
+          parseFloat(cantidadesEntregar[detalle.id]) || 0;
+        return cantidadEntregar > 0;
+      });
+
+      const formattedFactura = buildFormattedFactura(
+        factura,
+        detallesConCantidad
+      );
+      setSelectedFactura(formattedFactura);
+      setShowConfirmationModal(true);
+    } catch (error) {
+      console.error("Error al mostrar el modal de confirmación:", error);
+      setErrorState(true);
+      setErrorMessage(
+        error.message.includes("Failed to fetch")
+          ? "No se pudo conectar con el servidor. Por favor, verifica tu conexión e inténtalo de nuevo más tarde."
+          : "Ocurrió un error. Por favor, inténtalo de nuevo más tarde."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const buildFormattedFactura = (
+    factura,
+    detallesConCantidad,
+    numEntrega,
+    fechaEntrega,
+    notas
+  ) => ({
+    numfactura: factura.numfactura,
+    fechafactura: factura.fechafactura,
+    idcliente: factura.idcliente,
+    nombrecliente: factura.nombrecliente,
+    numeroentrega: numEntrega,
+    fechaEntrega: fechaEntrega,
+    nit: factura.nit,
+    direccion: factura.direccion,
+    telmovil: factura.telmovil,
+    vendedor: factura.vendedor,
+    notas: notas,
+    detalle: buildFormattedDetalle(detallesConCantidad),
+  });
+
+  const buildFormattedDetalle = (detallesConCantidad) =>
+    detallesConCantidad.map((detalle) => ({
+      codigo: detalle.codigo,
+      subcodigo: detalle.subcodigo,
+      nombreproductos: detalle.nombreproductos,
+      consecutivo: detalle.consecutivo,
+      cantfacturada: detalle.cantfacturada,
+      cant_entregada: detalle.cant_entregada,
+      saldo: detalle.saldo,
+      id: detalle.id,
+      cantidad_entregar: parseFloat(cantidadesEntregar[detalle.id]) || 0,
+    }));
+
+  const handleConfirmEntrega = async (numEntrega, notas) => {
+    props.products.forEach((product) => {
+      if (product.detalle) {
+        handleTodoButtonClick(product.detalle);
+      }
+    });
+    setShowConfirmationModal(false);
+
+    const fechaActual = new Date();
+    const options = {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZone: "America/Bogota",
+    };
+    const fechaEntrega = fechaActual
+      .toLocaleString("es-CO", options)
+      .replace(", ", "T")
+      .replace(/\./g, "");
+
+    const detallesConCantidad = selectedFactura.detalle.filter((detalle) => {
+      const cantidadEntregar = parseFloat(cantidadesEntregar[detalle.id]) || 0;
+      return cantidadEntregar > 0;
+    });
+
+    const entregaData = buildFormattedFactura(
+      selectedFactura,
+      detallesConCantidad,
+      numEntrega,
+      fechaEntrega,
+      notas
+    );
+
+    try {
+      const response = await fetch(apiUrlN, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(entregaData),
+      });
+
+      if (response.status === 201 || response.status === 200) {
+        entregaData.fechaEntrega = fechaActual.toLocaleDateString("es-CO", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+        PrintDocument({ factura: entregaData, isConfirmationModal: true });
+        handleSearch();
+        return numEntrega;
+      } else {
+        console.error("Error al confirmar la entrega:", response.status);
+      }
+    } catch (error) {
+      console.error("Error al confirmar la entrega:", error);
+    }
+  };
+
+  const handleCancelEntrega = () => {
+    setShowConfirmationModal(false);
+  };
+
+  const rowExpansionTemplate = (data) => {
+    const acceptIconClassName = classNames({
+      "text-green-500 pi pi-check-circle": data.aceptapotradatos === 1,
+      "text-red-500 pi pi-times-circle": data.aceptapotradatos === 0,
+    });
+
+    const handleAcceptPotradatos = () => {
+      props.onUpdateAceptapotradatos(data.idcliente, true);
+    };
+
+    const handleIconClick = () => {
+      setDialogVisible(true);
+    };
+
+    const handleClosePotradatos = (accepted) => {
+      setDialogVisible(false);
+      data.aceptapotradatos = accepted ? 1 : 0;
+    };
+
+    const isButtonDisabled = (factura) => {
+      const todosEntregados = factura.detalle.every(
+        (detalle) => detalle.saldo === 0
+      );
+      const noCantidadesAEntregar = Object.values(cantidadesEntregar).every(
+        (cantidad) => parseFloat(cantidad) === 0 || isNaN(cantidad)
+      );
+      return todosEntregados || noCantidadesAEntregar;
+    };
+
+    return (
+      <div className="p-3">
+        <Toolbar
+          start={<h3>Productos de {data.numfactura}</h3>}
+          center={
+            <Button
+              label="Tratamiento de datos"
+              size="small"
+              icon={acceptIconClassName}
+              outlined
+              onClick={handleIconClick}
+            />
+          }
+          end={
+            <>
+              <Button
+                className="mr-2"
+                icon="pi pi-check"
+                severity="warning"
+                size="small"
+                label="Marcar todo el documento"
+                outlined
+                onClick={() => handleShowAll(data)}
+              />
+              <Button
+                className="p-button-success mr-2"
+                icon="pi pi-check"
+                severity="success"
+                size="small"
+                label="Entregar"
+                outlined
+                loading={loading}
+                disabled={isButtonDisabled(data)}
+                onClick={() => handleShowConfirmationModal(data)}
+              />
+            </>
+          }
+          style={{ padding: "2px", height: "auto" }}
+        />
+        <DataTable value={data.detalle} dataKey="id">
+          <Column
+            field="nombreproductos"
+            header="Nombre de Producto"
+            sortable
+          />
+          <Column field="referencia" header="Referencia" sortable />
+          <Column
+            field="cantfacturada"
+            header="Cant. Facturada"
+            sortable
+            body={(rowData) => rowData.cantfacturada.toFixed(2)}
+          />
+          <Column
+            field="cant_entregada"
+            header="Cant. Entregada"
+            sortable
+            body={(rowData) => rowData.cant_entregada.toFixed(2)}
+          />
+          <Column
+            field="saldo"
+            header="Saldo"
+            sortable
+            body={(rowData) => rowData.saldo.toFixed(2)}
+          />
+          <Column
+            header="Todo"
+            style={{ width: "3rem" }}
+            body={(rowData) => renderTodoButton(rowData)}
+          />
+          <Column
+            header="Cant. Entregar"
+            body={(rowData) => renderCantidadEntregar(rowData)}
+          />
+        </DataTable>
+        {dialogVisible && (
+          <Potradatos
+            visible={true}
+            onHide={() => handleClosePotradatos(false)}
+            idCliente={data.idcliente}
+            aceptaTratamiento={data.aceptapotradatos}
+            onAccept={handleAcceptPotradatos}
+          />
+        )}
+      </div>
+    );
+  };
+
+  const renderTodoButton = (rowData) => (
+    <Button
+      label="Todo"
+      onClick={() => handleTodoButtonClick(rowData)}
+      outlined
+      size="small"
+      className="mr-2"
+      disabled={rowData.saldo === 0}
+    />
+  );
+
+  const handleTodoButtonClick = (rowData) => {
+    if (rowData && rowData.saldo !== undefined) {
+      const saldo = rowData.saldo.toString();
+      setCantidadesEntregar((prev) => ({
+        ...prev,
+        [rowData.id]: saldo,
+      }));
+    }
+  };
+
+  const handleCantidadEntregarInputDebounced = useCallback(
+    debounce((e, rowData) => {
+      const inputValue = e.value || "";
+      const saldo = rowData.saldo || 0;
+
+      if (inputValue > saldo) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Cantidad excede el saldo",
+          detail: `El valor ingresado supera el saldo disponible de ${saldo}`,
+          life: 3000,
+        });
+        setCantidadesEntregar((prev) => ({
+          ...prev,
+          [rowData.id]: saldo,
+        }));
+      } else {
+        setCantidadesEntregar((prev) => ({
+          ...prev,
+          [rowData.id]: inputValue,
+        }));
+      }
+    }, 300),
+    [toast, setCantidadesEntregar]
+  );
+
+  const handleCantidadEntregarInput = (e, rowData) => {
+    handleCantidadEntregarInputDebounced(e, rowData);
+  };
+
+  const renderCantidadEntregar = (rowData) => {
+    const saldo = rowData.saldo || 0;
+    const isReadOnly = saldo === 0;
+    const inputValue = cantidadesEntregar[rowData.id] || "";
+    const max = rowData.saldo;
+
+    return (
+      <InputNumber
+        readOnly={isReadOnly}
+        value={inputValue}
+        min={0.01}
+        max={max}
+        onChange={(e) => handleCantidadEntregarInput(e, rowData)}
+        minFractionDigits={2}
+        locale="en-US"
+      />
+    );
+  };
+
+  const allowExpansion = (rowData) =>
+    rowData.detalle && rowData.detalle.length > 0;
+
+  const expandAll = () => {
+    const expanded = props.products.map((product) => product);
+    setExpandedRows(expanded);
+  };
+
+  const collapseAll = () => {
+    setExpandedRows([]);
+  };
+
+  const header = (
+    <div className="flex flex-wrap justify-content-end gap-2">
+      <Button
+        icon="pi pi-plus"
+        label="Expandir Todo"
+        onClick={expandAll}
+        text
+      />
+      <Button
+        icon="pi pi-minus"
+        label="Contraer Todo"
+        onClick={collapseAll}
+        text
+      />
+    </div>
+  );
+
+  return (
+    <div style={{ paddingTop: "5px" }}>
+      <Toast ref={toast} />
+      <DataTable
+        value={props.products}
+        expandedRows={expandedRows}
+        onRowToggle={(e) => setExpandedRows(e.data)}
+        onRowExpand={(e) => onRowExpand(e, props.toast)}
+        onRowCollapse={(e) => onRowCollapse(e, props.toast)}
+        rowExpansionTemplate={rowExpansionTemplate}
+        header={header}
+        emptyMessage="No se han encontrado resultados"
+        stripedRows
+        responsive="true"
+        loading={props.loading}
+        dataKey={(rowData) => `${rowData.numfactura}-${rowData.detalle[0].id}`}
+      >
+        <Column expander={allowExpansion} style={{ width: "5rem" }} />
+        <Column field="numfactura" header="Número de Factura" sortable />
+        <Column field="fechafactura" header="Fecha de Factura" sortable />
+        <Column field="nombrecliente" header="Nombre del Cliente" sortable />
+      </DataTable>
+      {showConfirmationModal && (
+        <ConfirmationModal
+          factura={selectedFactura}
+          onConfirm={handleConfirmEntrega}
+          onCancel={handleCancelEntrega}
+          visible={showConfirmationModal}
+          numEntrega={numEntrega}
+        />
+      )}
+      <Dialog
+        visible={errorState}
+        onHide={handleCloseErrorDialog}
+        header="Error"
+        modal
+        style={{ width: "300px" }}
+      >
+        <div>
+          <p>{errorMessage}</p>
+          <Button
+            label="Cerrar"
+            icon="pi pi-times"
+            severity="danger"
+            text
+            style={{ marginTop: "10px" }}
+            size="small"
+            onClick={handleCloseErrorDialog}
+          />
+        </div>
+      </Dialog>
+    </div>
+  );
+}
+
+const onRowExpand = (event, toast) => {
+  toast.current.show({
+    severity: "info",
+    summary: "Abriendo Factura",
+    detail: event.data.numfactura,
+    life: 3000,
+  });
+};
+
+const onRowCollapse = (event, toast) => {
+  toast.current.show({
+    severity: "success",
+    summary: "Cerrando Factura",
+    detail: event.data.numfactura,
+    life: 3000,
+  });
+};
+
+export default EntregasList;

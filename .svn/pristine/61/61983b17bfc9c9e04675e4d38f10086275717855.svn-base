@@ -1,0 +1,29 @@
+import React, { useState } from 'react';
+import { Card } from 'primereact/card';
+import { Routes, Route } from "react-router-dom";
+import Clientes from "../Clientes";
+import Productos from "../Productos";
+import Entregas from "../delivery/Entregas";
+import NavBar from "./Navbar";
+import './CustomCard.css';
+
+const Content = ({ setSidebarVisible }) => {
+  // const [sidebarVisible, setSidebarVisible] = useState(false);
+
+  return (
+    <Card >
+      <NavBar setSidebarVisible={setSidebarVisible} />
+      <div>
+        <div>
+          <Routes>
+            <Route path="/entregas" element={<Entregas />} />
+            <Route path="/productos" element={<Productos />} />
+            <Route path="/clientes" element={<Clientes />} />
+          </Routes>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+export default Content;

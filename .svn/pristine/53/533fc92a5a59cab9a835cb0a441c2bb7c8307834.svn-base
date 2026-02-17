@@ -1,0 +1,88 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
+import { InputText } from 'primereact/inputtext';
+import { Password } from 'primereact/password';
+import { Button } from 'primereact/button';
+import './Login.css';
+
+const Login = ({ onLoginSuccess }) => {
+    const [errorMessage, setErrorMessage] = useState('');
+
+    const validationSchema = Yup.object({
+        nombre: Yup.string().required('El nombre de usuario es obligatorio'),
+        clave: Yup.string().required('La contraseña es obligatoria'),
+    });
+
+    const formik = useFormik({
+        initialValues: {
+            nombre: '',
+            clave: '',
+        },
+        validationSchema: validationSchema,
+        onSubmit: async (values) => {
+            try {
+                console.log('JSON enviado al backend:', values);
+
+                const response = await axios.post('http://localhost:8080/Datasnap/rest/TServerMethods1/Login', values);
+
+                if (response.data.status === 200) {
+                    onLoginSuccess();
+                    const user = response.data.user;
+                    console.log(`Inicio de sesión exitoso para el usuario: ${user.nombre}`);
+                } else {
+                    setErrorMessage(response.data.error);
+                    console.error(response.data.error);
+                }
+            } catch (error) {
+                console.error('Error al realizar la solicitud:', error.message);
+            }
+        },
+    });
+
+    return (
+        <div className="login-container">
+            <form onSubmit={formik.handleSubmit}>
+                <div className='login-form'>
+                    <div className='w-full text-center text-3xl font-bold md:text-4xl md:mb-10'>
+                        Bienvenido
+                    </div>
+                    <div className="flex flex-column md:flex-row">
+                        <div className="w-full md:w-5 md:mx-auto flex flex-column align-items-center justify-content-center gap-3 py-5">
+                            <div className="flex flex-wrap gap-2">
+                                <label>Usuario</label>
+                                <InputText id="nombre" name="nombre" type="text" className="w-17rem"
+                                    onChange={formik.handleChange}
+                                    onBlur={formik.handleBlur}
+                                    value={formik.values.nombre} />
+                                {formik.touched.nombre && formik.errors.nombre && <div className="error-message">{formik.errors.nombre}</div>}
+                            </div>
+                            <div className="flex flex-wrap  gap-2">
+                                <label>Contraseña</label>
+                                <Password
+                                    id="clave"
+                                    name="clave"
+                                    feedback={false}
+                                    toggleMask
+                                    onChange={formik.handleChange}
+                                    onBlur={formik.handleBlur}
+                                    value={formik.values.clave}
+                                />
+                                {formik.touched.clave && formik.errors.clave && <div className="error-message">{formik.errors.clave}</div>}
+                            </div>
+                            <div >
+                                <Button label="Login" icon="pi pi-user" className="w-10rem mx-auto"></Button>
+                            </div>
+                            <div>
+                                {errorMessage && <p className="error-message">{errorMessage}</p>}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    );
+};
+
+export default Login;

@@ -1,0 +1,113 @@
+import React, { useState } from "react";
+import axios from "axios";
+import { useFormik } from "formik";
+import * as Yup from "yup";
+import { InputText } from "primereact/inputtext";
+import { Password } from "primereact/password";
+import { Button } from "primereact/button";
+import { Card } from "primereact/card";
+import config from "./Config";
+import "./Login.css";
+
+const Login = ({ onLoginSuccess }) => {
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/Login`;
+
+  const validationSchema = Yup.object({
+    nombre: Yup.string().required("El nombre de usuario es obligatorio"),
+    clave: Yup.string().required("La contraseña es obligatoria"),
+  });
+
+  const formik = useFormik({
+    initialValues: {
+      nombre: "",
+      clave: "",
+    },
+    validationSchema: validationSchema,
+    onSubmit: async (values) => {
+      try {
+        setLoading(true);
+        const response = await axios.post(apiUrl, values);
+        if (response.data.status === 200) {
+          const user = {
+            name: response.data.nombre,
+            codigo: response.data.codigo,
+            modvencli: response.data.modvencli,
+          };
+          onLoginSuccess(user);
+        } else {
+          setErrorMessage(response.data.error);
+        }
+      } catch (error) {
+        const errorMsg =
+          error.message === "Network Error"
+            ? "Error de red: No se puede conectar al servidor."
+            : `Error: ${error.message}`;
+        setErrorMessage(errorMsg);
+      } finally {
+        setLoading(false);
+      }
+    },
+  });
+
+  return (
+    <div className="login-container">
+      <Card title="Iniciar Sesión" className="login-card">
+        <form onSubmit={formik.handleSubmit}>
+          <div className="input-group">
+            <label htmlFor="nombre">Usuario</label>
+            <InputText
+              id="nombre"
+              name="nombre"
+              type="text"
+              placeholder="Ingresa tu usuario"
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              value={formik.values.nombre}
+              className={`input-field ${
+                formik.touched.nombre && formik.errors.nombre
+                  ? "input-error"
+                  : ""
+              }`}
+            />
+            {formik.touched.nombre && formik.errors.nombre && (
+              <div className="error-message">{formik.errors.nombre}</div>
+            )}
+          </div>
+
+          <div className="input-group">
+            <label htmlFor="clave">Contraseña</label>
+            <Password
+              id="clave"
+              name="clave"
+              feedback={false}
+              toggleMask
+              placeholder="Ingresa tu contraseña"
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              value={formik.values.clave}
+              className={`input-field ${
+                formik.touched.clave && formik.errors.clave ? "input-error" : ""
+              }`}
+            />
+            {formik.touched.clave && formik.errors.clave && (
+              <div className="error-message">{formik.errors.clave}</div>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            label="Iniciar Sesión"
+            icon="pi pi-user"
+            className="login-button"
+            loading={loading}
+          />
+          {errorMessage && <p className="error-message">{errorMessage}</p>}
+        </form>
+      </Card>
+    </div>
+  );
+};
+
+export default React.memo(Login);

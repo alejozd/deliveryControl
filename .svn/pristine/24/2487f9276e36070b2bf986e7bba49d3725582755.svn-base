@@ -1,0 +1,84 @@
+import React from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faPaperPlane,
+  faQuestion,
+  faCopy,
+  faTimes,
+  faTruckMoving,
+  faUsers,
+  faCubes,
+} from "@fortawesome/free-solid-svg-icons";
+import SubMenu from "./SubMenu";
+import { Nav, Button } from "react-bootstrap";
+import classNames from "classnames";
+import { Link } from "react-router-dom";
+import './SideBar.css';
+// import "bootstrap/dist/css/bootstrap.min.css";
+
+class SideBar extends React.Component {
+  render() {
+    return (
+      <div className={classNames("sidebar", { "is-open": this.props.isOpen })}>
+        <div className="sidebar-header">
+          <Button
+            variant="link"
+            onClick={this.props.toggle}
+            style={{ color: "#fff" }}
+            className="mt-4"
+          >
+            <FontAwesomeIcon icon={faTimes} pull="right" size="xs" />
+          </Button>
+          <h3>Control de Entregas</h3>
+        </div>
+
+        <Nav className="flex-column pt-2">
+          <p className="ml-3">Menú</p>
+
+          <Nav.Item className="active">
+            <Link to="/Entregas" className="link">
+              <FontAwesomeIcon icon={faTruckMoving} className="mr-2" />
+              Entregas
+            </Link>
+          </Nav.Item>
+
+          <Nav.Item className="nav-item">
+            <Link to="/clientes" className="link">
+              <FontAwesomeIcon icon={faUsers} className="mr-2" />
+              Clientes
+            </Link>
+          </Nav.Item>
+
+          <Nav.Item>
+            <Link to="/productos" className="link">
+              <FontAwesomeIcon icon={faCubes} className="mr-2" />
+              Productos
+            </Link>
+          </Nav.Item>
+
+          <Nav.Item>
+            <Nav.Link href="/">
+              <FontAwesomeIcon icon={faQuestion} className="mr-2" />
+              Acerca de
+            </Nav.Link>
+          </Nav.Item>
+
+          <Nav.Item>
+            <Nav.Link href="/">
+              <FontAwesomeIcon icon={faPaperPlane} className="mr-2" />
+              Contacto
+            </Nav.Link>
+          </Nav.Item>
+
+          <SubMenu
+            title="Ejemplo"
+            icon={faCopy}
+            items={["Link1", "Link2", "Activo"]}
+          />
+        </Nav>
+      </div >
+    );
+  }
+}
+
+export default SideBar;

@@ -1,0 +1,156 @@
+import React, { useState, useEffect, useRef } from "react";
+import { Dialog } from "primereact/dialog";
+import { ListBox } from "primereact/listbox";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { IconField } from "primereact/iconfield";
+import { InputIcon } from "primereact/inputicon";
+import ClientCreation from "../ClientCreation";
+import { Toolbar } from "primereact/toolbar";
+import "./SearchDialogListBox.css";
+
+const ContactSearchDialog = ({
+  showDialogContact,
+  setShowDialogContact,
+  contacts,
+  onAcceptSelection,
+  onContactCreated,
+}) => {
+  const [selectedContact, setSelectedContact] = useState([]);
+  const [filteredContacts, setFilteredContacts] = useState(contacts);
+  const [filter, setFilter] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showNewContactsDialog, setShowNewCustomerDialog] = useState(false);
+
+  // Reiniciar los productos seleccionados cada vez que showDialogProduct cambie
+  useEffect(() => {
+    if (!showDialogContact) {
+      setSelectedContact([]);
+    }
+  }, [showDialogContact]);
+
+  useEffect(() => {
+    const lowerCaseFilter = filter.toLowerCase();
+    const filtered = contacts.filter(
+      (contacto) =>
+        contacto.nombrecontacto.toLowerCase().includes(lowerCaseFilter) ||
+        contacto.identidad.toLowerCase().includes(lowerCaseFilter)
+    );
+    setFilteredContacts(filtered);
+  }, [filter, contacts]);
+
+  const handleAccept = () => {
+    // console.log("Customer-selectedContact", selectedContact);
+    // Extraer el contacto seleccionado
+    const selectedContactData = selectedContact;
+    // Llama a la función de devolución de llamada para pasar los datos del contacto seleccionado a Quoter
+    // console.log("selectedContactData", selectedContactData);
+    onAcceptSelection(selectedContactData);
+    // Cierra el diálogo después de aceptar
+    setShowDialogContact(false);
+  };
+
+  const handleCancel = () => {
+    // Cierra el diálogo sin realizar ninguna acción
+    setShowDialogContact(false);
+  };
+
+  const handleCustomerCreated = (newCustomer) => {
+    setFilteredContacts([...filteredContacts, newCustomer]);
+    setSelectedContact(newCustomer);
+    setShowNewCustomerDialog(false);
+    onContactCreated(newCustomer);
+  };
+
+  const footerContent = (
+    <div style={{ marginTop: "1em" }}>
+      <Toolbar
+        start={
+          <Button
+            label="Crear Contacto Nuevo"
+            severity="primary"
+            onClick={() => setShowNewCustomerDialog(true)}
+            size="small"
+            icon="pi pi-plus"
+          />
+        }
+        end={
+          <React.Fragment>
+            <Button
+              label="Aceptar"
+              severity="success"
+              onClick={handleAccept}
+              autoFocus
+              size="small"
+              icon="pi pi-check"
+            />
+            <Button
+              label="Cancelar"
+              severity="danger"
+              onClick={handleCancel}
+              text
+              raised
+              size="small"
+              icon="pi pi-times"
+            />
+          </React.Fragment>
+        }
+      />
+    </div>
+  );
+
+  const itemTemplate = (item) => {
+    return (
+      <div className="item">
+        <span className="item-name">{item.nombrecontacto}</span>
+        <span className="item-reference">{item.identidad}</span>
+      </div>
+    );
+  };
+
+  const onFilterChange = (e) => {
+    setFilter(e.target.value);
+  };
+
+  return (
+    <Dialog
+      visible={showDialogContact}
+      onHide={() => setShowDialogContact(false)}
+      header="Clientes Encontrados"
+      footer={footerContent}
+    >
+      <div>
+        <div className="sticky-input">
+          <IconField iconPosition="right">
+            <InputIcon className="pi pi-search" />
+            <InputText
+              type="text"
+              value={filter}
+              onChange={onFilterChange}
+              placeholder="Buscar contacto por nombre o identidad..."
+              aria-label="Filtrar contactos"
+              className="p-inputtext p-component"
+              style={{ width: "100%" }}
+            />
+          </IconField>
+        </div>
+        <ListBox
+          value={selectedContact}
+          options={filteredContacts}
+          onChange={(e) => setSelectedContact(e.value)}
+          optionLabel="nombrecontacto"
+          itemTemplate={itemTemplate}
+          // className="w-full md:w-30rem"
+          emptyMessage="No hay registros para mostrar en la lista"
+        />
+      </div>
+      <ClientCreation
+        visible={showNewContactsDialog}
+        onHide={() => setShowNewCustomerDialog(false)}
+        onCustomerCreated={handleCustomerCreated}
+      />
+    </Dialog>
+  );
+};
+
+export default ContactSearchDialog;

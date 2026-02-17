@@ -1,0 +1,10 @@
+/* CustomCard.css */
+.content-container {
+    width: 100%; /* Ajusta el ancho según tus necesidades */
+  }
+
+.p-card-content[data-pc-section="content"] {
+    padding: 0 !important;
+    width: 100%; /* Ajusta el ancho según tus necesidades */
+    box-sizing: border-box; /* Esto evita que el padding afecte el ancho total */
+}

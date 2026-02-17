@@ -1,0 +1,148 @@
+import React, { useState, useEffect } from 'react';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Panel } from 'primereact/panel';
+import { Calendar } from 'primereact/calendar';
+import { Button } from 'primereact/button';
+import { Toolbar } from 'primereact/toolbar';
+import { addLocale } from 'primereact/api';
+import { Dialog } from 'primereact/dialog';
+import DetalleEntrega from './DetalleEntrega';
+import axios from 'axios';
+
+const ConsultaEntregas = () => {
+    const [entregas, setEntregas] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [dates, setDates] = useState(null);
+    const [fechaIni, setFechaIni] = useState(null);
+    const [fechaFin, setFechaFin] = useState(null);
+    const [selectedEntrega, setSelectedEntrega] = useState(null);
+    const [showDialog, setShowDialog] = useState(false);
+    const [showDetalleDialog, setShowDetalleDialog] = useState(false);
+
+    addLocale('es', {
+        firstDayOfWeek: 1,
+        showMonthAfterYear: true,
+        dayNames: ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'],
+        dayNamesShort: ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'],
+        dayNamesMin: ['D', 'L', 'M', 'X', 'J', 'V', 'S'],
+        monthNames: ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'],
+        monthNamesShort: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'],
+        today: 'Hoy',
+        clear: 'Limpiar'
+    });
+
+    const handleSearch = async () => {
+        try {
+            setLoading(true);
+            const requestData = {
+                FECHAINI: fechaIni.toLocaleDateString("es-CO"),
+                FECHAFIN: fechaFin.toLocaleDateString("es-CO"),
+            };
+            console.log('JSON enviado al backend:', requestData);
+            const response = await axios.put('http://localhost:8080/Datasnap/rest/TServerMethods1/ListaEntregas', requestData);
+
+            if (response.data.status === 200) {
+                setEntregas(response.data.data);
+            } else {
+                console.error('Error en la respuesta:', response.data.error);
+            }
+        } catch (error) {
+            console.error('Error al realizar la solicitud:', error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        // Si solo se selecciona una fecha, asignarla tanto como fecha inicial como fecha final
+        if (fechaIni && !fechaFin) {
+            setFechaFin(fechaIni);
+        } else if (!fechaIni && fechaFin) {
+            setFechaIni(fechaFin);
+        }
+    }, [fechaIni, fechaFin]);
+
+    const handleDateChange = (e) => {
+        setDates(e.value);
+
+        if (e.value && e.value.length > 0) {
+            setFechaIni(e.value[0]);
+            if (e.value.length === 2) {
+                setFechaFin(e.value[1]);
+            } else {
+                setFechaFin(e.value[0]);
+            }
+        } else {
+            setFechaIni(null);
+            setFechaFin(null);
+        }
+    };
+
+    const showDetailDialog = (entrega) => {
+        setSelectedEntrega(entrega);
+        setShowDetalleDialog(true);
+    };
+
+    const onHideDetalleDialog = () => {
+        setShowDetalleDialog(false);
+    };
+
+    const dialogDetalleFooter = (
+        <div>
+            <Button label="Cerrar" icon="pi pi-times" onClick={onHideDetalleDialog} />
+        </div>
+    );
+
+    return (
+        <div>
+            <Panel header="Consulta de Entregas" toggleable>
+                <Toolbar
+                    start={
+                        <>
+                            <Calendar value={dates}
+                                onChange={handleDateChange}
+                                locale="es"
+                                selectionMode="range"
+                                showIcon
+                                readOnlyInput
+                            />
+                        </>
+                    }
+                    end={
+                        <>
+                            <Button label="Buscar" icon="pi pi-search" className="p-mt-2" onClick={handleSearch} />
+                        </>
+                    }
+                />
+            </Panel>
+            <DataTable value={entregas} showGridlines stripedRows className="p-datatable-sm"
+                paginator rows={10} rowsPerPageOptions={[5, 10, 25, 50]}>
+                <Column field="nombrecliente" header="Nombre Cliente" />
+                <Column field="numeroentrega" header="Número Entrega" />
+                <Column field="fechaentrega" header="Fecha Entrega" />
+                <Column field="numfactura" header="Número Factura" />
+                <Column field="fechafactura" header="Fecha Factura" />
+                <Column field="vendedor" header="Vendedor" />
+                <Column
+                    body={(rowData) => (
+                        <Button
+                            icon="pi pi-info-circle"
+                            onClick={() => showDetailDialog(rowData.numeroentrega)}
+                        />
+                    )}
+                />
+            </DataTable>
+            <Dialog
+                visible={showDetalleDialog}
+                onHide={onHideDetalleDialog}
+                header={`Detalle de la Entrega #${selectedEntrega}`}
+                footer={dialogDetalleFooter}
+            >
+                <DetalleEntrega idEntrega={selectedEntrega} onHide={onHideDetalleDialog} />
+            </Dialog>
+        </div>
+    );
+};
+
+export default ConsultaEntregas;

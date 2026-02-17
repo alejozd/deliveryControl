@@ -1,0 +1,60 @@
+/* Estilos generales */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+  }
+  
+/* Contenedor principal del formulario */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* Ajusta la altura del contenedor al 100% del viewport */
+    /* width: 200vh; */    
+  }
+  
+  /* Estilos del formulario de inicio de sesión */
+  .login-form {
+    max-width: 400px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .login-form label {
+    display: block;
+    margin-bottom: 8px;
+  }
+  
+  .login-form input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .login-form button {
+    background-color: #354052; /* Fondo del botón de inicio de sesión */
+    color: #fff; /* Color de texto del botón de inicio de sesión */
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .login-form button:hover {
+    background-color: #293846; /* Cambio de color al pasar el ratón sobre el botón */
+  }
+  
+/* Estilos para pantallas pequeñas (responsive) */
+@media (max-width: 600px) {
+    .login-form {
+      width: 100%; /* El formulario ocupa el ancho completo en pantallas pequeñas */
+    }
+  }
+  

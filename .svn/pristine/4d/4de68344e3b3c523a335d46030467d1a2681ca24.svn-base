@@ -1,0 +1,109 @@
+import { useState, useEffect } from "react";
+import { Dialog } from "primereact/dialog";
+import { RadioButton } from "primereact/radiobutton";
+import { Button } from "primereact/button";
+import config from "../../Config";
+import axios from "axios";
+
+const EmailDialog = ({ visible, onHide, selectedQuote }) => {
+  const apiUrlContactos = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DataContactosCliente`;
+  const [emailOptions, setEmailOptions] = useState([]);
+  const [selectedEmail, setSelectedEmail] = useState(null);
+
+  useEffect(() => {
+    if (selectedQuote) {
+      const fetchContactsAndClient = async () => {
+        try {
+          const response = await axios.put(apiUrlContactos, {
+            idcliente: selectedQuote.idcliente,
+          });
+
+          if (response.data.status === 200) {
+            const cliente = response.data.cliente[0];
+            const contacts = response.data.contactos;
+
+            const listacorreos = [
+              {
+                nombre: cliente.nombreclienteCa,
+                key: cliente.idclienteCa,
+                email: cliente.emailclienteCa,
+              },
+              ...contacts.map((contact) => ({
+                nombre: contact.nombreCa,
+                key: contact.idcontacto,
+                email: contact.emailCa,
+              })),
+            ].filter((option) => option.email);
+
+            setEmailOptions(listacorreos);
+          } else {
+            console.error("Error fetching data:", response.data.error);
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        }
+      };
+      fetchContactsAndClient();
+    }
+  }, [selectedQuote]);
+
+  useEffect(() => {
+    if (visible) {
+      setSelectedEmail(null);
+    }
+  }, [visible]);
+
+  const handleSendEmail = () => {
+    if (selectedEmail) {
+      const emailURL = `mailto:${selectedEmail.email}`;
+      window.location.href = emailURL;
+    } else {
+      console.error("No email selected");
+    }
+    onHide();
+  };
+
+  return (
+    <Dialog
+      visible={visible}
+      onHide={onHide}
+      header="Enviar mensaje por Correo Electrónico"
+    >
+      <div className="card flex justify-content-center">
+        <div className="flex flex-column gap-3">
+          <h3>Selecciona un correo electrónico</h3>
+          {emailOptions.length > 0 ? (
+            emailOptions.map((option) => (
+              <div key={option.key}>
+                <RadioButton
+                  inputId={`email-${option.key}`}
+                  name="email"
+                  value={option}
+                  onChange={() => setSelectedEmail(option)}
+                  checked={selectedEmail && selectedEmail.key === option.key}
+                />
+                <label
+                  htmlFor={`email-${option.key}`}
+                  style={{ marginLeft: "5px" }}
+                >
+                  {option.nombre} - <strong>{option.email}</strong>
+                </label>
+              </div>
+            ))
+          ) : (
+            <p>No hay correos electrónicos disponibles</p>
+          )}
+        </div>
+      </div>
+      <Button
+        label="Enviar"
+        icon="pi pi-check"
+        severity="success"
+        onClick={handleSendEmail}
+        disabled={!selectedEmail}
+      />
+    </Dialog>
+  );
+};
+
+export default EmailDialog;

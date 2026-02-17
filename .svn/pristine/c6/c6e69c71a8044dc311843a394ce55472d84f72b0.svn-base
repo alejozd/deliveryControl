@@ -1,0 +1,77 @@
+import React, { useState } from "react";
+import { Dialog } from "primereact/dialog";
+import { Button } from "primereact/button";
+import config from "../Config";
+import axios from "axios";
+
+const Potradatos = ({
+  visible,
+  onHide,
+  idCliente,
+  aceptaTratamiento,
+  onAccept,
+}) => {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/PoTraDatos`;
+  const [loading, setLoading] = useState(false);
+  const handleAccept = async () => {
+    try {
+      setLoading(true);
+      console.log("potradatos.idCliente:", idCliente);
+      const response = await axios.post(apiUrl, {
+        idcliente: idCliente,
+        aceptapotradatos: 1, // Indica que acepta el tratamiento de datos
+      });
+      //console.log(response.data);
+      // Aquí podrías realizar alguna acción adicional si es necesario
+      onAccept(); // Llama a la función de aceptar del padre
+    } catch (error) {
+      console.error("Error al actualizar tratamiento de datos:", error.message);
+    } finally {
+      setLoading(false);
+      onHide(); // Oculta el diálogo después de enviar la solicitud
+    }
+  };
+
+  const handleDecline = () => {
+    onHide(); // Oculta el diálogo sin realizar ninguna acción
+  };
+
+  return (
+    <div className="card flex justify-content-center">
+      <Dialog
+        visible={visible && aceptaTratamiento === 0} // Mostrar solo si no ha aceptado
+        onHide={onHide}
+        header="Política de Tratamiento de Datos"
+        style={{ width: "50vw" }}
+        footer={
+          <div>
+            <Button
+              label="No Acepto"
+              icon="pi pi-times"
+              className="p-button-text"
+              onClick={handleDecline}
+            />
+            <Button
+              label="Acepto"
+              icon="pi pi-check"
+              onClick={handleAccept}
+              disabled={loading}
+            />
+          </div>
+        }
+      >
+        <p className="m-0">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+          eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
+          minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+          aliquip ex ea commodo consequat. Duis aute irure dolor in
+          reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+          pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+          culpa qui officia deserunt mollit anim id est laborum.
+        </p>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Potradatos;

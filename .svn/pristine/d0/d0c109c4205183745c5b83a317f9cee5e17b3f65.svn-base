@@ -1,0 +1,175 @@
+import React, { useState, useEffect } from "react";
+import { Dialog } from "primereact/dialog";
+import { ListBox } from "primereact/listbox";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { IconField } from "primereact/iconfield";
+import { InputIcon } from "primereact/inputicon";
+import axios from "axios";
+import NewCustomerDialog from "./NewCustomerDialog";
+import config from "../../Config";
+import "./SearchDialogListBox.css";
+
+const CustomerSearchDialog = ({
+  showDialogCustomer,
+  setShowDialogCustomer,
+  customers,
+  onAcceptSelection,
+}) => {
+  const apiUrlCliente = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClientes`;
+  const [selectedCustomer, setSelectedCustomer] = useState([]);
+  const [filteredCustomers, setFilteredCustomers] = useState(customers);
+  const [filter, setFilter] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [advancedSearchResults, setAdvancedSearchResults] = useState([]);
+  const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
+
+  // Reiniciar los productos seleccionados cada vez que showDialogProduct cambie
+  useEffect(() => {
+    if (!showDialogCustomer) {
+      setSelectedCustomer([]);
+      setAdvancedSearchResults([]);
+    }
+  }, [showDialogCustomer]);
+
+  useEffect(() => {
+    const lowerCaseFilter = filter.toLowerCase();
+    const filtered = customers.filter(
+      (cliente) =>
+        cliente.nombrecliente.toLowerCase().includes(lowerCaseFilter) ||
+        cliente.identidad.toLowerCase().includes(lowerCaseFilter)
+    );
+    setFilteredCustomers(filtered);
+  }, [filter, customers]);
+
+  const handleAccept = () => {
+    // console.log("Customer-selectedCustomer", selectedCustomer);
+    // Extraer el cliente seleccionado
+    const selectedCustomerData = selectedCustomer;
+    // Llama a la función de devolución de llamada para pasar los datos del cliente seleccionado a Quoter
+    // console.log("selectedCustomerData", selectedCustomerData);
+    onAcceptSelection(selectedCustomerData);
+    // Cierra el diálogo después de aceptar
+    setShowDialogCustomer(false);
+  };
+
+  const handleCancel = () => {
+    // Cierra el diálogo sin realizar ninguna acción
+    setShowDialogCustomer(false);
+  };
+
+  const handleAdvancedSearch = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.put(apiUrlCliente, {
+        criterio: filter,
+      });
+      if (response.data.status === 200) {
+        setFilteredCustomers(response.data.data);
+      } else {
+        setError(response.data.error || "Error en la respuesta");
+      }
+    } catch (error) {
+      setError("Error al realizar la solicitud: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCustomerCreated = (newCustomer) => {
+    setFilteredCustomers([...filteredCustomers, newCustomer]);
+    setSelectedCustomer(newCustomer);
+    setShowNewCustomerDialog(false);
+  };
+
+  const footerContent = (
+    <div style={{ marginTop: "1em" }}>
+      <Button
+        label="Búsqueda Avanzada"
+        onClick={handleAdvancedSearch}
+        autoFocus
+        size="small"
+        icon="pi pi-search"
+      />
+      <Button
+        label="Crear Cliente Nuevo"
+        onClick={() => setShowNewCustomerDialog(true)}
+        size="small"
+        icon="pi pi-plus"
+      />
+      <Button
+        label="Aceptar"
+        severity="success"
+        onClick={handleAccept}
+        autoFocus
+        size="small"
+        icon="pi pi-check"
+      />
+      <Button
+        label="Cancelar"
+        severity="danger"
+        onClick={handleCancel}
+        text
+        raised
+        size="small"
+        icon="pi pi-times"
+      />
+    </div>
+  );
+
+  const itemTemplate = (item) => {
+    return (
+      <div className="item">
+        <span className="item-name">{item.nombrecliente}</span>
+        <span className="item-reference">{item.identidad}</span>
+      </div>
+    );
+  };
+
+  const onFilterChange = (e) => {
+    setFilter(e.target.value);
+  };
+
+  return (
+    <Dialog
+      visible={showDialogCustomer}
+      onHide={() => setShowDialogCustomer(false)}
+      header="Clientes Encontrados"
+      footer={footerContent}
+    >
+      <div>
+        <div className="sticky-input">
+          <IconField iconPosition="right">
+            <InputIcon className="pi pi-search" />
+            <InputText
+              type="text"
+              value={filter}
+              onChange={onFilterChange}
+              placeholder="Buscar cliente por nombre o identidad..."
+              aria-label="Filtrar clientes"
+              className="p-inputtext p-component"
+              style={{ width: "100%" }}
+            />
+          </IconField>
+        </div>
+        <ListBox
+          value={selectedCustomer}
+          options={filteredCustomers}
+          onChange={(e) => setSelectedCustomer(e.value)}
+          optionLabel="nombrecliente"
+          itemTemplate={itemTemplate}
+          // className="w-full md:w-30rem"
+          emptyMessage="No hay registros para mostrar en la lista"
+        />
+      </div>
+      <NewCustomerDialog
+        visible={showNewCustomerDialog}
+        onHide={() => setShowNewCustomerDialog(false)}
+        onCustomerCreated={handleCustomerCreated}
+      />
+    </Dialog>
+  );
+};
+
+export default CustomerSearchDialog;

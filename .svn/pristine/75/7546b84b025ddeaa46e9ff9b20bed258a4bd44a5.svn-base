@@ -1,0 +1,65 @@
+import React, { useState, useEffect } from "react";
+import { Dropdown } from "primereact/dropdown";
+import { Checkbox } from "primereact/checkbox";
+import config from "../Config";
+import axios from "axios";
+
+const ClientCreationFELData = ({}) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [regimenfiscalList, setRegimenFiscalList] = useState([]);
+  const [selectedRegimenFiscal, setSelectedRegimenFiscal] = useState(null);
+  const [responsabilidadtributariaList, setResponsabilidadTributariaList] =
+    useState([]);
+  const [
+    selectedResponsabilidadTributaria,
+    setSelectedResponsabilidadTributaria,
+  ] = useState(null);
+  const [regienFELList, setRegimenFELList] = useState([]);
+  const [selectedRegimenFEL, setSelectedRegimenFEL] = useState(null);
+
+  return (
+    <div className="flex flex-column">
+      <div className="labelinput">
+        <label htmlFor="idregfiscal">Régimen Fiscal</label>
+        <Dropdown
+          className="inputtext"
+          id="idregfiscal"
+          value={selectedRegimenFiscal}
+          onChange={(e) => setSelectedRegimenFiscal(e.value)}
+          options={regimenfiscalList}
+          optionLabel="label"
+          placeholder="Seleccionar Régimen Fiscal"
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idresptri">Responsabilidad Tributaria</label>
+        <Dropdown
+          className="inputtext"
+          id="idresptri"
+          value={selectedResponsabilidadTributaria}
+          onChange={(e) => setSelectedResponsabilidadTributaria(e.value)}
+          options={responsabilidadtributariaList}
+          optionLabel="label"
+          placeholder="Seleccionar Responsabilidad Tributaria"
+        />
+      </div>
+      <div className="card flex align-items-center">
+        <div className="labelinput">
+          <label htmlFor="idregimenfel">Régimen FEL</label>
+          <Dropdown
+            className="inputtext"
+            id="idregimenfel"
+            value={selectedRegimenFEL}
+            onChange={(e) => setSelectedRegimenFEL(e.value)}
+            options={regienFELList}
+            optionLabel="label"
+            placeholder="Seleccionar Régimen FEL"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ClientCreationFELData;

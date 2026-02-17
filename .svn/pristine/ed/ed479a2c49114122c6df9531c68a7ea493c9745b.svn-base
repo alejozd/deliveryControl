@@ -1,0 +1,58 @@
+/* ---------------------------------------------------
+    SIDEBAR STYLE
+----------------------------------------------------- */
+/* .sidebar {
+    background: #354052;
+    color: #adb5bd;
+  } */
+
+  .p-sidebar {
+    background-color: #354052;    
+  }
+
+  .p-panelmenu {    
+    background-color: #354052;
+  }
+  
+/* Cambia el color de fondo de los items del PanelMenu cuando están activos */
+.p-panelmenu-header-link {
+    background-color: #354052;
+  }
+
+  /* Cambia el color de fondo del enlace del PanelMenu cuando está activo */
+.p-highlight {
+  background-color: #78909c; 
+}
+
+/* Cambia el color de fondo de los items del PanelMenu al pasar el mouse */
+.p-panelmenu-header-link:hover {
+  background-color: #546e7a;
+}
+
+/* Ajusta el color del texto para los items del PanelMenu */
+.p-panelmenu-header-link .p-menuitem-text {
+  color: #ffffff;
+}
+
+.p-menuitem-icon{
+  color: #ffffff;}
+
+/* Ajusta el color del texto al pasar el mouse sobre los items del PanelMenu */
+.p-panelmenu-header-link:hover .p-menuitem-text .p-menuitem-icon {
+  color: #ffffff;
+}
+
+/* Ajusta el color del texto del header del Sidebar */
+.p-sidebar h2 {
+  color: #ffffff;
+}
+
+/* Cambia el color de la "X" de cerrar el Sidebar */
+.p-sidebar .p-sidebar-close {
+  color: #ffffff; /* Cambia el color según tus necesidades */
+}
+
+/* Cambia el color de la "X" de cerrar al pasar el mouse */
+.p-sidebar .p-sidebar-close:hover {
+  color: #ffffff; /* Cambia el color según tus necesidades */
+}

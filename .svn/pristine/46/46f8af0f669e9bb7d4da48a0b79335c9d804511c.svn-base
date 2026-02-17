@@ -1,0 +1,142 @@
+import React from "react";
+import { Card } from "primereact/card";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Toolbar } from "primereact/toolbar";
+import { Image } from "primereact/image";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
+const ComprobantePDF = ({ datos }) => {
+  console.log("ComprobantePDF", datos);
+  if (!datos || !datos.cliente || !datos.productos) {
+    return <p>Datos de la cotización no disponibles.</p>;
+  }
+  const { cliente, productos, total } = datos;
+
+  const generatePDF = () => {
+    const input = document.getElementById("comprobante");
+    html2canvas(input, { scale: 2 }).then((canvas) => {
+      // Escala aumentada para mejorar la calidad
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF();
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight(); //Para centrar verticalmente
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfRatio = imgProps.width / imgProps.height;
+      const imgWidth = pdfWidth - 40; // Ajuste según el margen o tamaño del PDF
+      const imgHeight = imgWidth / pdfRatio;
+      const xPos = (pdfWidth - imgWidth) / 2;
+      const yPos = 20; //(pdfHeight - imgHeight) / 2;
+      pdf.addImage(imgData, "PNG", xPos, yPos, imgWidth, imgHeight);
+      pdf.save("comprobante.pdf");
+    });
+  };
+
+  return (
+    <div style={styles.container}>
+      <div id="comprobante" style={styles.comprobante}>
+        <Card style={styles.card}>
+          <Toolbar
+            style={{ padding: "0 16px 0 0", backgroundColor: "white" }}
+            start={
+              <Image
+                src="https://primefaces.org/cdn/primereact/images/galleria/galleria7.jpg"
+                alt="Image"
+                width="170"
+              />
+            }
+            center={
+              <div style={{ textAlign: "center" }}>
+                <p>DISTRIBUIDORA METROCERAMICAS S.A.S.</p>
+                <p>830.112.333-1</p>
+                <p>AUTOPISTA NORTE 138 83, BOGOTÁ</p>
+                <p>PBX 601 6192221</p>
+              </div>
+            }
+            end={
+              <div style={{ textAlign: "right" }}>
+                <div style={{ marginBottom: "10px" }}>Cotización</div>
+                <div>No xxxxxxx</div>
+              </div>
+            }
+          />
+          <div style={styles.clientInfo}>
+            <div style={styles.leftColumn}>
+              <p style={styles.p}>FECHA: {new Date().toLocaleDateString()}</p>
+              <p style={styles.p}>NOMBRE: {cliente.nombre}</p>
+              <p style={styles.p}>NIT: {cliente.nit}</p>
+              <p style={styles.p}>DIRECCIÓN: {cliente.direccion}</p>
+            </div>
+            <div style={styles.rightColumn}>
+              <p style={styles.p}>TELÉFONO: {cliente.telefono}</p>
+              <p style={styles.p}>E-MAIL: {cliente.email}</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card style={styles.card}>
+          <DataTable value={productos} showGridlines>
+            <Column field="nombre" header="Producto" />
+            <Column field="referencia" header="Referencia" />
+            <Column field="precio" header="Precio" />
+            <Column field="cantidad" header="Cantidad" />
+            <Column field="total" header="Total" />
+          </DataTable>
+        </Card>
+        <Card style={styles.card}>
+          <p style={styles.pTotal}>
+            <strong>Total:</strong> {total}
+          </p>
+        </Card>
+        <Card style={styles.card}>
+          <p style={styles.pNotas}>NOTAS: {cliente.notas}</p>
+        </Card>
+      </div>
+      <Button label="Generar PDF" icon="pi pi-file-pdf" onClick={generatePDF} />
+    </div>
+  );
+};
+
+const styles = {
+  container: {
+    padding: "10px",
+    backgroundColor: "#f0f0f0", // Color de fondo general
+  },
+  comprobante: {
+    marginBottom: "10px",
+  },
+  card: {
+    marginBottom: "10px",
+    backgroundColor: "white", // Color de fondo de las tarjetas
+    border: "1px solid #ccc", // Borde de las tarjetas
+    boxShadow: "none", // Quita la sombra si no la quieres
+  },
+  clientInfo: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginTop: "10px",
+  },
+  leftColumn: {
+    textAlign: "left",
+    width: "60%",
+  },
+  rightColumn: {
+    textAlign: "left",
+    width: "40%",
+  },
+  p: {
+    marginBottom: "-10px", // Ajusta este valor según sea necesario para reducir el espacio entre los textos
+  },
+  pTotal: {
+    marginTop: "-10px",
+    marginBottom: "-10px",
+    textAlign: "right",
+  },
+  pNotas: {
+    margin: 0, // Ajusta este valor según sea necesario
+  },
+};
+
+export default ComprobantePDF;

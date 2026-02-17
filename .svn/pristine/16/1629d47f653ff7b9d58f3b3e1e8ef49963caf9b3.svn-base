@@ -1,0 +1,32 @@
+/* Estilos para la tabla de productos */
+.productos-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Estilos para las filas de la tabla */
+  .producto-row {
+    background-color: #f5f5f5;
+  }
+  
+  /* Estilos para las celdas de encabezado */
+  .productos-table th {
+    background-color: #007BFF;
+    color: #fff;
+    padding: 12px;
+    text-align: left;
+    font-weight: bold;
+  }
+  
+  /* Estilos para las celdas de datos */
+  .productos-table td {
+    padding: 12px;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  /* Cambia el color de fondo de las filas al pasar el mouse */
+  .productos-table tbody tr:hover {
+    background-color: #e0e0e0;
+  }  

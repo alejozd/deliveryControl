@@ -1,0 +1,196 @@
+// EntregasList.js
+import React, { useState } from 'react';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Toast } from 'primereact/toast';
+import { Button } from 'primereact/button';
+import { Toolbar } from 'primereact/toolbar';
+import { InputNumber } from 'primereact/inputnumber';
+import ConfirmationModal from './ConfirmationModal';
+
+function EntregasList(props) {
+    const [expandedRows, setExpandedRows] = useState(null);
+    const toast = props.toast;
+    const [cantidadesEntregar, setCantidadesEntregar] = useState({});
+    const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+    const [selectedFactura, setSelectedFactura] = useState(null);
+
+    const handleShowAll = (data) => {
+        data.DETALLE.forEach((detalle) => {
+            handleTodoButtonClick(detalle);
+        });
+    };
+
+    const handleShowConfirmationModal = (factura) => {
+        const productosConCantidad = getProductosConCantidadEntregarMayorACero();
+        console.log('selectedFactura:', selectedFactura);
+        setSelectedFactura({ NUMFACTURA: factura, DETALLE: productosConCantidad[0]?.DETALLE || [] });
+        setShowConfirmationModal(true);
+    };
+
+    const handleConfirmEntrega = () => {
+        // Lógica de confirmación de entrega aquí
+        // Puedes ejecutar handleTodoButtonClick para marcar todo el documento después de la confirmación
+        props.products.forEach((product) => handleTodoButtonClick(product.DETALLE));
+        // Cerrar la ventana modal
+        setShowConfirmationModal(false);
+    };
+
+    const handleCancelEntrega = () => {
+        // Lógica de cancelación de entrega aquí
+        // Cerrar la ventana modal
+        setShowConfirmationModal(false);
+    };
+
+    const rowExpansionTemplate = (data) => {
+        return (
+            <div className="p-3">
+                <Toolbar
+                    start={<h3>Productos de {data.NUMFACTURA}</h3>}
+                    end={<React.Fragment>
+                        <Button className="mr-2" icon="pi pi-check" severity="warning" size="small" label="Marcar todo el documento" rounded onClick={() => handleShowAll(data)} />
+                        <Button className="p-button-success mr-2" icon="pi pi-check" severity="success" size="small" label="Entregar" rounded onClick={() => handleShowConfirmationModal(data)} />
+                    </React.Fragment>
+                    }
+                    style={{ padding: '2px', height: 'auto' }} />
+                <DataTable value={data.DETALLE} dataKey="id" >
+                    <Column field="NOMBREPRODUCTOS" header="Nombre de Producto" sortable></Column>
+                    <Column field="CANTFACTURADA" header="Cant. Facturada" sortable></Column>
+                    <Column field="CANT_ENTREGADA" header="Cant. Entregada" sortable></Column>
+                    <Column field="SALDO" header="Saldo" sortable></Column>
+                    <Column header="Todo" style={{ width: '3rem' }} body={(rowData) => renderTodoButton(rowData)}></Column>
+                    <Column header="Cant. Entregar" body={(rowData) => renderCantidadEntregar(rowData)}></Column>
+                </DataTable>
+            </div>
+        );
+    };
+
+    const renderTodoButton = (rowData) => {
+        return (
+            <Button
+                label='Todo'
+                onClick={() => handleTodoButtonClick(rowData)}
+                className="p-button p-component p-button-outlined"
+            />
+        );
+    };
+
+    const handleTodoButtonClick = (rowData) => {
+        const saldo = rowData.SALDO.toString();
+        // Actualiza el estado solo después de hacer clic en el botón Todo
+        if (saldo !== undefined) {
+            setCantidadesEntregar((prev) => ({
+                ...prev,
+                [rowData.id]: saldo,
+            }));
+        }
+    };
+
+    const renderCantidadEntregar = (rowData) => {
+        const isReadOnly = rowData.SALDO === 0;
+        const inputValue = cantidadesEntregar[rowData.id] || '';
+        const max = rowData.SALDO;
+        return (
+            <InputNumber
+                readOnly={isReadOnly}
+                value={inputValue}
+                max={max}
+                onChange={(e) => handleCantidadEntregarInput(e, rowData)}
+                minFractionDigits={2}
+            />
+        );
+    };
+
+    const handleCantidadEntregarInput = (e, rowData) => {
+        const inputValue = e.value || '';
+        const updatedState = { ...cantidadesEntregar, [rowData.id]: inputValue };
+        setCantidadesEntregar(updatedState);
+    };
+
+    const getProductosConCantidadEntregarMayorACero = () => {
+        const productosConCantidad = props.products.map(producto => {
+            const detallesConCantidad = producto.DETALLE.filter(detalle => {
+                const cantidadEntregar = parseFloat(cantidadesEntregar[detalle.id]) || 0;
+                return cantidadEntregar > 0;
+            });
+
+            if (detallesConCantidad.length > 0) {
+                return {
+                    NUMFACTURA: producto.NUMFACTURA,
+                    DETALLE: detallesConCantidad.map(detalle => ({
+                        ...detalle,
+                        CANTIDAD_ENTREGAR: parseFloat(cantidadesEntregar[detalle.id]) || 0,
+                    })),
+                };
+            }
+
+            return null;
+        }).filter(Boolean);
+
+        // console.log(productosConCantidad);
+        return productosConCantidad;
+    };
+
+    const allowExpansion = (rowData) => {
+        return rowData.DETALLE && rowData.DETALLE.length > 0;
+    };
+
+    const expandAll = () => {
+        let expanded = [];
+        props.products.forEach((product) => expanded.push(product));
+        setExpandedRows(expanded);
+    };
+
+    const collapseAll = () => {
+        setExpandedRows([]);
+    };
+
+    const header = (
+        <div className="flex flex-wrap justify-content-end gap-2">
+            <Button icon="pi pi-plus" label="Expandir Todo" onClick={expandAll} text />
+            <Button icon="pi pi-minus" label="Contraer Todo" onClick={collapseAll} text />
+        </div>
+    );
+
+    return (
+        <div>
+            <Toast ref={toast} />
+            <DataTable
+                value={props.products}
+                expandedRows={expandedRows}
+                onRowToggle={(e) => setExpandedRows(e.data)}
+                onRowExpand={(e) => onRowExpand(e, props.toast)}
+                onRowCollapse={(e) => onRowCollapse(e, props.toast)}
+                rowExpansionTemplate={rowExpansionTemplate}
+                header={header}
+                responsive="true"
+                dataKey="NUMFACTURA"
+            >
+                <Column expander={allowExpansion} style={{ width: '5rem' }} />
+                <Column field="NUMFACTURA" header="Número de Factura" sortable />
+                <Column field="FECHAFACTURA" header="Fecha de Factura" sortable />
+                <Column field="NOMBRECLIENTE" header="Nombre del Cliente" sortable />
+            </DataTable>
+            {/* Renderiza la ventana modal de confirmación */}
+            {showConfirmationModal && (
+                <ConfirmationModal
+                    factura={selectedFactura}
+                    productos={getProductosConCantidadEntregarMayorACero()[0]?.DETALLE || []}
+                    onConfirm={handleConfirmEntrega}
+                    onCancel={handleCancelEntrega}
+                    visible={showConfirmationModal}
+                />
+            )}
+        </div>
+    );
+}
+
+const onRowExpand = (event, toast) => {
+    toast.current.show({ severity: 'info', summary: 'Entrega Expanded', detail: event.data.NUMFACTURA, life: 3000 });
+};
+
+const onRowCollapse = (event, toast) => {
+    toast.current.show({ severity: 'success', summary: 'Entrega Collapsed', detail: event.data.NUMFACTURA, life: 3000 });
+};
+
+export default EntregasList;

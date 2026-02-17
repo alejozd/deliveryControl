@@ -1,0 +1,67 @@
+// ImpresionUtils.js
+export const PrintDocument = (factura) => {
+  // Lógica para generar el formato HTML personalizado
+  const htmlString = `
+  <html>
+  <head>
+    <title>Factura ${factura.NUMFACTURA}</title>
+    <style>
+      /* Agrega tus estilos CSS personalizados aquí */
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .detalle {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      .detalle th, .detalle td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      .detalle th {
+        background-color: #f2f2f2;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Factura ${factura.NUMFACTURA}</h1>
+      <p>Fecha de Factura: ${factura.FECHAFACTURA}</p>
+      <p>Cliente: ${factura.
+      NOMBRECLIENTE}</p>
+    </div>
+    <table class="detalle">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Cantidad Facturada</th>
+          <th>Cantidad a Entregar</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${factura.DETALLE.map((detalle) => `
+          <tr>
+            <td>${detalle.NOMBREPRODUCTOS}</td>
+            <td>${detalle.CANTFACTURADA}</td>
+            <td>${detalle.CANTIDAD_ENTREGAR}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  </body>
+</html>
+  `;
+
+  // Abrir una nueva ventana con el documento HTML
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(htmlString);
+
+  // Enviar a imprimir
+  printWindow.print();
+};

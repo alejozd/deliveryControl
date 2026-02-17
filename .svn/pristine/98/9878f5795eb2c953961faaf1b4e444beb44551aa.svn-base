@@ -1,0 +1,169 @@
+import React, { useState, useEffect } from "react";
+import { Dialog } from "primereact/dialog";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { Checkbox } from "primereact/checkbox";
+import config from "../../Config";
+import axios from "axios";
+
+const NewCustomerDialog = ({ visible, onHide, onCustomerCreated }) => {
+  const apiUrlCrearCliente = `${config.apiUrl}/Datasnap/rest/TServerMethods1/NewCliente`;
+  const [nombrecliente, setNombreCliente] = useState("");
+  const [identidad, setIdentidad] = useState("");
+  const [telmovil, setTelmovil] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [email, setEmail] = useState("");
+  const [aceptapotradatos, setAceptapotradatos] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isFormValid, setIsFormValid] = useState(false);
+
+  useEffect(() => {
+    // Verifica si todos los campos requeridos tienen valores
+    if (
+      nombrecliente.trim() !== "" &&
+      identidad.trim() !== "" &&
+      telmovil.trim() !== "" &&
+      direccion.trim() !== "" &&
+      email.trim() !== "" &&
+      aceptapotradatos
+    ) {
+      setIsFormValid(true);
+    } else {
+      setIsFormValid(false);
+    }
+  }, [nombrecliente, identidad, telmovil, direccion, email, aceptapotradatos]);
+
+  const handleCreate = async () => {
+    setLoading(true);
+    const newCustomer = {
+      nombrecliente: nombrecliente,
+      identidad: identidad,
+      telmovil: telmovil,
+      direccion: direccion,
+      email: email,
+      aceptapotradatos: aceptapotradatos ? 1 : 0,
+    };
+    console.log("datos Cliente:", newCustomer);
+    try {
+      const response = await axios.put(apiUrlCrearCliente, {
+        nombrecliente: nombrecliente,
+        identidad: identidad,
+        telmovil: telmovil,
+        direccion: direccion,
+        email: email,
+        aceptapotradatos: aceptapotradatos ? 1 : 0,
+      });
+      if (response.data.status === 200) {
+        onCustomerCreated(newCustomer);
+        onHide();
+      } else {
+        setError(response.data.error || "Error en la respuesta");
+      }
+    } catch (error) {
+      setError("Error al realizar la solicitud: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const footerContent = (
+    <div style={{ marginTop: "1em" }}>
+      <Button
+        label="Crear"
+        severity="success"
+        onClick={handleCreate}
+        autoFocus
+        size="small"
+        icon="pi pi-check"
+        disabled={!isFormValid || loading}
+      />
+      <Button
+        label="Cancelar"
+        severity="danger"
+        onClick={onHide}
+        text
+        raised
+        size="small"
+        icon="pi pi-times"
+        disabled={loading}
+      />
+    </div>
+  );
+
+  return (
+    <Dialog
+      visible={visible}
+      onHide={onHide}
+      header="Crear Nuevo Cliente"
+      footer={footerContent}
+    >
+      <div>
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        <div className="p-field">
+          <label htmlFor="nombreCliente">Nombre del Cliente</label>
+          <InputText
+            id="nombreCliente"
+            value={nombrecliente}
+            onChange={(e) => setNombreCliente(e.target.value)}
+            className="p-inputtext p-component"
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="identidad">Identidad</label>
+          <InputText
+            id="identidad"
+            value={identidad}
+            onChange={(e) => setIdentidad(e.target.value)}
+            className="p-inputtext p-component"
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="telmovil">Teléfono</label>
+          <InputText
+            id="telmovil"
+            value={telmovil}
+            onChange={(e) => setTelmovil(e.target.value)}
+            className="p-inputtext p-component"
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="direccion">Dirección</label>
+          <InputText
+            id="direccion"
+            value={direccion}
+            onChange={(e) => setDireccion(e.target.value)}
+            className="p-inputtext p-component"
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="email">Correo electrónico</label>
+          <InputText
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="p-inputtext p-component"
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div style={{ marginTop: "0.5em" }}>
+          <Checkbox
+            style={{ marginRight: "0.5em" }}
+            inputId="aceptapotradatos"
+            checked={aceptapotradatos}
+            onChange={(e) => setAceptapotradatos(e.checked)}
+          />
+          <label htmlFor="aceptapotradatos">
+            Acepta politica de tratamiento de datos
+          </label>
+        </div>
+      </div>
+    </Dialog>
+  );
+};
+
+export default NewCustomerDialog;

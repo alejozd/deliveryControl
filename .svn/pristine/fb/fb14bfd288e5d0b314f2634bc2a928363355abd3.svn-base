@@ -1,0 +1,213 @@
+import React, { useState, useEffect } from "react";
+import { Dialog } from "primereact/dialog";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { Checkbox } from "primereact/checkbox";
+import { Dropdown } from "primereact/dropdown";
+import config from "../../Config";
+import axios from "axios";
+
+const NewCustomerDialog = ({
+  visible,
+  onHide,
+  onCustomerCreated,
+  selectedCustomer,
+}) => {
+  const apiUrlCrearCliente = `${config.apiUrl}/Datasnap/rest/TServerMethods1/NewCliente`;
+  const apiUrlVendedores = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaVendedores`;
+  const [nombrecliente, setNombreCliente] = useState("");
+  const [identidad, setIdentidad] = useState("");
+  const [telmovil, setTelmovil] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [email, setEmail] = useState("");
+  const [aceptapotradatos, setAceptapotradatos] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [vendedores, setVendedores] = useState([]);
+  const [selectedVendedor, setSelectedVendedor] = useState(null);
+
+  useEffect(() => {
+    // Verifica si todos los campos requeridos tienen valores
+    if (
+      nombrecliente.trim() !== "" &&
+      identidad.trim() !== "" &&
+      telmovil.trim() !== "" &&
+      direccion.trim() !== "" &&
+      email.trim() !== "" &&
+      aceptapotradatos &&
+      selectedVendedor !== null
+    ) {
+      setIsFormValid(true);
+    } else {
+      setIsFormValid(false);
+    }
+  }, [
+    nombrecliente,
+    identidad,
+    telmovil,
+    direccion,
+    email,
+    aceptapotradatos,
+    selectedVendedor,
+  ]);
+
+  useEffect(() => {
+    const fetchVendedores = async () => {
+      try {
+        const response = await axios.get(apiUrlVendedores);
+        if (response.status === 200) {
+          setVendedores(response.data.result);
+        } else {
+          console.error("Error fetching vendedores:", response.data.error);
+        }
+      } catch (error) {
+        console.error("Error fetching vendedores:", error);
+      }
+    };
+    fetchVendedores();
+  }, []);
+
+  const handleCreate = async () => {
+    setLoading(true);
+    const newCustomer = {
+      nombrecliente: nombrecliente,
+      identidad: identidad,
+      telmovil: telmovil,
+      direccion: direccion,
+      email: email,
+      aceptapotradatos: aceptapotradatos ? 1 : 0,
+      vendedorId: selectedVendedor.identidadve,
+    };
+    console.log("datos Cliente:", newCustomer);
+    try {
+      const response = await axios.put(apiUrlCrearCliente, newCustomer);
+      if (response.data.status === 200) {
+        onCustomerCreated(newCustomer);
+        onHide();
+      } else {
+        setError(response.data.error || "Error en la respuesta");
+      }
+    } catch (error) {
+      setError("Error al realizar la solicitud: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const footerContent = (
+    <div style={{ marginTop: "1em" }}>
+      <Button
+        label="Crear"
+        severity="success"
+        onClick={handleCreate}
+        autoFocus
+        size="small"
+        icon="pi pi-check"
+        disabled={!isFormValid || loading}
+      />
+      <Button
+        label="Cancelar"
+        severity="danger"
+        onClick={onHide}
+        text
+        raised
+        size="small"
+        icon="pi pi-times"
+        disabled={loading}
+      />
+    </div>
+  );
+
+  return (
+    <Dialog
+      visible={visible}
+      style={{ width: "450px" }}
+      onHide={onHide}
+      header={selectedCustomer ? "Editar Cliente" : "Crear Nuevo Cliente"}
+      modal
+      className="p-fluid"
+      footer={footerContent}
+    >
+      <div>
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        <div className="labelinput">
+          <label htmlFor="nombreCliente">Nombre del Cliente</label>
+          <InputText
+            className="inputtext"
+            id="nombreCliente"
+            value={nombrecliente}
+            onChange={(e) => setNombreCliente(e.target.value)}
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="labelinput">
+          <label htmlFor="identidad">Identidad</label>
+          <InputText
+            className="inputtext"
+            id="identidad"
+            value={identidad}
+            onChange={(e) => setIdentidad(e.target.value)}
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="labelinput">
+          <label htmlFor="telmovil">Teléfono</label>
+          <InputText
+            className="inputtext"
+            id="telmovil"
+            value={telmovil}
+            onChange={(e) => setTelmovil(e.target.value)}
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="labelinput">
+          <label htmlFor="direccion">Dirección</label>
+          <InputText
+            className="inputtext"
+            id="direccion"
+            value={direccion}
+            onChange={(e) => setDireccion(e.target.value)}
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="labelinput">
+          <label htmlFor="email">Correo electrónico</label>
+          <InputText
+            className="inputtext"
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="labelinput">
+          <label htmlFor="vendedorId">Vendedor</label>
+          <Dropdown
+            className="inputtext"
+            id="vendedorId"
+            value={selectedVendedor}
+            onChange={(e) => setSelectedVendedor(e.value)}
+            options={vendedores}
+            optionLabel="nombreve"
+            placeholder="Seleccione un vendedor"
+            required
+          />
+        </div>
+        <div style={{ marginTop: "1em" }}>
+          <Checkbox
+            style={{ marginRight: "0.5em" }}
+            inputId="aceptapotradatos"
+            checked={aceptapotradatos}
+            onChange={(e) => setAceptapotradatos(e.checked)}
+          />
+          <label htmlFor="aceptapotradatos">
+            Acepta politica de tratamiento de datos
+          </label>
+        </div>
+      </div>
+    </Dialog>
+  );
+};
+
+export default NewCustomerDialog;

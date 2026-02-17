@@ -1,0 +1,80 @@
+import { useRef } from "react";
+import { saveAs } from "file-saver";
+
+const useExcelExport = (defaultFileName = "data") => {
+  const toast = useRef(null);
+
+  const exportToExcel = async (data, columns, options = {}) => {
+    try {
+      const {
+        fileName = defaultFileName,
+        exportAllColumns = false,
+        columnTitles = {},
+        hiddenColumns = [],
+      } = options;
+
+      // Importación dinámica solo de xlsx
+      const { utils, write } = await import("xlsx");
+
+      // Filtrar columnas si no se exportan todas
+      let dataToExport = data;
+      if (!exportAllColumns && columns) {
+        const visibleColumns = columns.filter(
+          (col) => !col.hidden && !hiddenColumns.includes(col.field)
+        );
+
+        dataToExport = data.map((row) => {
+          const filteredRow = {};
+          visibleColumns.forEach((col) => {
+            filteredRow[col.field] = row[col.field];
+          });
+          return filteredRow;
+        });
+      }
+
+      // Aplicar títulos de columnas personalizados
+      const customData = dataToExport.map((row) => {
+        const customRow = {};
+        Object.keys(row).forEach((key) => {
+          customRow[columnTitles[key] || key] = row[key];
+        });
+        return customRow;
+      });
+
+      const worksheet = utils.json_to_sheet(customData);
+      const workbook = { Sheets: { data: worksheet }, SheetNames: ["data"] };
+      const excelBuffer = write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+
+      const EXCEL_TYPE =
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8";
+      const EXCEL_EXTENSION = ".xlsx";
+      const blob = new Blob([excelBuffer], { type: EXCEL_TYPE });
+
+      // Usamos saveAs directamente ya que ahora está importado estáticamente
+      saveAs(
+        blob,
+        `${fileName}_export_${new Date().getTime()}${EXCEL_EXTENSION}`
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Error al exportar a Excel:", error);
+      if (toast.current) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo exportar el archivo Excel",
+          life: 3000,
+        });
+      }
+      return false;
+    }
+  };
+
+  return { exportToExcel, toast };
+};
+
+export default useExcelExport;

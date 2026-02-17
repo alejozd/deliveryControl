@@ -1,0 +1,69 @@
+import React, { useState, useEffect } from 'react';
+import { Sidebar } from 'primereact/sidebar';
+import { PanelMenu } from 'primereact/panelmenu';
+import { useNavigate } from 'react-router-dom';
+// import './SideBar.css';
+
+const SideBar = (sidebarVisible) => {
+  // const [visibleLeft, setVisibleLeft] = useState(false);
+  const navigate = useNavigate();
+  const [visible, setVisible] = useState(false);
+
+  const toggleSidebar = () => {
+    // console.log('Toggle sidebar');
+    setVisible(true);
+  };
+
+  useEffect(() => {
+    // console.log(`La barra lateral está ${sidebarVisible ? 'visible' : 'oculta'}.`);
+    toggleSidebar();
+  }, [sidebarVisible]);
+
+  const items = [
+    {
+      label: 'Entregas',
+      icon: 'pi pi-fw pi-truck',
+      command: () => {
+        setVisible(false);
+        navigate('/entregas');
+      },
+    },
+    {
+      label: 'Productos',
+      icon: 'pi pi-fw pi-box',
+      command: () => {
+        setVisible(false);
+        navigate('/productos');
+      },
+    },
+    {
+      label: 'Clientes',
+      icon: 'pi pi-fw pi-users',
+      command: () => {
+        setVisible(false);
+        navigate('/clientes');
+      },
+    },
+  ];
+
+
+  return (
+    <div className="card flex justify-content-left">
+      <Sidebar
+        visible={visible}
+        position="left"
+        onHide={() => setVisible(false)}
+      >
+        <h2>Control de Entregas</h2>
+        <div className="card flex justify-content-center">
+          <PanelMenu model={items} className="w-full md:w-25rem" />
+        </div>
+      </Sidebar>
+      {/* <div>
+        <Button onClick={() => setVisible(true)} icon="pi pi-bars" />
+      </div> */}
+    </div>
+  );
+};
+
+export default SideBar;

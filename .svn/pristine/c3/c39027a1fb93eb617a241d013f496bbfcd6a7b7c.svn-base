@@ -1,0 +1,525 @@
+import React, { useState, useEffect } from "react";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Dialog } from "primereact/dialog";
+import { Toolbar } from "primereact/toolbar";
+import { ColumnGroup } from "primereact/columngroup";
+import { Row } from "primereact/row";
+import { InputNumber } from "primereact/inputnumber";
+import { Panel } from "primereact/panel";
+import ProductSearchDialog from "./ProductSearchDialog";
+import CustomerSearchDialog from "./CustomerSearchDialog";
+import config from "../../Config";
+import axios from "axios";
+
+const Quoter = () => {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaProducto`;
+  const apiUrlProducto = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DataProducto`;
+  const apiUrlCliente = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClientes`;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [customer, setCustomer] = useState({
+    nombre: "",
+    identificacion: "",
+    correo: "",
+    telefono: "",
+    direccion: "",
+  });
+  const [additionalContact, setAdditionalContact] = useState({
+    nombre: "",
+    telefono: "",
+    correo: "",
+    cargo: "",
+  });
+  const [products, setProducts] = useState([]);
+  const [showDialog, setShowDialog] = useState(false);
+  const [showDialogProduct, setShowDialogProduct] = useState(false);
+  const [showDialogCustomer, setShowDialogCustomer] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [searchTextCustomer, setSearchTextCustomer] = useState("");
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState({
+    nombre: "",
+    identidad: "",
+    correo: "",
+    telefono: "",
+    direccion: "",
+  });
+  const [totalPrice, setTotalPrice] = useState(0);
+
+  const formatCurrency = (value) => {
+    return value.toLocaleString("es-CO", {
+      style: "currency",
+      currency: "COP",
+    });
+  };
+
+  const priceBodyTemplate = (selectedProducts) => {
+    return formatCurrency(selectedProducts.PRECIO);
+  };
+  const totalBodyTemplate = (selectedProducts) => {
+    // console.log("selectedProducts", selectedProducts);
+    const total = formatCurrency(
+      selectedProducts.PRECIO * selectedProducts.CANTIDAD
+    );
+    return formatCurrency(total);
+  };
+
+  const searchCustomers = async () => {
+    // Realiza la solicitud al servidor para buscar clientes utilizando el texto de búsqueda
+    try {
+      setLoading(true);
+      // Realiza la solicitud al servidor y guarda los resultados en el estado de clientes
+      const response = await axios.put(apiUrlCliente, {
+        criterio: searchTextCustomer,
+      });
+      if (response.data.status === 200) {
+        // console.log('JSON recibido del backend:', response.data.data);
+        setCustomer(response.data.data);
+        setShowDialogCustomer(true);
+      } else {
+        console.error("Error en la respuesta:", response.data.error);
+        setError(response.data.error || "Error en la respuesta");
+      }
+    } catch (error) {
+      console.error("Error al realizar la solicitud:", error.message);
+      setError("Error al realizar la solicitud: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para buscar productos
+  const searchProducts = async () => {
+    // Realiza la solicitud al servidor para buscar productos utilizando el texto de búsqueda
+    try {
+      setLoading(true);
+      // Realiza la solicitud al servidor y guarda los resultados en el estado de productos
+      const response = await axios.put(apiUrl, { criterio: searchText });
+      if (response.data.status === 200) {
+        // console.log('JSON recibido del backend:', response.data.data);
+        setProducts(response.data.data);
+        // console.log("products", response.data.data);
+        setShowDialogProduct(true);
+      } else {
+        console.error("Error en la respuesta:", response.data.error);
+        setError(response.data.error || "Error en la respuesta");
+      }
+    } catch (error) {
+      console.error("Error al realizar la solicitud:", error.message);
+      setError("Error al realizar la solicitud: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para seleccionar un producto
+  const selectProduct = (product) => {
+    setSelectedProducts(product); // Actualiza el estado con el producto seleccionado
+    setShowDialog(false); // Cierra el diálogo de búsqueda de productos
+  };
+  // Función para guardar la cotización
+  const saveQuotation = () => {
+    // Aquí puedes agregar la lógica para guardar la cotización
+  };
+
+  // Funcion para recibir y poblar en los input los datos del cliente seleccionado
+  const selectedCustomerData = (selectedCustomerData) => {
+    setSelectedCustomer(selectedCustomerData);
+  };
+
+  // Función para agregar productos al DataTable
+  const addProductsToDataTable = async (selectedProductsToAdd) => {
+    // console.log("Productos seleccionados en Quoter:", selectedProductsToAdd);
+    // Aquí puedes consumir un endpoint para obtener el precio de cada producto
+    const productsWithPrice = await Promise.all(
+      selectedProductsToAdd.map(async (product) => {
+        try {
+          // Consumir el endpoint para obtener el precio del producto
+          const response = await axios.put(apiUrlProducto, {
+            codigo: product.CODIGO,
+            subcodigo: product.SUBCODIGO,
+          });
+
+          // Verificar si la solicitud fue exitosa y obtener el precio del producto
+          if (response.data.status === 200) {
+            const precio = response.data.data[0].PRECIO;
+            // console.log("precio", precio);
+            // Agregar el precio al producto
+            return {
+              ...product,
+              PRECIO: precio,
+              CANTIDAD: product.CANTIDAD || 1,
+              TOTAL: precio * (product.CANTIDAD || 1),
+            };
+          } else {
+            console.error(
+              "Error al obtener el precio del producto:",
+              response.data.error
+            );
+            return null;
+          }
+        } catch (error) {
+          console.error("Error al realizar la solicitud:", error.message);
+          return null;
+        }
+      })
+    );
+
+    // Filtrar los productos que no pudieron obtener precio
+    const validProducts = productsWithPrice.filter(
+      (product) => product !== null
+    );
+
+    // Concatenar los nuevos productos a la lista existente de productos seleccionados
+    setSelectedProducts((prevSelectedProducts) => [
+      ...prevSelectedProducts,
+      ...validProducts,
+    ]);
+    updateTotalPrice(); // Recalcular el precio total
+  };
+
+  // Función para actualizar el precio total
+  const updateTotalPrice = () => {
+    let total = 0;
+    for (let selectedProduct of selectedProducts) {
+      total += selectedProduct.TOTAL;
+    }
+    setTotalPrice(total);
+  };
+
+  const renderCantidad = (rowData) => {
+    return (
+      <InputNumber
+        value={rowData.CANTIDAD}
+        mode="decimal"
+        showButtons
+        min={1}
+        onChange={(e) => {
+          const cantidad = e.value || 0;
+          const total = rowData.PRECIO * cantidad;
+          const updatedProducts = selectedProducts.map((product) => {
+            if (
+              product.CODIGO === rowData.CODIGO &&
+              product.SUBCODIGO === rowData.SUBCODIGO
+            ) {
+              return { ...product, CANTIDAD: cantidad, TOTAL: total }; // Actualizar cantidad y total
+            }
+            return product;
+          });
+          setSelectedProducts(updatedProducts); // Actualizar el estado de los productos seleccionados
+          // console.log("rendercantidad - selectedProducts", selectedProducts);
+        }}
+        minFractionDigits={2}
+        style={{ width: "100%" }} // Ajusta el ancho del InputNumber
+        inputStyle={{ width: "4rem" }} // Ajusta el ancho del campo de entrada
+      />
+    );
+  };
+
+  const precioTotal = () => {
+    let total = selectedProducts.reduce((acc, product) => {
+      return acc + product.TOTAL;
+    }, 0);
+    return formatCurrency(total);
+  };
+
+  const footerGroup = (
+    <ColumnGroup>
+      <Row>
+        <Column
+          footer="Total:"
+          colSpan={4}
+          footerStyle={{ textAlign: "right" }}
+        />
+        <Column footer={precioTotal} style={{ textAlign: "right" }} />
+      </Row>
+    </ColumnGroup>
+  );
+
+  const startContentClient = (
+    <>
+      <div
+        className="p-inputgroup"
+        style={{ marginTop: "-9px", marginBottom: "-9px" }}
+      >
+        <InputText
+          placeholder="Buscar cliente..."
+          size={"60"}
+          value={searchTextCustomer}
+          onChange={(e) => setSearchTextCustomer(e.target.value)}
+        />
+        <Button
+          icon="pi pi-search"
+          className="p-button-warning"
+          onClick={searchCustomers}
+        />
+      </div>
+    </>
+  );
+
+  const startContent = (
+    <>
+      <div
+        className="p-inputgroup"
+        style={{ marginTop: "-9px", marginBottom: "-9px" }}
+      >
+        <InputText
+          placeholder="Buscar producto..."
+          size={"60"}
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+        />
+        <Button
+          icon="pi pi-search"
+          className="p-button-warning"
+          onClick={searchProducts}
+        />
+      </div>
+    </>
+  );
+
+  return (
+    <div>
+      {/* Sección para buscar cliente */}
+      <div className="grid">
+        <div className="col-12 md:col-12">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-9px",
+                marginBottom: "5px",
+              }}
+            >
+              Busqueda de Cliente
+            </h3>
+            <Toolbar start={startContentClient} style={{ margin: "-5px" }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid">
+        {/* Sección para el cliente */}
+        <div className="col-12 md:col-6">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Información del cliente
+            </h3>
+            <div className="labelinput">
+              <label htmlFor="customernombre">Nombre</label>
+              <InputText
+                className="inputtext"
+                id="customernombre"
+                value={selectedCustomer.NOMBRECLIENTE}
+              />
+            </div>
+            <div style={{ display: "flex" }}>
+              <div className="labelinput">
+                <label htmlFor="customeridentificacion">Identificación</label>
+                <InputText
+                  className="inputtext"
+                  id="customeridentificacion"
+                  value={selectedCustomer.IDENTIDAD}
+                />
+              </div>
+              <div className="labelinput">
+                <label htmlFor="customerPhone">Teléfono</label>
+                <InputText
+                  className="inputtext"
+                  id="customerPhone"
+                  value={selectedCustomer.TELMOVIL}
+                />
+              </div>
+            </div>
+            <div className="labelinput">
+              <label htmlFor="customerAddress">Dirección</label>
+              <InputText
+                className="inputtext"
+                id="customerAddress"
+                value={selectedCustomer.DIRECCION}
+              />
+            </div>
+            <div className="labelinput">
+              <label htmlFor="customercorreo">Correo electrónico</label>
+              <InputText
+                className="inputtext"
+                id="customercorreo"
+                value={selectedCustomer.EMAIL}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Sección para el contacto adicional */}
+        <div className="col-12 md:col-6">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Contacto adicional
+            </h3>
+            <div className="labelinput">
+              <label htmlFor="additionalContactNombre">Nombre</label>
+              <InputText
+                className="inputtext"
+                id="additionalContactNombre"
+                value={additionalContact.nombre}
+              />
+            </div>
+            <div style={{ display: "flex" }}>
+              <div className="labelinput">
+                <label htmlFor="additionalContactIdentificacion">
+                  Identificación
+                </label>
+                <InputText
+                  className="inputtext"
+                  id="additionalContactIdentificacion"
+                  value={additionalContact.identificacion}
+                />
+              </div>
+              <div className="labelinput">
+                <label htmlFor="additionalContactTelefono">Teléfono</label>
+                <InputText
+                  className="inputtext"
+                  id="additionalContactTelefono"
+                  value={additionalContact.telefono}
+                />
+              </div>
+            </div>
+            <div className="labelinput">
+              <label htmlFor="additionalContactAddress">Dirección</label>
+              <InputText
+                className="inputtext"
+                id="additionalContactAddress"
+                value={additionalContact.direccion}
+              />
+            </div>
+            <div className="labelinput">
+              <label htmlFor="additionalContactCorreo">Correo</label>
+              <InputText
+                className="inputtext"
+                id="additionalContactCorreo"
+                value={additionalContact.correo}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sección para buscar productos */}
+      <div className="grid">
+        <div className="col-12 md:col-12">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-9px",
+                marginBottom: "5px",
+              }}
+            >
+              Productos
+            </h3>
+            <Toolbar start={startContent} style={{ margin: "-5px" }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de productos */}
+      <div className="p-col-12">
+        <DataTable
+          value={selectedProducts}
+          // onSelectionChange={(e) => setSelectedProducts(e.value)}
+          showGridlines
+          rows={5}
+          emptyMessage="No hay productos disponibles"
+          footerColumnGroup={footerGroup}
+        >
+          <Column field="CODIGO" header="Código" hidden />
+          <Column field="SUBCODIGO" header="Subcódigo" hidden />
+          <Column field="NOMBREPRODUCTOS" header="Nombre" />
+          <Column field="REFERENCIA" header="Referencia" />
+          <Column
+            field="CANTIDAD"
+            header="Cantidad"
+            body={renderCantidad}
+            // style={{ width: "5rem" }}
+          />
+          <Column
+            field="PRECIO"
+            header="Precio"
+            body={priceBodyTemplate}
+            style={{ textAlign: "right" }}
+          />
+          <Column
+            field="TOTAL"
+            header="Total"
+            body={totalBodyTemplate}
+            style={{ textAlign: "right" }}
+          />
+        </DataTable>
+      </div>
+
+      {/* Botón para guardar la cotización */}
+      <div className="p-col-12" style={{ marginTop: "10px" }}>
+        <Button
+          label="Guardar Cotización"
+          onClick={saveQuotation}
+          className="p-button-raised p-button-success"
+          disabled={!customer}
+        />
+      </div>
+
+      {/* Diálogo de búsqueda de productos */}
+      <ProductSearchDialog
+        showDialogProduct={showDialogProduct} // Prop para controlar la visibilidad del diálogo
+        setShowDialogProduct={setShowDialogProduct} // Prop para actualizar el estado del diálogo
+        products={products} // Prop para pasar los productos al diálogo
+        onAcceptSelection={addProductsToDataTable} // Pasa la función de devolución de llamada
+      />
+
+      {/* Diálogo de búsqueda de clientes */}
+      <CustomerSearchDialog
+        showDialogCustomer={showDialogCustomer} // Prop para controlar la visibilidad del diálogo
+        setShowDialogCustomer={setShowDialogCustomer} // Prop para actualizar el estado del diálogo
+        customer={customer} // Prop para pasar los productos al diálogo
+        onAcceptSelection={selectedCustomerData} // Pasa la función de devolución de llamada
+      />
+
+      {/* Diálogo de confirmación */}
+      <Dialog
+        visible={showDialog}
+        onHide={() => setShowDialog(false)}
+        header="Confirmación"
+      >
+        <div>¿Estás seguro que deseas guardar la cotización?</div>
+        <div className="p-grid p-justify-center">
+          <Button
+            label="Sí"
+            onClick={saveQuotation}
+            className="p-button-raised p-button-success"
+          />
+          <Button
+            label="No"
+            onClick={() => setShowDialog(false)}
+            className="p-button-raised p-button-danger"
+          />
+        </div>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Quoter;

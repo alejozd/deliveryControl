@@ -1,0 +1,71 @@
+import React, { useState } from "react";
+import { Dialog } from "primereact/dialog";
+import { ListBox } from "primereact/listbox";
+import { Button } from "primereact/button";
+
+const ProductSearchDialog = ({
+  showDialogProduct,
+  setShowDialogProduct,
+  products,
+  onAcceptSelection,
+}) => {
+  const [selectedProducts, setSelectedProducts] = useState([]);
+
+  const handleAccept = () => {
+    // Extraer los códigos y subcódigos de los productos seleccionados
+    const selectedProductsData = selectedProducts.map((selectedProductCode) => {
+      // Encuentra el producto correspondiente a este código y subcódigo en la lista de productos completos
+      return products.find((product) => {
+        return `${product.CODIGO}-${product.SUBCODIGO}` === selectedProductCode;
+      });
+    });
+
+    // Llama a la función de devolución de llamada para pasar los códigos y subcódigos seleccionados a Quoter
+    onAcceptSelection(selectedProductsData);
+    console.log("Productos seleccionados:", selectedProductsData);
+    // Cierra el diálogo después de aceptar
+    setShowDialogProduct(false);
+  };
+
+  const handleCancel = () => {
+    // Cierra el diálogo sin realizar ninguna acción
+    setShowDialogProduct(false);
+  };
+
+  return (
+    <Dialog
+      visible={showDialogProduct}
+      onHide={() => setShowDialogProduct(false)}
+      header="Productos Encontrados"
+    >
+      <div>
+        <ListBox
+          value={selectedProducts}
+          options={products}
+          onChange={(e) => setSelectedProducts(e.value)}
+          optionLabel="NOMBREPRODUCTOS"
+          optionValue={(option) => `${option.CODIGO}-${option.SUBCODIGO}`}
+          multiple
+          filter
+          //   style={{ height: "300px" }}
+          //   style={{ width: "100%" }}
+          className="w-full md:w-30rem"
+        />
+      </div>
+      <div style={{ textAlign: "center", marginTop: "1rem" }}>
+        <Button
+          label="Aceptar"
+          className="p-button-success"
+          onClick={handleAccept}
+        />
+        <Button
+          label="Cancelar"
+          className="p-button-danger"
+          onClick={handleCancel}
+        />
+      </div>
+    </Dialog>
+  );
+};
+
+export default ProductSearchDialog;

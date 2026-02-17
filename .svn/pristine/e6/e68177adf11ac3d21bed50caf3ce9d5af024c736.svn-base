@@ -1,0 +1,47 @@
+import React, { useState } from "react";
+import { Dropdown } from "primereact/dropdown";
+
+const ClientCreationFELData = ({
+  regimenFiscalList,
+  selectedRegimenFiscal,
+  setSelectedRegimenFiscal,
+  responsabilidadTributariaList,
+  selectedResponsabilidadTributaria,
+  setSelectedResponsabilidadTributaria,
+}) => {
+  const [error, setError] = useState(null);
+
+  return (
+    <div className="flex flex-column">
+      {error && <div className="error-message">{error}</div>}
+      <div className="labelinput">
+        <label htmlFor="idregfiscal">Régimen Fiscal</label>
+        <Dropdown
+          className="inputtext"
+          id="idregfiscal"
+          value={selectedRegimenFiscal}
+          onChange={(e) => setSelectedRegimenFiscal(e.value)}
+          options={regimenFiscalList}
+          optionLabel="label"
+          placeholder="Seleccionar Régimen Fiscal"
+          // disabled={loading}
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idresptri">Responsabilidad Tributaria</label>
+        <Dropdown
+          className="inputtext"
+          id="idresptri"
+          value={selectedResponsabilidadTributaria}
+          onChange={(e) => setSelectedResponsabilidadTributaria(e.value)}
+          options={responsabilidadTributariaList}
+          optionLabel="label"
+          placeholder="Seleccionar Responsabilidad Tributaria"
+          // disabled={loading}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default React.memo(ClientCreationFELData);

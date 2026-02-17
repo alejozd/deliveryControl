@@ -1,0 +1,257 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Panel } from 'primereact/panel';
+import { Calendar } from 'primereact/calendar';
+import { Button } from 'primereact/button';
+import { Toolbar } from 'primereact/toolbar';
+import { Dialog } from 'primereact/dialog';
+import { InputText } from 'primereact/inputtext';
+import { FilterMatchMode, FilterOperator } from 'primereact/api';
+import { locale, addLocale } from 'primereact/api';
+import { Toast } from 'primereact/toast';
+import { classNames } from 'primereact/utils';
+import config from '../../Config';
+import axios from 'axios';
+
+const ConsultaPedientesEntrega = () => {
+    const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaRefEntregar`;
+    const [pendientes, setPendientes] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [dates, setDates] = useState(null);
+    const [fechaIni, setFechaIni] = useState(null);
+    const [fechaFin, setFechaFin] = useState(null);
+    const [errorState, setErrorState] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
+    const uniqueIdCounter = useRef(0);
+    const [filters, setFilters] = useState(null);
+    const [globalFilterValue, setGlobalFilterValue] = useState('');
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const toast = useRef(null);
+
+    addLocale('es', {
+        firstDayOfWeek: 1,
+        showMonthAfterYear: true,
+        dayNames: ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'],
+        dayNamesShort: ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'],
+        dayNamesMin: ['D', 'L', 'M', 'X', 'J', 'V', 'S'],
+        monthNames: ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'],
+        monthNamesShort: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'],
+        today: 'Hoy', clear: 'Limpiar', startsWith: 'Comienza con', contains: 'Contiene', notContains: 'No contiene', endsWith: 'Termina con', equals: 'Igual', notEquals: 'No igual',
+        addRule: 'Agregar regla', removeRule: 'quitar regla', accept: 'Aceptar', reject: 'Rechazar', edit: 'Editar', apply: 'Aplicar', matchAll: 'Coincidir todo', matchAny: 'Coincidir cualquiera',
+        empty: 'Vacio', notEmpty: 'No vacío', loading: 'Cargando...', selectAll: 'Seleccionar todo', selectAllFiltered: 'Seleccionar todo filtrado', unselect: 'Des-seleccionar', clearFilter: 'Limpiar filtro',
+        applyFilter: 'Aplicar filtro', filter: 'Filtro', cancel: 'Cancelar', reset: 'Reiniciar', noFilter: 'Sin filtro', lt: 'Menor que', lte: 'Menor o igual que', gt: 'Mayor que', gte: 'Mayor o igual que',
+        is: 'Es', isNot: 'No es', before: 'Antes', after: 'Después', dateIs: 'Fecha es', dateIsNot: 'Fecha no es', dateBefore: 'Fecha antes de', dateAfter: 'Fecha después de',
+    });
+
+    const handleCloseErrorDialog = () => {
+        setErrorState(false);
+        setErrorMessage('');
+    };
+
+    const handleSearch = async () => {
+        try {
+            setLoading(true);
+            const requestData = {
+                fechaIni: fechaIni.toLocaleDateString("es-CO", { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                fechaFin: fechaFin.toLocaleDateString("es-CO", { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            };
+            // console.log('JSON enviado al backend:', requestData);
+            // const response = await axios.put('http://192.168.20.38:8080/Datasnap/rest/TServerMethods1/ListaEntregas', requestData);
+            const response = await axios.put(apiUrl, requestData);
+
+            if (response.data.status === 200) {
+                const dataWithIds = response.data.data.map(item => ({
+                    ...item,
+                    id: generateUniqueId(), // Aquí agregamos el identificador único
+                }));
+                setPendientes(dataWithIds);
+                // console.log('Entregas:', response.data.data);
+            } else {
+                console.error('Error en la respuesta:', response.data.error);
+                setErrorMessage(response.data.error);
+            }
+        } catch (error) {
+            if (error.message === "Network Error") {
+                setErrorState(true);
+                setErrorMessage("Error de red: No se puede conectar al servidor. Por favor, verifica tu conexión a Internet o inténtalo más tarde.");
+            } else {
+                setErrorState(true);
+                setErrorMessage(`Error al realizar la solicitud: ${error.message}`);
+            }
+            console.error('Error al realizar la solicitud:', error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        // Si solo se selecciona una fecha, asignarla tanto como fecha inicial como fecha final
+        if (fechaIni && !fechaFin) {
+            setFechaFin(fechaIni);
+        } else if (!fechaIni && fechaFin) {
+            setFechaIni(fechaFin);
+        }
+        initFilters();
+
+        locale('es');  //Para el idioma
+    }, [fechaIni, fechaFin]);
+
+    const handleDateChange = (e) => {
+        setDates(e.value);
+
+        if (e.value && e.value.length > 0) {
+            setFechaIni(e.value[0]);
+            if (e.value.length === 2) {
+                setFechaFin(e.value[1]);
+            } else {
+                setFechaFin(e.value[0]);
+            }
+        } else {
+            setFechaIni(null);
+            setFechaFin(null);
+        }
+    };
+
+    function generateUniqueId() {
+        //Para que el id sea unico
+        uniqueIdCounter.current += 1;
+        return `unique-id-${uniqueIdCounter.current}`;
+    }
+
+    const clearFilter = () => {
+        initFilters();
+    };
+
+    const onGlobalFilterChange = (e) => {
+        const value = e.target.value;
+        let _filters = { ...filters };
+
+        _filters['global'].value = value;
+
+        setFilters(_filters);
+        setGlobalFilterValue(value);
+    };
+
+    const initFilters = () => {
+        setFilters({
+            global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+            numfactura: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+            referencia: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+            nombreproducto: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+            nombrecliente: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+            saldo: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+            identidad: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
+        });
+    };
+    const onRowSelect = (event) => {
+        toast.current.show({ severity: 'info', summary: 'Producto Seleccionado', detail: `Name: ${event.data.nombreproducto}`, life: 3000 });
+    };
+
+    const onRowUnselect = (event) => {
+        toast.current.show({ severity: 'warn', summary: 'Producto no seleccionado', detail: `Name: ${event.data.nombreproducto}`, life: 3000 });
+    };
+
+    const stockBodyTemplate = (rowData) => {
+        const stockClassName = classNames('border-circle w-4rem h-2rem inline-flex font-bold justify-content-center align-items-center text-sm', {
+            'bg-teal-100 text-teal-900': rowData.saldo > 1 && rowData.saldo < 10,
+            'bg-blue-100 text-blue-900': rowData.saldo > 10 && rowData.saldo < 20,
+            'bg-red-100 text-red-900': rowData.saldo > 20,
+        });
+
+        return <div className={stockClassName}>{parseFloat(rowData.saldo).toFixed(2)}</div>;
+    };
+
+    // const filterClearTemplate = (options) => {
+    //     return <Button type="button" label='Limpiar' icon="pi pi-times" onClick={options.filterClearCallback} severity="info" outlined></Button>;
+    // };
+
+    // const filterApplyTemplate = (options) => {
+    //     return <Button type="button" label='Aplicar' icon="pi pi-check" onClick={options.filterApplyCallback} severity="info" raised></Button>;
+    // };
+
+    const header = (
+        <div className="flex justify-content-between">
+            <Button type="button" icon="pi pi-filter-slash" label="Limpiar" outlined onClick={clearFilter} />
+            <span className="p-input-icon-left">
+                <i className="pi pi-search" />
+                <InputText value={globalFilterValue} onChange={onGlobalFilterChange} placeholder="Palabra clave" />
+            </span>
+        </div>
+    );
+
+    return (
+        <div style={{ paddingTop: '5px' }}>
+            <Panel header="Consulta Referencias Pendientes por Entregar" toggleable>
+                <Toolbar
+                    start={
+                        <>
+                            <Calendar value={dates}
+                                onChange={handleDateChange}
+                                selectionMode="range"
+                                showIcon
+                                readOnlyInput
+                                dateFormat="dd/mm/yy"
+                                numberOfMonths={2}
+                            />
+                        </>
+                    }
+                    end={
+                        <>
+                            <Button label="Buscar"
+                                icon="pi pi-search"
+                                className="p-mt-2"
+                                loading={loading}
+                                onClick={handleSearch} />
+                        </>
+                    }
+                />
+            </Panel>
+            <Toast ref={toast} />
+            <div style={{ paddingTop: '5px' }}>
+                <DataTable value={pendientes} emptyMessage="No se han encontrado resultados" loading={loading} dataKey="id"
+                    showGridlines stripedRows paginator rows={10} rowsPerPageOptions={[5, 10, 25, 50]}
+                    filters={filters} globalFilterFields={['numfactura', 'referencia', 'nombreproducto', 'nombrecliente', 'saldo', 'identidad',]}
+                    header={header} columnResizeMode="fit" scrollable scrollHeight="flex"
+                    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+                    selectionMode="single" selection={selectedProduct} onSelectionChange={(e) => setSelectedProduct(e.value)}
+                    onRowSelect={onRowSelect} onRowUnselect={onRowUnselect} metaKeySelection={false} tableStyle={{ minWidth: '50rem' }}
+                    removableSort rowGroupMode="rowspan" groupRowsBy="numfactura" sortMode="single" sortField="numfactura" sortOrder={0}>
+                    <Column field="numfactura" header="Documento" filter filterPlaceholder="Buscar por documento"
+                        filterField="numfactura" sortable /*filterClear={filterClearTemplate} filterApply={filterApplyTemplate}*/ />
+                    <Column field="referencia" header="Referencia" filter filterPlaceholder="Buscar por referencia"
+                        filterField="referencia" sortable />
+                    <Column field="nombreproducto" header="Nombre Articulo" filter filterPlaceholder="Buscar por nombre"
+                        filterField="nombreproducto" sortable />
+                    <Column field="saldo" header="Cant. Pendiente" filter filterPlaceholder="Buscar por saldo"
+                        filterField="saldo" sortable body={stockBodyTemplate} align={'center'} />
+                    <Column field="nombrecliente" header="Cliente" filter filterPlaceholder="Buscar por nombre"
+                        filterField="nombrecliente" sortable />
+                    <Column field="identidad" header="Identidad" filter filterPlaceholder="Buscar por identidad"
+                        filterField="identidad" sortable />
+                </DataTable>
+            </div>
+            <Dialog
+                visible={errorState}
+                onHide={handleCloseErrorDialog}
+                header="Error"
+                modal
+                style={{ width: '300px' }}
+            >
+                <div>
+                    <p>{errorMessage}</p>
+                    <Button label="Cerrar" icon="pi pi-times"
+                        severity='danger'
+                        text
+                        style={{ marginTop: '10px' }}
+                        size="small"
+                        onClick={handleCloseErrorDialog} />
+                </div>
+            </Dialog>
+        </div>
+    );
+
+
+};
+export default ConsultaPedientesEntrega;

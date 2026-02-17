@@ -1,0 +1,33 @@
+// SearchBar.js
+import React from 'react';
+import { Calendar } from 'primereact/calendar';
+import { InputText } from 'primereact/inputtext';
+import { Button } from 'primereact/button';
+import { Toolbar } from 'primereact/toolbar';
+
+function SearchBar(props) {
+    return (
+        <Toolbar
+            start={
+                <Calendar
+                    value={props.selectedDate}
+                    onChange={(e) => props.setSelectedDate(e.value)}
+                    showIcon
+                    dateFormat="dd/mm/yy"
+                />
+            }
+            end={
+                <React.Fragment>
+                    <InputText style={{ width: "380px" }}
+                        placeholder="Num. factura, cédula o nombre cliente"
+                        value={props.searchTerm}
+                        onChange={(e) => props.setSearchTerm(e.target.value)}
+                    />
+                    <Button label="Buscar" icon="pi pi-search" className="mr-2" onClick={props.handleSearch} raised />
+                </React.Fragment>
+            }
+        />
+    );
+}
+
+export default SearchBar;

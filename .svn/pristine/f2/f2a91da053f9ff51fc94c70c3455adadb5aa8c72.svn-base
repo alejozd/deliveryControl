@@ -1,0 +1,56 @@
+// Productos.js
+import React, { Suspense } from "react";
+// import React, { useEffect, useState } from 'react';
+import { fetchData } from './fetchData';
+import './Productos.css'; // Importa el archivo CSS
+
+// import { DataTable } from 'primereact/datatable';
+// import { Column } from 'primereact/column';
+// import 'bootstrap/dist/css/bootstrap.min.css';
+
+const apiData = fetchData("http://LocalHost:8080/Datasnap/rest/TServerMethods1/ListaProductos");
+
+function Productos() {
+    const data = apiData.read();
+
+    // Función para formatear el precio como moneda
+    const formatCurrency = (amount) => {
+        return `$ ${amount.toLocaleString('es-CO', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        })}`;
+    };
+
+    return (
+        <div className="productos-container">
+            <h1>Listado de Productos</h1>
+            <Suspense fallback={<div>Loading...</div>}>
+                {/* <DataTable value={data.result} >
+                    <Column field="nombre" header="Nombre"></Column>
+                    <Column field="precio" header="Precio"></Column>
+                    <Column field="referencia" header="Referencia"></Column>
+                </DataTable> */}
+                <table className="productos-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Precio</th>
+                            <th>Referencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {data.result.map((producto, index) => (
+                            <tr key={index} className="producto-row">
+                                <td>{producto.nombre}</td>
+                                <td>{formatCurrency(parseFloat(producto.precio))}</td>
+                                <td>{producto.referencia}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </Suspense>
+        </div >
+    );
+}
+
+export default Productos;

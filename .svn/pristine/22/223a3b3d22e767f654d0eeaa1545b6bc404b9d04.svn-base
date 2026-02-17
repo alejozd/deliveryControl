@@ -1,0 +1,210 @@
+import React, { useState, useEffect } from "react";
+import { Dropdown } from "primereact/dropdown";
+import { InputText } from "primereact/inputtext";
+import config from "../Config";
+import axios from "axios";
+
+const ClientCreationAddiData = ({}) => {
+  const apiUrlCarteras = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaCarteras`;
+  const apiUrlNaturalezas = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaNaturalezas`;
+  const apiUrlActividades = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaActividades`;
+  const apiUrlCiudades = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaCiudades`; // URL del endpoint para ciudades
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [carteraList, setCarteraList] = useState([]);
+  const [selectedCartera, setSelectedCartera] = useState(null);
+  const [naturalezaList, setNaturalezaList] = useState([]);
+  const [selectedNaturaleza, setSelectedNaturaleza] = useState(null);
+  const [actividadList, setActividadList] = useState([]);
+  const [selectedActividad, setSelectedActividad] = useState(null);
+  const [ciudadList, setCiudadList] = useState([]);
+  const [selectedCiudad, setSelectedCiudad] = useState(null);
+
+  // useEffect para cargar las carteras desde el API
+  useEffect(() => {
+    const fetchCarteras = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.get(apiUrlCarteras);
+        const data = response.data.result;
+        // Formatear los datos para el Dropdown
+        const formattedCarteras = data.map((cartera) => ({
+          label: cartera.nombrecartera,
+          value: cartera.codigocartera,
+        }));
+
+        setCarteraList(formattedCarteras);
+        // Seleccionar la primera opción por defecto si la lista no está vacía
+        if (formattedCarteras.length > 0) {
+          setSelectedCartera(formattedCarteras[0].value);
+        }
+      } catch (error) {
+        setError("Error al cargar las carteras");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCarteras();
+  }, [apiUrlCarteras]);
+
+  // useEffect para cargar las naturalezas desde el API
+  useEffect(() => {
+    const fetchNaturalezas = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.get(apiUrlNaturalezas);
+        const data = response.data.result;
+
+        // Formatear los datos para el Dropdown
+        const formattedNaturalezas = data.map((naturaleza) => ({
+          label: naturaleza.nombrenaturaleza,
+          value: naturaleza.codigonaturaleza,
+        }));
+
+        setNaturalezaList(formattedNaturalezas);
+
+        // Seleccionar la primera opción por defecto si la lista no está vacía
+        if (formattedNaturalezas.length > 0) {
+          setSelectedNaturaleza(formattedNaturalezas[0].value);
+        }
+      } catch (error) {
+        setError("Error al cargar las naturalezas");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNaturalezas();
+  }, [apiUrlNaturalezas]);
+
+  // useEffect para cargar las actividades desde el API
+  useEffect(() => {
+    const fetchActividades = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.get(apiUrlActividades);
+        const data = response.data.result;
+
+        // Formatear los datos para el Dropdown
+        const formattedActividades = data.map((actividad) => ({
+          label: actividad.nombreactividad,
+          value: actividad.codigoactividad,
+        }));
+
+        setActividadList(formattedActividades);
+
+        // Seleccionar la primera opción por defecto si la lista no está vacía
+        if (formattedActividades.length > 0) {
+          setSelectedActividad(formattedActividades[0].value);
+        }
+      } catch (error) {
+        setError("Error al cargar las actividades");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchActividades();
+  }, [apiUrlActividades]);
+
+  // Efecto para cargar las ciudades
+  useEffect(() => {
+    const fetchCiudades = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.get(apiUrlCiudades);
+        const data = response.data.result;
+
+        const formattedCiudades = data.map((ciudad) => ({
+          label: ciudad.nombreciudad,
+          value: ciudad.codigociudad,
+        }));
+
+        setCiudadList(formattedCiudades);
+        // Busca la ciudad con el código 11001
+        const defaultCity = formattedCiudades.find(
+          (ciudad) => ciudad.value === "11001"
+        );
+
+        // Si existe, selecciona esa ciudad, de lo contrario selecciona la primera
+        if (defaultCity) {
+          setSelectedCiudad(defaultCity.value);
+        } else if (formattedCiudades.length > 0) {
+          setSelectedCiudad(formattedCiudades[0].value);
+        }
+      } catch (error) {
+        setError("Error al cargar las ciudades");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCiudades();
+  }, [apiUrlCiudades]);
+
+  return (
+    <div>
+      <div className="labelinput">
+        <label htmlFor="idcartera">Cartera</label>
+        <Dropdown
+          className="inputtext"
+          id="idcartera"
+          value={selectedCartera}
+          onChange={(e) => setSelectedCartera(e.value)}
+          options={carteraList}
+          optionLabel="label"
+          placeholder="Seleccionar Cartera"
+          disabled={loading}
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idnaturaleza">Naturaleza</label>
+        <Dropdown
+          className="inputtext"
+          id="idnaturaleza"
+          value={selectedNaturaleza}
+          onChange={(e) => setSelectedNaturaleza(e.value)}
+          options={naturalezaList}
+          optionLabel="label"
+          placeholder="Seleccionar Naturaleza"
+          disabled={loading}
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idactividad">Actividad</label>
+        <Dropdown
+          className="inputtext"
+          id="idactividad"
+          value={selectedActividad}
+          onChange={(e) => setSelectedActividad(e.value)}
+          options={actividadList}
+          optionLabel="label"
+          placeholder="Seleccionar Actividad"
+          disabled={loading}
+          panelClassName="custom-dropdown-panel"
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idciudad">Ciudad</label>
+        <Dropdown
+          className="inputtext"
+          id="idciudad"
+          value={selectedCiudad}
+          onChange={(e) => setSelectedCiudad(e.value)}
+          options={ciudadList}
+          optionLabel="label"
+          placeholder="Seleccionar Ciudad"
+          disabled={loading}
+        />
+        {error && <p style={{ color: "red" }}>{error}</p>}
+      </div>
+    </div>
+  );
+};
+
+export default ClientCreationAddiData;

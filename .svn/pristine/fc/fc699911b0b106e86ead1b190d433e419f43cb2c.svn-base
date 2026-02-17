@@ -1,0 +1,306 @@
+import React, { useState, useEffect } from "react";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Dialog } from "primereact/dialog";
+import { Toolbar } from "primereact/toolbar";
+import ProductSearchDialog from "./ProductSearchDialog";
+import config from "../../Config";
+import axios from "axios";
+
+const Quoter = () => {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaProducto`;
+  const apiUrlProducto = `${config.apiUrl}/Datasnap/rest/TServerMethods1/DataProducto`;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [customer, setCustomer] = useState({
+    nombre: "",
+    identificacion: "",
+    correo: "",
+    telefono: "",
+    direccion: "",
+  });
+  const [additionalContact, setAdditionalContact] = useState({
+    nombre: "",
+    telefono: "",
+    correo: "",
+    cargo: "",
+  });
+  const [products, setProducts] = useState([]);
+  const [showDialog, setShowDialog] = useState(false);
+  const [showDialogProduct, setShowDialogProduct] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [selectedProducts, setSelectedProducts] = useState([]);
+
+  const formatCurrency = (value) => {
+    return value.toLocaleString("es-CO", {
+      style: "currency",
+      currency: "COP",
+    });
+  };
+
+  const priceBodyTemplate = (selectedProducts) => {
+    return formatCurrency(selectedProducts.PRECIO);
+  };
+
+  // Función para buscar productos
+  const searchProducts = async () => {
+    // Realiza la solicitud al servidor para buscar productos utilizando el texto de búsqueda
+    try {
+      setLoading(true);
+      // Realiza la solicitud al servidor y guarda los resultados en el estado de productos
+      const response = await axios.put(apiUrl, { criterio: searchText });
+      if (response.data.status === 200) {
+        // console.log('JSON recibido del backend:', response.data.data);
+        setProducts(response.data.data);
+        console.log("products", response.data.data);
+        setShowDialogProduct(true);
+      } else {
+        console.error("Error en la respuesta:", response.data.error);
+        setError(response.data.error || "Error en la respuesta");
+      }
+    } catch (error) {
+      console.error("Error al realizar la solicitud:", error.message);
+      setError("Error al realizar la solicitud: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para seleccionar un producto
+  const selectProduct = (product) => {
+    setSelectedProducts(product); // Actualiza el estado con el producto seleccionado
+    setShowDialog(false); // Cierra el diálogo de búsqueda de productos
+  };
+  // Función para guardar la cotización
+  const saveQuotation = () => {
+    // Aquí puedes agregar la lógica para guardar la cotización
+  };
+
+  // Función para agregar productos al DataTable
+  const addProductsToDataTable = async (selectedProductsToAdd) => {
+    console.log("Productos seleccionados en Quoter:", selectedProductsToAdd);
+
+    // Aquí puedes consumir un endpoint para obtener el precio de cada producto
+    const productsWithPrice = await Promise.all(
+      selectedProductsToAdd.map(async (product) => {
+        try {
+          // Consumir el endpoint para obtener el precio del producto
+          const response = await axios.put(apiUrlProducto, {
+            codigo: product.CODIGO,
+            subcodigo: product.SUBCODIGO,
+          });
+
+          // Verificar si la solicitud fue exitosa y obtener el precio del producto
+          if (response.data.status === 200) {
+            const precio = response.data.data[0].PRECIO;
+            console.log("precio", precio);
+            // Agregar el precio al producto
+            return {
+              ...product,
+              PRECIO: precio,
+            };
+          } else {
+            console.error(
+              "Error al obtener el precio del producto:",
+              response.data.error
+            );
+            return null;
+          }
+        } catch (error) {
+          console.error("Error al realizar la solicitud:", error.message);
+          return null;
+        }
+      })
+    );
+
+    // Filtrar los productos que no pudieron obtener precio
+    const validProducts = productsWithPrice.filter(
+      (product) => product !== null
+    );
+
+    // Concatenar los nuevos productos a la lista existente de productos seleccionados
+    setSelectedProducts((prevSelectedProducts) => [
+      ...prevSelectedProducts,
+      ...validProducts,
+    ]);
+  };
+
+  const startContent = (
+    <React.Fragment>
+      <InputText
+        placeholder="Buscar producto..."
+        size={"60"}
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+      />
+      <Button
+        icon="pi pi-search"
+        className="p-button-warning"
+        onClick={searchProducts}
+      />
+    </React.Fragment>
+  );
+
+  return (
+    <div>
+      <div className="grid">
+        {/* Sección para el cliente */}
+        <div className="col-12 md:col-6">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Información del cliente
+            </h3>
+            <div className="field labelinput">
+              <label htmlFor="customernombre">Nombre</label>
+              <InputText
+                className="inputtext"
+                id="customernombre"
+                value={customer.nombre}
+              />
+            </div>
+            <div className="field labelinput">
+              <label htmlFor="customeridentificacion">Identificación</label>
+              <InputText
+                className="inputtext"
+                id="customeridentificacion"
+                value={customer.identificacion}
+              />
+            </div>
+            <div className="field labelinput">
+              <label htmlFor="customercorreo">Correo</label>
+              <InputText
+                className="inputtext"
+                id="customercorreo"
+                value={customer.correo}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Sección para el contacto adicional */}
+        <div className="col-12 md:col-6">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Contacto adicional
+            </h3>
+            <div className="field labelinput">
+              <label htmlFor="additionalContactNombre">Nombre</label>
+              <InputText
+                className="inputtext"
+                id="additionalContactNombre"
+                value={additionalContact.nombre}
+              />
+            </div>
+            <div className="field labelinput">
+              <label htmlFor="additionalContactTelefono">Teléfono</label>
+              <InputText
+                className="inputtext"
+                id="additionalContactTelefono"
+                value={additionalContact.telefono}
+              />
+            </div>
+            <div className="field labelinput">
+              <label htmlFor="additionalContactCorreo">Correo</label>
+              <InputText
+                className="inputtext"
+                id="additionalContactCorreo"
+                value={additionalContact.correo}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sección para buscar productos */}
+      <div className="grid">
+        <div className="col-12 md:col-12">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Productos
+            </h3>
+            <Toolbar start={startContent} />
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de productos */}
+      <div className="p-col-12">
+        <DataTable
+          value={selectedProducts}
+          // onSelectionChange={(e) => setSelectedProducts(e.value)}
+          paginator
+          rows={5}
+          rowsPerPageOptions={[5, 10, 25]}
+          emptyMessage="No hay productos disponibles"
+        >
+          <Column field="CODIGO" header="Código" />
+          <Column field="SUBCODIGO" header="Subcódigo" />
+          <Column field="NOMBREPRODUCTOS" header="Nombre" />
+          <Column field="REFERENCIA" header="Referencia" />
+          <Column field="PRECIO" header="Precio" body={priceBodyTemplate} />
+        </DataTable>
+      </div>
+
+      {/* Botón para guardar la cotización */}
+      <div className="p-col-12">
+        <Button
+          label="Guardar Cotización"
+          onClick={saveQuotation}
+          className="p-button-raised p-button-success"
+          disabled={!customer}
+        />
+      </div>
+
+      {/* Diálogo de búsqueda de productos */}
+      <ProductSearchDialog
+        showDialogProduct={showDialogProduct} // Prop para controlar la visibilidad del diálogo
+        setShowDialogProduct={setShowDialogProduct} // Prop para actualizar el estado del diálogo
+        products={products} // Prop para pasar los productos al diálogo
+        onAcceptSelection={addProductsToDataTable} // Pasa la función de devolución de llamada
+      />
+
+      {/* Diálogo de confirmación */}
+      <Dialog
+        visible={showDialog}
+        onHide={() => setShowDialog(false)}
+        header="Confirmación"
+      >
+        <div>¿Estás seguro que deseas guardar la cotización?</div>
+        <div className="p-grid p-justify-center">
+          <Button
+            label="Sí"
+            onClick={saveQuotation}
+            className="p-button-raised p-button-success"
+          />
+          <Button
+            label="No"
+            onClick={() => setShowDialog(false)}
+            className="p-button-raised p-button-danger"
+          />
+        </div>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Quoter;

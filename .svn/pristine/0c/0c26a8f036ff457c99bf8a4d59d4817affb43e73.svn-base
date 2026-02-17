@@ -1,0 +1,124 @@
+import React, { useState } from "react";
+import { Dialog } from "primereact/dialog";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import config from "../../Config";
+import axios from "axios";
+
+const NewCustomerDialog = ({ visible, onHide, onCustomerCreated }) => {
+  const apiUrlCrearCliente = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClientes`;
+  const [nombreCliente, setNombreCliente] = useState("");
+  const [identidad, setIdentidad] = useState("");
+  const [telmovil, setTelmovil] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleCreate = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.post(apiUrlCrearCliente, {
+        nombrecliente: nombreCliente,
+        identidad: identidad,
+      });
+      if (response.data.status === 200) {
+        onCustomerCreated(response.data.data);
+        onHide();
+      } else {
+        setError(response.data.error || "Error en la respuesta");
+      }
+    } catch (error) {
+      setError("Error al realizar la solicitud: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const footerContent = (
+    <div style={{ marginTop: "1em" }}>
+      <Button
+        label="Crear"
+        severity="success"
+        onClick={handleCreate}
+        autoFocus
+        size="small"
+        icon="pi pi-check"
+      />
+      <Button
+        label="Cancelar"
+        severity="danger"
+        onClick={onHide}
+        text
+        raised
+        size="small"
+        icon="pi pi-times"
+      />
+    </div>
+  );
+
+  return (
+    <Dialog
+      visible={visible}
+      onHide={onHide}
+      header="Crear Nuevo Cliente"
+      footer={footerContent}
+    >
+      <div>
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        <div className="p-field">
+          <label htmlFor="nombreCliente">Nombre del Cliente</label>
+          <InputText
+            id="nombreCliente"
+            value={nombreCliente}
+            onChange={(e) => setNombreCliente(e.target.value)}
+            className="p-inputtext p-component"
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="identidad">Identidad</label>
+          <InputText
+            id="identidad"
+            value={identidad}
+            onChange={(e) => setIdentidad(e.target.value)}
+            className="p-inputtext p-component"
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="telmovil">Teléfono</label>
+          <InputText
+            id="telmovil"
+            value={telmovil}
+            onChange={(e) => setTelmovil(e.target.value)}
+            className="p-inputtext p-component"
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="direccion">Dirección</label>
+          <InputText
+            id="direccion"
+            value={direccion}
+            onChange={(e) => setDireccion(e.target.value)}
+            className="p-inputtext p-component"
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="email">Correo electrónico</label>
+          <InputText
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="p-inputtext p-component"
+            style={{ width: "100%" }}
+          />
+        </div>
+      </div>
+    </Dialog>
+  );
+};
+
+export default NewCustomerDialog;

@@ -1,0 +1,64 @@
+import React, { useEffect, useState } from "react";
+import { useFetch } from "./useFetch";
+import config from "../Config";
+import "./Clientes.css";
+
+function Clientes() {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClientes`;
+  const [url] = useState(apiUrl);
+  const { data, loading, error, handleCancelRequest } = useFetch(url);
+
+  useEffect(() => {
+    // Otras operaciones que puedas necesitar cuando 'url' cambie
+  }, [url]);
+
+  if (loading) {
+    return (
+      <div className="clientes-container">
+        <h2>Cargando...</h2>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="clientes-container">
+        <h2>Error: {error.message}</h2>
+        <button onClick={handleCancelRequest}>Cancelar</button>
+      </div>
+    );
+  }
+
+  // Asegúrate de que "data" sea un array y que contiene datos
+  if (!Array.isArray(data.result) || data.result.length === 0) {
+    return (
+      <div className="clientes-container">
+        <h2>No hay datos disponibles</h2>
+      </div>
+    );
+  }
+
+  return (
+    <div className="clientes-container">
+      <h2>Listado de Clientes</h2>
+      <ul>
+        {error && <li>Error: {error}</li>}
+        {loading && <li>Cargando...</li>}
+        {data.result.map((cliente, index) => (
+          <li key={index} className="cliente-item">
+            <span className="cliente-title">Nombre:</span> {cliente.NOMBRE}
+            <br />
+            <span className="cliente-title">Identidad:</span>{" "}
+            {cliente.IDENTIDAD}
+            <br />
+            <span className="cliente-title">Dirección:</span>{" "}
+            {cliente.DIRECCION}
+            <hr className="cliente-divider" />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default Clientes;

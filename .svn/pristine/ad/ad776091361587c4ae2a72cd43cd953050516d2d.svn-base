@@ -1,0 +1,305 @@
+import React, { useEffect, useState } from "react";
+import config from "../Config";
+import { Panel } from "primereact/panel";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Toolbar } from "primereact/toolbar";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { classNames } from "primereact/utils";
+import { useLocation } from "react-router-dom";
+import NewCustomerDialog from "./Quoter/NewCustomerDialog";
+import ClientCreation from "./ClientCreation";
+import Potradatos from "./Potradatos";
+import translations from "../config/localeConfig";
+import axios from "axios";
+
+const Clientes = () => {
+  const location = useLocation();
+  const { user } = location.state || {};
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaClientes`;
+
+  const [clientes, setClientes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [errorState, setErrorState] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [selectedCliente, setSelectedCliente] = useState(null);
+  const [editDialogVisible, setEditDialogVisible] = useState(false);
+  const [totalRecords, setTotalRecords] = useState(0); // Total de registros
+  const [lazyState, setLazyState] = useState({
+    first: 0,
+    rows: 10,
+    page: 1,
+    sortField: null,
+    sortOrder: null,
+    filters: {
+      nombrecliente: { value: "", matchMode: "contains" },
+      identidad: { value: "", matchMode: "startsWith" },
+      direccion: { value: "", matchMode: "contains" },
+      telmovil: { value: "", matchMode: "startsWith" },
+    },
+  });
+  translations();
+
+  useEffect(() => {
+    loadLazyData();
+  }, [lazyState]);
+
+  const loadLazyData = async () => {
+    setLoading(true);
+    try {
+      const requestData = {
+        criterio: searchTerm,
+        limit: lazyState.rows,
+        offset: lazyState.first,
+        sortField: lazyState.sortField,
+        sortOrder: lazyState.sortOrder,
+        filters: lazyState.filters,
+      };
+      console.log("Request Data:", requestData);
+      const response = await axios.put(apiUrl, requestData);
+      // console.log("Response:", response.data);
+      if (response.data.status === 200) {
+        setClientes(response.data.data);
+        setTotalRecords(response.data.totalRecords); // Establecer el total de registros
+        // console.log("Total Records:", response.data.totalRecords);
+        // Actualizar selectedCliente si es necesario
+        if (selectedCliente) {
+          const updatedCliente = response.data.data.find(
+            (cliente) => cliente.idcliente === selectedCliente.idcliente
+          );
+          setSelectedCliente(updatedCliente);
+        }
+      } else {
+        console.error("Error en la respuesta:", response.data.error);
+        setErrorMessage(response.data.error);
+      }
+    } catch (error) {
+      if (error.message === "Network Error") {
+        setErrorState(true);
+        setErrorMessage(
+          "Error de red: No se puede conectar al servidor. Por favor, verifica tu conexión a Internet o inténtalo más tarde."
+        );
+      } else {
+        setErrorState(true);
+        setErrorMessage(`Error al realizar la solicitud: ${error.message}`);
+      }
+      console.error("Error al realizar la solicitud:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAcceptTreatment = (cliente) => {
+    setSelectedCliente(cliente);
+    setDialogVisible(true);
+  };
+
+  const handleCreateCustomer = () => {
+    setSelectedCliente(null); // Limpiar cliente seleccionado para creación
+    setEditDialogVisible(true);
+  };
+
+  const handleEditCustomer = (cliente) => {
+    setSelectedCliente(cliente); // Establecer cliente seleccionado para edición
+    setEditDialogVisible(true);
+  };
+
+  const onPage = (event) => {
+    setLazyState((prevState) => ({
+      ...prevState,
+      first: event.first,
+      rows: event.rows,
+    }));
+  };
+
+  const onSort = (event) => {
+    setLazyState((prevState) => ({
+      ...prevState,
+      sortField: event.sortField,
+      sortOrder: event.sortOrder,
+    }));
+  };
+
+  const onFilter = (event) => {
+    setLazyState((prevState) => ({
+      ...prevState,
+      first: 0,
+      filters: event.filters,
+    }));
+  };
+
+  const onSelectionChange = (event) => {
+    const value = event.value;
+    setSelectedCliente(value);
+  };
+
+  const verifiedBodyTemplate = (rowData) => {
+    return (
+      <i
+        className={classNames("pi", {
+          "text-green-500 pi-check-circle": rowData.aceptapotradatos,
+          "text-red-500 pi-times-circle": !rowData.aceptapotradatos,
+        })}
+        onClick={() => {
+          console.log("Selected row:", rowData);
+          if (rowData.aceptapotradatos === 0) {
+            handleAcceptTreatment(rowData);
+          }
+        }}
+        style={{ cursor: "pointer" }}
+      ></i>
+    );
+  };
+
+  const handleCustomerCreated = (newCustomer) => {
+    loadLazyData();
+  };
+
+  const matchModeOptions = [
+    { label: "Contiene", value: "contains" },
+    { label: "Comienza con", value: "startsWith" },
+    { label: "Igual", value: "equals" },
+  ];
+
+  return (
+    <div>
+      <h1>Clientes</h1>
+      <Panel header="Listado de Clientes" toggleable>
+        <Toolbar
+          start={
+            <>
+              <InputText
+                placeholder="Buscar cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    loadLazyData();
+                  }
+                }}
+                tooltip="Buscar cliente por nombre o identificación"
+                tooltipOptions={{ position: "top" }}
+              />
+              <Button icon="pi pi-search" onClick={loadLazyData} />
+            </>
+          }
+          end={
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                severity="success"
+                raised
+                onClick={handleCreateCustomer}
+              />
+              <Button
+                label="Editar"
+                icon="pi pi-pencil"
+                severity="info"
+                raised
+                disabled={!selectedCliente}
+                onClick={() => handleEditCustomer(selectedCliente)}
+              />
+            </div>
+          }
+        ></Toolbar>
+      </Panel>
+      <div className="card">
+        <DataTable
+          value={clientes}
+          lazy
+          filterDisplay="row"
+          dataKey="idcliente"
+          loading={loading}
+          stripedRows
+          emptyMessage="No se han encontrado resultados"
+          paginator
+          first={lazyState.first}
+          rows={lazyState.rows}
+          totalRecords={totalRecords}
+          onPage={onPage}
+          onSort={onSort}
+          sortField={lazyState.sortField}
+          sortOrder={lazyState.sortOrder}
+          onFilter={onFilter}
+          filters={lazyState.filters}
+          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+          selection={selectedCliente}
+          onSelectionChange={onSelectionChange}
+        >
+          <Column selectionMode="single" headerStyle={{ width: "3rem" }} />
+          <Column hidden field="idcliente" header="ID Cliente" />
+          <Column
+            field="nombrecliente"
+            header="Nombres"
+            sortable
+            filter
+            filterMatchModeOptions={matchModeOptions}
+            filterPlaceholder="Buscar"
+          />
+          <Column
+            field="identidad"
+            header="Identidad"
+            sortable
+            filter
+            filterMatchModeOptions={matchModeOptions}
+            filterPlaceholder="Buscar"
+          />
+          <Column
+            field="direccion"
+            header="Dirección"
+            sortable
+            filter
+            filterMatchModeOptions={matchModeOptions}
+            filterPlaceholder="Buscar"
+          />
+          <Column
+            field="telmovil"
+            header="Teléfono"
+            sortable
+            filter
+            filterMatchModeOptions={matchModeOptions}
+            filterPlaceholder="Buscar"
+          />
+          <Column
+            field="aceptapotradatos"
+            header="Acepta Política de tratamiento de datos"
+            bodyClassName="text-center"
+            style={{
+              width: "10rem",
+              wordWrap: "break-word",
+              textAlign: "center",
+            }}
+            body={verifiedBodyTemplate}
+          />
+        </DataTable>
+      </div>
+      <Potradatos
+        visible={dialogVisible}
+        onHide={() => setDialogVisible(false)}
+        idCliente={selectedCliente ? selectedCliente.idcliente : null}
+        aceptaTratamiento={
+          selectedCliente ? selectedCliente.aceptapotradatos : null
+        }
+        onAccept={() => {
+          loadLazyData(); // Refrescar la grilla después de aceptar el tratamiento
+        }}
+      />
+      {editDialogVisible && (
+        <ClientCreation
+          visible={editDialogVisible}
+          onHide={() => setEditDialogVisible(false)}
+          onCustomerCreated={handleCustomerCreated}
+          selectedCustomer={selectedCliente}
+          user={user}
+        />
+      )}
+    </div>
+  );
+};
+
+export default Clientes;

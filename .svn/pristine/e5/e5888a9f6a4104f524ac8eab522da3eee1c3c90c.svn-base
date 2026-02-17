@@ -1,0 +1,22 @@
+// src/components/ClientContactAssociation.js
+import React from "react";
+import { Panel } from "primereact/panel";
+
+const ClientContactAssociation = () => {
+  return (
+    <div>
+      <h1>Asociar Clientes y Contactos</h1>
+      <Panel header="En Construcción" toggleable>
+        <div style={{ textAlign: "center", marginTop: "2em" }}>
+          <h2>¡Esta opción está en construcción!</h2>
+          <p>
+            Estamos trabajando en esta funcionalidad. Por favor, vuelva más
+            tarde.
+          </p>
+        </div>
+      </Panel>
+    </div>
+  );
+};
+
+export default ClientContactAssociation;

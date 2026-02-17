@@ -1,0 +1,308 @@
+import React, { useState, useRef, useEffect } from "react";
+import { Dialog } from "primereact/dialog";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { Dropdown } from "primereact/dropdown";
+import config from "../../Config";
+import axios from "axios";
+
+const NewContactDialog = ({
+  visible,
+  onHide,
+  selectedContact,
+  refreshContacts,
+}) => {
+  const apiUrlUpdateContact = `${config.apiUrl}/Datasnap/rest/TServerMethods1/UpdateContact`;
+  const apiUrlAddContact = `${config.apiUrl}/Datasnap/rest/TServerMethods1/AddContact`;
+  const apiUrlVendedores = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaVendedores`;
+  const apiUrlSegmentacion = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaSegmentacion`;
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [emailError, setEmailError] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [vendedores, setVendedores] = useState([]);
+  const [segmentList, setSegmentList] = useState([]);
+  const [selectedVendedor, setSelectedVendedor] = useState(null);
+  const [selectedSegment, setSelectedSegment] = useState(null);
+
+  const [contactData, setContactData] = useState({
+    nombreCa: "",
+    identificacionCa: "",
+    telmovilCa: "",
+    direccionCa: "",
+    correoCa: "",
+  });
+
+  const resetForm = () => {
+    setContactData({
+      nombreCa: "",
+      identificacionCa: "",
+      telmovilCa: "",
+      direccionCa: "",
+      correoCa: "",
+    });
+    setSelectedVendedor(null);
+    setSelectedSegment(null);
+  };
+
+  useEffect(() => {
+    const fetchVendedores = async () => {
+      try {
+        const response = await axios.get(apiUrlVendedores);
+        if (response.status === 200) {
+          setVendedores(response.data.result);
+        } else {
+          console.error("Error fetching vendedores:", response.data.error);
+        }
+      } catch (error) {
+        console.error("Error fetching vendedores:", error);
+      }
+    };
+
+    const fetchSegments = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(apiUrlSegmentacion);
+        if (response.status === 200) {
+          const formattedSegments = response.data.result.map((segment) => ({
+            label: segment.nombresegmento,
+            value: segment.idsegmento,
+          }));
+          setSegmentList(formattedSegments);
+        } else {
+          console.error("Error fetching segments:", response.data.error);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching segments:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchVendedores();
+    fetchSegments();
+  }, [apiUrlSegmentacion, apiUrlVendedores]);
+
+  useEffect(() => {
+    if (selectedContact) {
+      setContactData({
+        nombreCa: selectedContact.nombreCa,
+        identificacionCa: selectedContact.identificacionCa,
+        telmovilCa: selectedContact.telmovilCa,
+        direccionCa: selectedContact.direccionCa,
+        correoCa: selectedContact.correoCa,
+      });
+
+      if (vendedores.length > 0) {
+        const vendedorSeleccionado = vendedores.find(
+          (vendedor) => vendedor.identidadve === selectedContact.identidadve
+        );
+        setSelectedVendedor(vendedorSeleccionado);
+      }
+
+      if (segmentList.length > 0) {
+        const segmentoSeleccionado = segmentList.find(
+          (segment) => segment.value === selectedContact.idsegmento
+        );
+        setSelectedSegment(
+          segmentoSeleccionado ? segmentoSeleccionado.value : null
+        );
+      }
+    } else {
+      resetForm();
+    }
+  }, [selectedContact, vendedores, segmentList]);
+
+  useEffect(() => {
+    const { nombreCa, identificacionCa, telmovilCa, direccionCa, correoCa } =
+      contactData;
+    if (
+      nombreCa.trim() !== "" &&
+      identificacionCa.trim() !== "" &&
+      telmovilCa.trim() !== "" &&
+      direccionCa.trim() !== "" &&
+      correoCa.trim() !== "" &&
+      selectedVendedor !== null &&
+      selectedSegment !== null
+    ) {
+      setIsFormValid(true);
+    } else {
+      setIsFormValid(false);
+    }
+  }, [contactData, selectedVendedor, selectedSegment]);
+
+  const handleCreate = async () => {
+    setLoading(true);
+    const newContact = {
+      idcontacto: selectedContact ? selectedContact.idcontacto : null,
+      idcliente: 0,
+      ...contactData,
+      identidadve: selectedVendedor.identidadve,
+      idsegmento: selectedSegment,
+    };
+
+    if (selectedContact) {
+      try {
+        const response = await axios.put(apiUrlUpdateContact, newContact);
+        if (response.data.status === 200) {
+          onHide();
+          refreshContacts("Contacto actualizado", "success"); // Actualiza la lista de contactos
+        } else {
+          setError(response.data.error || "Error en la respuesta");
+          console.error(response.data.error);
+        }
+      } catch (error) {
+        setError("Error al realizar la solicitud: " + error.message);
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      try {
+        const response = await axios.post(apiUrlAddContact, newContact);
+        if (response.data.status === 200) {
+          onHide();
+          refreshContacts("Contacto creado", "success"); // Actualiza la lista de contactos
+        } else {
+          setError(response.data.error || "Error en la respuesta");
+          console.error(response.data.error);
+        }
+      } catch (error) {
+        setError("Error al realizar la solicitud: " + error.message);
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    return emailRegex.test(email);
+  };
+
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    setContactData((prevData) => ({ ...prevData, [id]: value }));
+    if (id === "correoCa") {
+      setEmailError(!validateEmail(value));
+    }
+  };
+
+  const footerContent = (
+    <div style={{ marginTop: "1em" }}>
+      <Button
+        label={selectedContact ? "Actualizar" : "Crear"}
+        severity="success"
+        onClick={handleCreate}
+        autoFocus
+        size="small"
+        icon="pi pi-check"
+        disabled={!isFormValid || loading}
+      />
+      <Button
+        label="Cancelar"
+        severity="danger"
+        onClick={onHide}
+        text
+        raised
+        size="small"
+        icon="pi pi-times"
+        disabled={loading}
+      />
+    </div>
+  );
+
+  return (
+    <Dialog
+      visible={visible}
+      style={{ width: "450px" }}
+      onHide={onHide}
+      header={selectedContact ? "Editar Contacto" : "Crear Nuevo Contacto"}
+      modal
+      className="p-fluid"
+      footer={footerContent}
+    >
+      <div>
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        <div className="labelinput">
+          <label htmlFor="nombreCa">Nombre</label>
+          <InputText
+            className="inputtext"
+            id="nombreCa"
+            value={contactData.nombreCa}
+            onChange={handleInputChange}
+          />
+        </div>
+        <div style={{ display: "flex", flexDirection: "row" }}>
+          <div className="labelinput">
+            <label htmlFor="identificacionCa">Identificación</label>
+            <InputText
+              className="inputtext"
+              id="identificacionCa"
+              value={contactData.identificacionCa}
+              onChange={handleInputChange}
+            />
+          </div>
+          <div className="labelinput">
+            <label htmlFor="telmovilCa">Teléfono</label>
+            <InputText
+              className="inputtext"
+              id="telmovilCa"
+              value={contactData.telmovilCa}
+              onChange={handleInputChange}
+            />
+          </div>
+        </div>
+        <div className="labelinput">
+          <label htmlFor="direccionCa">Dirección</label>
+          <InputText
+            className="inputtext"
+            id="direccionCa"
+            value={contactData.direccionCa}
+            onChange={handleInputChange}
+          />
+        </div>
+        <div className="labelinput">
+          <label htmlFor="correoCa">Correo electrónico</label>
+          <InputText
+            id="correoCa"
+            value={contactData.correoCa}
+            onChange={handleInputChange}
+            className={`inputtext ${emailError ? "p-invalid" : ""}`}
+            placeholder="example@mail.com"
+          />
+        </div>
+        <div className="labelinput">
+          <label htmlFor="vendedorId">Vendedor</label>
+          <Dropdown
+            className="inputtext"
+            id="vendedorId"
+            value={selectedVendedor}
+            options={vendedores}
+            onChange={(e) => setSelectedVendedor(e.value)}
+            optionLabel="nombreve"
+            placeholder="Seleccione un vendedor"
+            required
+          />
+        </div>
+        <div className="labelinput">
+          <label htmlFor="segmentId">Segmento</label>
+          <Dropdown
+            className="inputtext"
+            id="segmentId"
+            value={selectedSegment}
+            options={segmentList}
+            onChange={(e) => setSelectedSegment(e.value)}
+            optionLabel="label"
+            placeholder="Seleccionar Segmento"
+            required
+          />
+        </div>
+      </div>
+    </Dialog>
+  );
+};
+
+export default NewContactDialog;

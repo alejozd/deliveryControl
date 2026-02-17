@@ -1,0 +1,463 @@
+// EntregasList.js
+import React, { useState } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Toast } from "primereact/toast";
+import { Button } from "primereact/button";
+import { Toolbar } from "primereact/toolbar";
+import { InputNumber } from "primereact/inputnumber";
+import ConfirmationModal from "./ConfirmationModal";
+import { PrintDocument } from "./PrintDocument";
+import { Dialog } from "primereact/dialog";
+import config from "../../Config";
+
+function EntregasList(props) {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/GetNumEntrega`;
+  const apiUrlN = `${config.apiUrl}/Datasnap/rest/TServerMethods1/NuevaEntrega`;
+  const [loading, setLoading] = useState(false);
+  const [expandedRows, setExpandedRows] = useState(null);
+  const toast = props.toast;
+  const [cantidadesEntregar, setCantidadesEntregar] = useState({});
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [selectedFactura, setSelectedFactura] = useState(null);
+  // const [numeroEntrega, setNumeroEntrega] = useState(null);
+  const [numEntrega, setNumEntrega] = useState(null);
+  const { handleSearch } = props;
+  const [errorState, setErrorState] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleShowAll = (data) => {
+    data.detalle.forEach((detalle) => {
+      handleTodoButtonClick(detalle);
+    });
+  };
+
+  const handleCloseErrorDialog = () => {
+    setErrorState(false);
+    setErrorMessage("");
+  };
+
+  const GetEntradaNumero = () => {
+    return new Promise((resolve, reject) => {
+      // Llamada a la API para obtener el número de entrega
+      // fetch('http://localhost:8080/Datasnap/rest/TServerMethods1/GetNumEntrega')
+      fetch(apiUrl)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          // Verificar el código de estado devuelto por el backend
+          const status = data.status;
+          if (status === 200) {
+            const numeroEntrega = data.result[0].numero;
+            resolve(numeroEntrega);
+          } else {
+            // Manejar un resultado no exitoso (puedes personalizar esto según tus necesidades)
+            reject(
+              `Error al obtener el número de entrega. Código de estado: ${status}`
+            );
+          }
+        })
+        .catch((error) => {
+          // Manejar errores de red u otras excepciones
+          console.error("Error al obtener el número de entrega:", error);
+          reject(error);
+        });
+    });
+  };
+
+  const handleShowConfirmationModal = async (factura) => {
+    try {
+      setLoading(true);
+      // console.log('factura:', factura);
+      const numeroEntrega = await GetEntradaNumero();
+      console.log("handleShowConfirmationModal-numeroEntrega:", numeroEntrega);
+      setNumEntrega(numeroEntrega);
+      // Filtra los detalles con cantidad_entregar mayor a 0
+      const detallesConCantidad = factura.detalle.filter((detalle) => {
+        const cantidadEntregar =
+          parseFloat(cantidadesEntregar[detalle.id]) || 0;
+        return cantidadEntregar > 0;
+      });
+      //Construir la prop factura correctamente
+      const formattedFactura = buildFormattedFactura(
+        factura,
+        detallesConCantidad
+      );
+
+      console.log("formattedFactura:", formattedFactura);
+      setSelectedFactura(formattedFactura);
+      setShowConfirmationModal(true);
+    } catch (error) {
+      // Manejar el error y mostrar información al usuario
+      console.error("Error al mostrar el modal de confirmación:", error);
+
+      // Verificar si el error es debido a la falta de conexión con el servidor
+      if (error.message.includes("Failed to fetch")) {
+        // Mostrar un mensaje al usuario indicando que el servidor no está disponible
+        setErrorState(true);
+        setErrorMessage(
+          "No se pudo conectar con el servidor. Por favor, verifica tu conexión e inténtalo de nuevo más tarde."
+        );
+      } else {
+        // Otro tipo de error, puedes manejarlo de acuerdo a tus necesidades
+        setErrorState(true);
+        setErrorMessage(
+          "Ocurrió un error. Por favor, inténtalo de nuevo más tarde."
+        );
+      }
+    } finally {
+      setLoading(false); // Establecer el estado de carga a false después de completar la solicitud
+    }
+  };
+
+  const buildFormattedFactura = (
+    factura,
+    detallesConCantidad,
+    numEntrega,
+    fechaEntrega,
+    notas
+  ) => {
+    return {
+      numfactura: factura.numfactura,
+      fechafactura: factura.fechafactura,
+      idcliente: factura.idcliente,
+      nombrecliente: factura.nombrecliente,
+      numeroentrega: numEntrega,
+      fechaEntrega: fechaEntrega,
+      notas: notas,
+      detalle: buildFormattedDetalle(detallesConCantidad),
+    };
+  };
+
+  const buildFormattedDetalle = (detallesConCantidad) => {
+    return detallesConCantidad.map((detalle) => ({
+      codigo: detalle.codigo,
+      subcodigo: detalle.subcodigo,
+      nombreproductos: detalle.nombreproductos,
+      cantfacturada: detalle.cantfacturada,
+      cant_entregada: detalle.cant_entregada,
+      saldo: detalle.saldo,
+      id: detalle.id,
+      cantidad_entregar: parseFloat(cantidadesEntregar[detalle.id]) || 0,
+    }));
+  };
+
+  const handleConfirmEntrega = async (numEntrega, notas) => {
+    // Verificar si product.detalle está definido antes de llamar a handleTodoButtonClick
+    props.products.forEach((product) => {
+      if (product.detalle) {
+        handleTodoButtonClick(product.detalle);
+      }
+    });
+
+    // Cerrar la ventana modal
+    setShowConfirmationModal(false);
+
+    // Preparar los datos para la entrega
+    // const fechaEntrega = new Date().toLocaleDateString("es-CO");
+    const fechaActual = new Date();
+    const options = {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZone: "America/Bogota",
+    };
+    const fechaEntrega = fechaActual
+      .toLocaleString("es-CO", options)
+      .replace(", ", "T") // Reemplazar la coma y el espacio por 'T'
+      .replace(/\./g, ""); // Eliminar el punto
+    console.log("fechaEntrega:", fechaEntrega);
+    // Filtra los detalles con CANTIDAD_ENTREGAR mayor a 0
+    const detallesConCantidad = selectedFactura.detalle.filter((detalle) => {
+      const cantidadEntregar = parseFloat(cantidadesEntregar[detalle.id]) || 0;
+      return cantidadEntregar > 0;
+    });
+
+    console.log("numEntrega:", numEntrega);
+    console.log("notas:", notas);
+    // Construir la prop factura correctamente
+    const entregaData = buildFormattedFactura(
+      selectedFactura,
+      detallesConCantidad,
+      numEntrega,
+      fechaEntrega,
+      notas
+    );
+    console.log("entregaData hacia el backend:", entregaData);
+
+    try {
+      //Realizar la llamada al endpoint de entrega
+      // const response = await fetch('http://localhost:8080/Datasnap/rest/TServerMethods1/NuevaEntrega', {
+      const response = await fetch(apiUrlN, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          // Agregar cualquier otro encabezado necesario aquí
+        },
+        body: JSON.stringify(entregaData),
+      });
+
+      // Verificar el estado de la respuesta
+      console.log("Respuesta completa:", response);
+      console.log("response.status:", response.status);
+
+      // Verificar específicamente el código de estado 200
+      if (response.status === 201 || response.status === 200) {
+        // Leer el cuerpo de la respuesta JSON
+        const responseData = await response.json();
+        console.log("Datos de la respuesta:", responseData);
+
+        // Generar el formato HTML personalizado y realizar la impresión
+        entregaData.fechaEntrega = fechaActual.toLocaleDateString("es-CO", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+        console.log("Alejo entregaData:", entregaData);
+        PrintDocument({ factura: entregaData, isConfirmationModal: true });
+        handleSearch();
+        return numEntrega;
+      } else {
+        console.error("Error al confirmar la entrega:", response.status);
+      }
+    } catch (error) {
+      console.error("Error al confirmar la entrega:", error);
+      // Manejar el error según tus necesidades
+    }
+  };
+
+  const handleCancelEntrega = () => {
+    // Lógica de cancelación de entrega aquí
+    // Cerrar la ventana modal
+    setShowConfirmationModal(false);
+  };
+
+  const rowExpansionTemplate = (data) => {
+    return (
+      <div className="p-3">
+        <Toolbar
+          start={<h3>Productos de {data.numfactura}</h3>}
+          end={
+            <React.Fragment>
+              <Button
+                className="mr-2"
+                icon="pi pi-check"
+                severity="warning"
+                size="small"
+                label="Marcar todo el documento"
+                outlined
+                onClick={() => handleShowAll(data)}
+              />
+              <Button
+                className="p-button-success mr-2"
+                icon="pi pi-check"
+                severity="success"
+                size="small"
+                label="Entregar"
+                outlined
+                loading={loading}
+                onClick={() => handleShowConfirmationModal(data)}
+              />
+            </React.Fragment>
+          }
+          style={{ padding: "2px", height: "auto" }}
+        />
+        <DataTable value={data.detalle} dataKey="id">
+          <Column
+            field="nombreproductos"
+            header="Nombre de Producto"
+            sortable
+          ></Column>
+          <Column field="referencia" header="Referencia" sortable></Column>
+          <Column
+            field="cantfacturada"
+            header="Cant. Facturada"
+            sortable
+            body={(rowData) => rowData.cantfacturada.toFixed(2)}
+          ></Column>
+          <Column
+            field="cant_entregada"
+            header="Cant. Entregada"
+            sortable
+            body={(rowData) => rowData.cant_entregada.toFixed(2)}
+          ></Column>
+          <Column
+            field="saldo"
+            header="saldo"
+            sortable
+            body={(rowData) => rowData.saldo.toFixed(2)}
+          ></Column>
+          <Column
+            header="Todo"
+            style={{ width: "3rem" }}
+            body={(rowData) => renderTodoButton(rowData)}
+          ></Column>
+          <Column
+            header="Cant. Entregar"
+            body={(rowData) => renderCantidadEntregar(rowData)}
+          ></Column>
+        </DataTable>
+      </div>
+    );
+  };
+
+  const renderTodoButton = (rowData) => {
+    return (
+      <Button
+        label="Todo"
+        onClick={() => handleTodoButtonClick(rowData)}
+        outlined
+        size="small"
+        className="mr-2 "
+        disabled={rowData.saldo === 0}
+      />
+    );
+  };
+
+  const handleTodoButtonClick = (rowData) => {
+    // Verificar si rowData está definido antes de procesarlo
+    if (rowData && rowData.saldo !== undefined) {
+      const saldo = rowData.saldo.toString();
+      // Actualiza el estado solo después de hacer clic en el botón Todo
+      setCantidadesEntregar((prev) => ({
+        ...prev,
+        [rowData.id]: saldo,
+      }));
+    }
+  };
+
+  const renderCantidadEntregar = (rowData) => {
+    const isReadOnly = rowData.saldo === 0;
+    const inputValue = cantidadesEntregar[rowData.id] || "";
+    const max = rowData.saldo;
+    return (
+      <InputNumber
+        readOnly={isReadOnly}
+        value={inputValue}
+        max={max}
+        onChange={(e) => handleCantidadEntregarInput(e, rowData)}
+        minFractionDigits={2}
+      />
+    );
+  };
+
+  const handleCantidadEntregarInput = (e, rowData) => {
+    const inputValue = e.value || "";
+    const updatedState = { ...cantidadesEntregar, [rowData.id]: inputValue };
+    setCantidadesEntregar(updatedState);
+  };
+
+  const allowExpansion = (rowData) => {
+    return rowData.detalle && rowData.detalle.length > 0;
+  };
+
+  const expandAll = () => {
+    let expanded = [];
+    props.products.forEach((product) => expanded.push(product));
+    setExpandedRows(expanded);
+  };
+
+  const collapseAll = () => {
+    setExpandedRows([]);
+  };
+
+  const header = (
+    <div className="flex flex-wrap justify-content-end gap-2">
+      <Button
+        icon="pi pi-plus"
+        label="Expandir Todo"
+        onClick={expandAll}
+        text
+      />
+      <Button
+        icon="pi pi-minus"
+        label="Contraer Todo"
+        onClick={collapseAll}
+        text
+      />
+    </div>
+  );
+
+  return (
+    <div style={{ paddingTop: "5px" }}>
+      <Toast ref={toast} />
+      <DataTable
+        value={props.products}
+        expandedRows={expandedRows}
+        onRowToggle={(e) => setExpandedRows(e.data)}
+        onRowExpand={(e) => onRowExpand(e, props.toast)}
+        onRowCollapse={(e) => onRowCollapse(e, props.toast)}
+        rowExpansionTemplate={rowExpansionTemplate}
+        header={header}
+        emptyMessage="No se han encontrado resultados"
+        stripedRows
+        responsive="true"
+        dataKey="numfactura"
+      >
+        <Column expander={allowExpansion} style={{ width: "5rem" }} />
+        <Column field="numfactura" header="Número de Factura" sortable />
+        <Column field="fechafactura" header="Fecha de Factura" sortable />
+        <Column field="nombrecliente" header="Nombre del Cliente" sortable />
+      </DataTable>
+      {/* Renderiza la ventana modal de confirmación */}
+      {showConfirmationModal && (
+        <ConfirmationModal
+          factura={selectedFactura}
+          onConfirm={handleConfirmEntrega}
+          onCancel={handleCancelEntrega}
+          visible={showConfirmationModal}
+          numEntrega={numEntrega}
+        />
+      )}
+      {/* Dialog de error */}
+      <Dialog
+        visible={errorState}
+        onHide={handleCloseErrorDialog}
+        header="Error"
+        modal
+        style={{ width: "300px" }}
+      >
+        <div>
+          <p>{errorMessage}</p>
+          <Button
+            label="Cerrar"
+            icon="pi pi-times"
+            // className="p-button-danger"
+            severity="danger"
+            text
+            style={{ marginTop: "10px" }}
+            size="small"
+            onClick={handleCloseErrorDialog}
+          />
+        </div>
+      </Dialog>
+    </div>
+  );
+}
+
+const onRowExpand = (event, toast) => {
+  toast.current.show({
+    severity: "info",
+    summary: "Abriendo Factura",
+    detail: event.data.numfactura,
+    life: 3000,
+  });
+};
+
+const onRowCollapse = (event, toast) => {
+  toast.current.show({
+    severity: "success",
+    summary: "Cerrando Factura",
+    detail: event.data.numfactura,
+    life: 3000,
+  });
+};
+
+export default EntregasList;

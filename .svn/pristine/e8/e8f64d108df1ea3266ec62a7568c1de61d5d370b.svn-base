@@ -1,0 +1,261 @@
+import React, { useState, useEffect } from "react";
+import { InputText } from "primereact/inputtext";
+import { Button } from "primereact/button";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Dialog } from "primereact/dialog";
+import { Toolbar } from "primereact/toolbar";
+import ProductSearchDialog from "./ProductSearchDialog";
+import config from "../../Config";
+import axios from "axios";
+
+const Quoter = () => {
+  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaProducto`;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [customer, setCustomer] = useState({
+    nombre: "",
+    identificacion: "",
+    correo: "",
+    telefono: "",
+    direccion: "",
+  });
+  const [additionalContact, setAdditionalContact] = useState({
+    nombre: "",
+    telefono: "",
+    correo: "",
+    cargo: "",
+  });
+  const [products, setProducts] = useState([]);
+  const [showDialog, setShowDialog] = useState(false);
+  const [showDialogProduct, setShowDialogProduct] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [selectedProducts, setSelectedProducts] = useState(null);
+
+  // Función para buscar productos
+  const searchProducts = async () => {
+    // Realiza la solicitud al servidor para buscar productos utilizando el texto de búsqueda
+    try {
+      setLoading(true);
+      // Realiza la solicitud al servidor y guarda los resultados en el estado de productos
+      const response = await axios.put(apiUrl, { criterio: searchText });
+      if (response.data.status === 200) {
+        // console.log('JSON recibido del backend:', response.data.data);
+        setProducts(response.data.data);
+        console.log("products", response.data.data);
+        setShowDialogProduct(true);
+      } else {
+        console.error("Error en la respuesta:", response.data.error);
+        setError(response.data.error || "Error en la respuesta");
+      }
+    } catch (error) {
+      console.error("Error al realizar la solicitud:", error.message);
+      setError("Error al realizar la solicitud: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para seleccionar un producto
+  const selectProduct = (product) => {
+    setSelectedProducts(product); // Actualiza el estado con el producto seleccionado
+    setShowDialog(false); // Cierra el diálogo de búsqueda de productos
+  };
+  // Función para guardar la cotización
+  const saveQuotation = () => {
+    // Aquí puedes agregar la lógica para guardar la cotización
+  };
+
+  // Función para manejar la selección de productos en ProductSearchDialog
+  const handleProductSelection = (selectedProducts) => {
+    console.log("Productos seleccionados en Quoter:", selectedProducts);
+    // Aquí puedes manejar los productos seleccionados, como actualizar el estado para mostrarlos en el DataTable
+    setSelectedProducts(selectedProducts);
+  };
+
+  const startContent = (
+    <React.Fragment>
+      <InputText
+        placeholder="Buscar producto..."
+        size={"60"}
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+      />
+      <Button
+        icon="pi pi-search"
+        className="p-button-warning"
+        onClick={searchProducts}
+      />
+    </React.Fragment>
+  );
+
+  const endContent = (
+    <React.Fragment>
+      <Button
+        label="Agregar Producto"
+        onClick={selectProduct}
+        className="p-button-raised p-button-primary"
+      />
+    </React.Fragment>
+  );
+
+  return (
+    <div>
+      <div className="grid">
+        {/* Sección para el cliente */}
+        <div className="col-12 md:col-6">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Información del cliente
+            </h3>
+            <div className="field labelinput">
+              <label htmlFor="customernombre">Nombre</label>
+              <InputText
+                className="inputtext"
+                id="customernombre"
+                value={customer.nombre}
+              />
+            </div>
+            <div className="field labelinput">
+              <label htmlFor="customeridentificacion">Identificación</label>
+              <InputText
+                className="inputtext"
+                id="customeridentificacion"
+                value={customer.identificacion}
+              />
+            </div>
+            <div className="field labelinput">
+              <label htmlFor="customercorreo">Correo</label>
+              <InputText
+                className="inputtext"
+                id="customercorreo"
+                value={customer.correo}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Sección para el contacto adicional */}
+        <div className="col-12 md:col-6">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Contacto adicional
+            </h3>
+            <div className="field labelinput">
+              <label htmlFor="additionalContactNombre">Nombre</label>
+              <InputText
+                className="inputtext"
+                id="additionalContactNombre"
+                value={additionalContact.nombre}
+              />
+            </div>
+            <div className="field labelinput">
+              <label htmlFor="additionalContactTelefono">Teléfono</label>
+              <InputText
+                className="inputtext"
+                id="additionalContactTelefono"
+                value={additionalContact.telefono}
+              />
+            </div>
+            <div className="field labelinput">
+              <label htmlFor="additionalContactCorreo">Correo</label>
+              <InputText
+                className="inputtext"
+                id="additionalContactCorreo"
+                value={additionalContact.correo}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sección para buscar productos */}
+      <div className="grid">
+        <div className="col-12 md:col-12">
+          <div className="card p-fluid">
+            <h3
+              style={{
+                textAlign: "center",
+                marginTop: "-5px",
+                marginBottom: "5px",
+              }}
+            >
+              Productos
+            </h3>
+            <Toolbar start={startContent} end={endContent} />
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de productos */}
+      <div className="p-col-12">
+        <DataTable
+          value={selectedProducts}
+          onSelectionChange={(e) => setSelectedProducts(e.value)}
+          paginator
+          rows={5}
+          rowsPerPageOptions={[5, 10, 25]}
+          emptyMessage="No hay productos disponibles"
+        >
+          <Column field="CODIGO" header="Código" />
+          <Column field="SUBCODIGO" header="Subcódigo" />
+          <Column field="NOMBREPRODUCTOS" header="Nombre" />
+          <Column field="REFERENCIA" header="Referencia" />
+        </DataTable>
+      </div>
+
+      {/* Botón para guardar la cotización */}
+      <div className="p-col-12">
+        <Button
+          label="Guardar Cotización"
+          onClick={saveQuotation}
+          className="p-button-raised p-button-success"
+          disabled={!customer}
+        />
+      </div>
+
+      {/* Diálogo de búsqueda de productos */}
+      <ProductSearchDialog
+        showDialogProduct={showDialogProduct} // Prop para controlar la visibilidad del diálogo
+        setShowDialogProduct={setShowDialogProduct} // Prop para actualizar el estado del diálogo
+        products={products} // Prop para pasar los productos al diálogo
+        onAcceptSelection={handleProductSelection} // Pasa la función de devolución de llamada
+      />
+
+      {/* Diálogo de confirmación */}
+      <Dialog
+        visible={showDialog}
+        onHide={() => setShowDialog(false)}
+        header="Confirmación"
+      >
+        <div>¿Estás seguro que deseas guardar la cotización?</div>
+        <div className="p-grid p-justify-center">
+          <Button
+            label="Sí"
+            onClick={saveQuotation}
+            className="p-button-raised p-button-success"
+          />
+          <Button
+            label="No"
+            onClick={() => setShowDialog(false)}
+            className="p-button-raised p-button-danger"
+          />
+        </div>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Quoter;

@@ -1,0 +1,35 @@
+/* Estilos generales */
+.card-dashboard {
+  flex: 1;
+  padding: 15px; /* Espaciado interno */
+  min-width: 200px; /* Ancho mínimo para evitar que las tarjetas se hagan demasiado pequeñas */
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between; /* Alinea el título a la izquierda y el ícono a la derecha */
+  align-items: center; /* Centra verticalmente el título y el ícono */
+  margin-bottom: 10px; /* Espacio entre el encabezado y el valor */
+}
+
+.card-title {
+  margin: 0; /* Elimina el margen predeterminado del título */
+  font-size: 1rem; /* Tamaño de fuente para el título */
+}
+
+.card-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%; /* Hace que el fondo sea circular */
+  color: white; /* Color del ícono */
+  font-size: 1rem; /* Tamaño del ícono */
+}
+
+.card-value {
+  margin: 0; /* Elimina el margen predeterminado del valor */
+  font-size: 1.5rem; /* Tamaño de fuente para el valor */
+  text-align: left; /* Alinea el valor a la izquierda */
+}

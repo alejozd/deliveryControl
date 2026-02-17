@@ -1,0 +1,108 @@
+import React, { useState } from "react";
+import { Dropdown } from "primereact/dropdown";
+import { Checkbox } from "primereact/checkbox";
+
+const ClientCreationComercialData = ({
+  regimenList,
+  selectedRegimen,
+  setSelectedRegimen,
+  formaPagoList,
+  selectedFormaPago,
+  setSelectedFormaPago,
+  selectedareaIca,
+  setSelectedareaIca,
+  selectedaplicaReteFte,
+  setSelectedAplicaReteFte,
+  selectedaplicaBaseretefte,
+  setSelectedAplicaBaseretefte,
+  selectedaplicaBasereteIVA,
+  setSelectedAplicaBasereteIVA,
+  selectedaplicaBasereteICA,
+  setSelectedAplicaBasereteICA,
+}) => {
+  const [error, setError] = useState(null);
+
+  return (
+    <div className="flex flex-column">
+      {error && <div className="error-message">{error}</div>}
+      <div className="labelinput">
+        <label htmlFor="idregimen">Régimen</label>
+        <Dropdown
+          className="inputtext"
+          id="idregimen"
+          value={selectedRegimen}
+          onChange={(e) => setSelectedRegimen(e.value)}
+          options={regimenList}
+          optionLabel="label"
+          placeholder="Seleccionar Régimen"
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idformadepago">Forma de pago</label>
+        <Dropdown
+          className="inputtext"
+          id="idformadepago"
+          value={selectedFormaPago}
+          onChange={(e) => setSelectedFormaPago(e.value)}
+          options={formaPagoList}
+          optionLabel="label"
+          placeholder="Seleccionar Forma de pago"
+        />
+      </div>
+      <div className="checkbox-container">
+        <div className="flex align-items-center">
+          <Checkbox
+            inputId="idareaica"
+            onChange={(e) => setSelectedareaIca(e.checked)}
+            checked={selectedareaIca}
+          ></Checkbox>
+          <label htmlFor="idareaica" className="ml-2">
+            Área ICA
+          </label>
+        </div>
+        <div className="flex align-items-center">
+          <Checkbox
+            inputId="idaplicaretefte"
+            onChange={(e) => setSelectedAplicaReteFte(e.checked)}
+            checked={selectedaplicaReteFte}
+          ></Checkbox>
+          <label htmlFor="idaplicaretefte" className="ml-2">
+            Aplica retención en la fuente
+          </label>
+        </div>
+        <div className="flex align-items-center">
+          <Checkbox
+            inputId="idaplicabaseretefte"
+            onChange={(e) => setSelectedAplicaBaseretefte(e.checked)}
+            checked={selectedaplicaBaseretefte}
+          ></Checkbox>
+          <label htmlFor="idaplicabaseretefte" className="ml-2">
+            Aplica base de retención en la fuente
+          </label>
+        </div>
+        <div className="flex align-items-center">
+          <Checkbox
+            inputId="idaplicabasereteIVA"
+            onChange={(e) => setSelectedAplicaBasereteIVA(e.checked)}
+            checked={selectedaplicaBasereteIVA}
+          ></Checkbox>
+          <label htmlFor="idaplicabasereteIVA" className="ml-2">
+            Aplica base en retención de IVA
+          </label>
+        </div>
+        <div className="flex align-items-center">
+          <Checkbox
+            inputId="idaplicabasereteICA"
+            onChange={(e) => setSelectedAplicaBasereteICA(e.checked)}
+            checked={selectedaplicaBasereteICA}
+          ></Checkbox>
+          <label htmlFor="idaplicabasereteICA" className="ml-2">
+            Aplica base en retención de ICA
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ClientCreationComercialData;

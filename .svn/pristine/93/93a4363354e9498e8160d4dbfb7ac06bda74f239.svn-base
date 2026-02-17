@@ -1,0 +1,87 @@
+import React, { useState, useEffect } from "react";
+import { Dropdown } from "primereact/dropdown";
+import { InputText } from "primereact/inputtext";
+import config from "../Config";
+import axios from "axios";
+
+const ClientCreationAddiData = ({}) => {
+  const apiUrlCrearCliente = `${config.apiUrl}/Datasnap/rest/TServerMethods1/NewCliente`;
+  const apiUrlVendedores = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaVendedores`;
+  const apiUrlSegmentacion = `${config.apiUrl}/Datasnap/rest/TServerMethods1/ListaSegmentacion`;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [carteraList, setCarteraList] = useState([]);
+  const [selectedCartera, setSelectedCartera] = useState(null);
+  const [naturalezaList, setNaturalezaList] = useState([]);
+  const [selectedNaturaleza, setSelectedNaturaleza] = useState(null);
+  const [actividadList, setActividadList] = useState([]);
+  const [selectedActividad, setSelectedActividad] = useState(null);
+  const [telefonoFijo, setTelefonoFijo] = useState("");
+  const [ciudadList, setCiudadList] = useState([]);
+  const [selectedCiudad, setSelectedCiudad] = useState(null);
+
+  return (
+    <div>
+      <div className="labelinput">
+        <label htmlFor="idcartera">Cartera</label>
+        <Dropdown
+          className="inputtext"
+          id="idcartera"
+          value={selectedCartera}
+          onChange={(e) => setSelectedCartera(e.value)}
+          options={carteraList}
+          optionLabel="label"
+          placeholder="Seleccionar Cartera"
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idnaturaleza">Naturaleza</label>
+        <Dropdown
+          className="inputtext"
+          id="idnaturaleza"
+          value={selectedNaturaleza}
+          onChange={(e) => setSelectedNaturaleza(e.value)}
+          options={naturalezaList}
+          optionLabel="label"
+          placeholder="Seleccionar Naturaleza"
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idactividad">Actividad</label>
+        <Dropdown
+          className="inputtext"
+          id="idactividad"
+          value={selectedActividad}
+          onChange={(e) => setSelectedActividad(e.value)}
+          options={actividadList}
+          optionLabel="label"
+          placeholder="Seleccionar Actividad"
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="telefonofijo">Teléfono fijo</label>
+        <InputText
+          className="inputtext"
+          id="telefonofijo"
+          value={telefonoFijo}
+          onChange={(e) => setTelefonoFijo(e.target.value)}
+          style={{ width: "100%" }}
+        />
+      </div>
+      <div className="labelinput">
+        <label htmlFor="idciudad">Ciudad</label>
+        <Dropdown
+          className="inputtext"
+          id="idciudad"
+          value={selectedCiudad}
+          onChange={(e) => setSelectedCiudad(e.value)}
+          options={ciudadList}
+          optionLabel="label"
+          placeholder="Seleccionar Ciudad"
+        />
+      </div>
+    </div>
+  );
+};
+
+export default ClientCreationAddiData;

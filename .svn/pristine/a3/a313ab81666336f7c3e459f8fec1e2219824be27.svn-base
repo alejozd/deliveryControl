@@ -1,0 +1,64 @@
+// SearchBar.js
+import React from 'react';
+import { Calendar } from 'primereact/calendar';
+import { InputText } from 'primereact/inputtext';
+import { Button } from 'primereact/button';
+import { Toolbar } from 'primereact/toolbar';
+import { addLocale } from 'primereact/api';
+import '../../App.css';
+
+function SearchBar(props) {
+    addLocale('es', {
+        firstDayOfWeek: 1,
+        showMonthAfterYear: true,
+        dayNames: ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'],
+        dayNamesShort: ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'],
+        dayNamesMin: ['D', 'L', 'M', 'X', 'J', 'V', 'S'],
+        monthNames: ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'],
+        monthNamesShort: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'],
+        today: 'Hoy',
+        clear: 'Limpiar'
+    });
+
+    return (
+        <div>
+            <Toolbar
+                start={
+                    <span className="p-float-label">
+                        <Calendar
+                            inputId="fechaFacturas"
+                            value={props.selectedDate}
+                            onChange={(e) => props.setSelectedDate(e.value)}
+                            showIcon
+                            dateFormat="dd/mm/yy"
+                            locale="es"
+                        />
+                        <label htmlFor="fechaFacturas">Fecha facturas</label>
+                    </span>
+                }
+                end={
+                    <React.Fragment>
+                        <span className="p-float-label">
+                            <InputText style={{ width: "320px" }}
+                                id="searchCriteria"
+                                // placeholder="Num. factura, cédula o nombre cliente"
+                                value={props.searchTerm}
+                                onChange={(e) => props.setSearchTerm(e.target.value)}
+                                className="mobile-input"
+                            />
+                            <label htmlFor="searchCriteria">Num. factura, cédula o nombre cliente</label>
+                        </span>
+                        <Button label="Buscar"
+                            icon="pi pi-search"
+                            className="mr-2"
+                            onClick={props.handleSearch}
+                            raised
+                            loading={props.loading} />
+                    </React.Fragment>
+                }
+            />
+        </div>
+    );
+}
+
+export default SearchBar;

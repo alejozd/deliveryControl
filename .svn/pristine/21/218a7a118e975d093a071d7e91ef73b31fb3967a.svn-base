@@ -1,0 +1,72 @@
+import React from "react";
+import { Button } from "primereact/button";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUserCircle } from "@fortawesome/free-solid-svg-icons";
+import { Toolbar } from "primereact/toolbar";
+import { Image } from "primereact/image";
+import logo from "../../resources/images/logo-metro.png";
+
+function NavBar({ setSidebarVisible, user, empresa }) {
+  // Estado para controlar si el Sidebar está abierto o cerrado
+  const handleSidebarToggle = () => {
+    // console.log('Button clicked');
+    setSidebarVisible((prev) => !prev);
+  };
+
+  const userIconStyle = {
+    fontSize: "32px",
+    marginRight: "5px",
+  };
+
+  const toolbarStyle = {
+    position: "sticky",
+    top: 0, // Ajusta el valor según sea necesario
+    zIndex: 1000, // Ajusta el valor según sea necesario
+  };
+
+  const logoStyle = {
+    marginLeft: "50px",
+    marginTop: "-40px",
+  };
+
+  const start = (
+    <span>
+      <Button
+        icon="pi pi-bars"
+        // className="p-button-text"
+        onClick={handleSidebarToggle}
+      />
+      <div style={logoStyle}>
+        <Image src={logo} alt="Image" width="70" height="37" />
+      </div>
+    </span>
+  );
+
+  const center = (
+    <span style={{ marginRight: "10px" }}>
+      {empresa.nombre} ({empresa.codigo})
+    </span>
+  );
+
+  const end = (
+    <>
+      <span style={{ marginRight: "5px" }}>Usuario: </span>
+      <span style={{ marginRight: "10px" }}>{user.name}</span>
+      <span style={userIconStyle}>
+        <FontAwesomeIcon icon={faUserCircle} />
+      </span>
+    </>
+  );
+
+  return (
+    <Toolbar
+      start={start}
+      center={center}
+      end={end}
+      // style={{ padding: "1px" }}
+      style={{ ...toolbarStyle, padding: "1px" }}
+    />
+  );
+}
+
+export default NavBar;

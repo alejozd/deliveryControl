@@ -1,0 +1,54 @@
+import React, { useEffect, useState } from 'react';
+import { Dialog } from 'primereact/dialog';
+import { Button } from 'primereact/button';
+
+const ConfirmationModal = (props) => {
+    const { factura, onConfirm, onCancel, visible, numEntrega } = props;
+    console.log('factura:', factura);
+    const numFactura = factura.NUMFACTURA;
+    // const [numEntrega, setNumEntrega] = useState(null);
+
+    return (
+        <Dialog
+            header={`Confirmar Entrega ${numEntrega} para Factura ${numFactura}`}
+            visible={visible}
+            style={{ width: '50vw' }}
+            breakpoints={{ '960px': '75vw', '641px': '100vw' }}
+            onHide={onCancel}
+            position={'top'}
+            footer={
+                <div>
+                    <Button label="Cancelar" icon="pi pi-times" onClick={onCancel} className="p-button-text" />
+                    {/* <Button label="Confirmar" icon="pi pi-check" onClick={onConfirm} autoFocus /> */}
+                    {/* <Button label="Confirmar" onClick={() => onConfirm(numEntrega)} /> */}
+                    <Button
+                        label="Confirmar"
+                        onClick={async () => {
+                            const resolvedNumeroEntrega = await onConfirm(numEntrega);
+                            onCancel(resolvedNumeroEntrega);
+                        }}
+                    />
+
+                </div>
+            }
+        >
+            <div>
+                {/* Muestra los productos correspondientes en la ventana modal */}
+                <h4>Productos:</h4>
+                <ul>
+                    {(factura.DETALLE && factura.DETALLE.length > 0) ? (
+                        factura.DETALLE.map((detalle) => (
+                            <li key={detalle.id}>
+                                {detalle.NOMBREPRODUCTOS} - Cantidad a Entregar: {detalle.CANTIDAD_ENTREGAR}
+                            </li>
+                        ))
+                    ) : (
+                        <div>No hay detalles para mostrar.</div>
+                    )}
+                </ul>
+            </div>
+        </Dialog>
+    );
+};
+
+export default ConfirmationModal;

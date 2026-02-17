@@ -1,0 +1,254 @@
+import React, { useState, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { Dialog } from "primereact/dialog";
+import { Toolbar } from "primereact/toolbar";
+import { Toast } from "primereact/toast";
+
+const AdditionalContacts = ({ contacts, setContacts }) => {
+  const [expandedRows, setExpandedRows] = useState(null);
+  const [contactDialog, setContactDialog] = useState(false);
+  const [newContact, setNewContact] = useState({
+    nombreCa: "",
+    identificacionCa: "",
+    telmovilCa: "",
+    direccionCa: "",
+    correoCa: "",
+  });
+  const toast = useRef(null);
+
+  const onRowExpand = (event) => {
+    toast.current.show({
+      severity: "info",
+      summary: "Contacto expandido",
+      detail: event.data.name,
+      life: 3000,
+    });
+  };
+
+  const onRowCollapse = (event) => {
+    toast.current.show({
+      severity: "success",
+      summary: "Contacto colapsado",
+      detail: event.data.name,
+      life: 3000,
+    });
+  };
+
+  const openNew = () => {
+    setNewContact({
+      nombreCa: "",
+      identificacionCa: "",
+      telmovilCa: "",
+      direccionCa: "",
+      correoCa: "",
+    });
+    setContactDialog(true);
+  };
+
+  const saveContact = () => {
+    if (newContact.id) {
+      const updatedContacts = contacts.map((contact) =>
+        contact.id === newContact.id ? newContact : contact
+      );
+      setContacts(updatedContacts);
+    } else {
+      setNewContact({ ...newContact, id: Date.now() });
+      setContacts([...contacts, { ...newContact, id: Date.now() }]);
+    }
+    setContactDialog(false);
+  };
+
+  const editContact = (contact) => {
+    setNewContact(contact);
+    setContactDialog(true);
+  };
+
+  const deleteContact = (contact) => {
+    setContacts(contacts.filter((c) => c.id !== contact.id));
+  };
+
+  const rowExpansionTemplate = (data) => {
+    return (
+      <div className="p-grid p-fluid">
+        <div className="p-col-12 p-md-4">
+          <label htmlFor="nombreCa">Nombre</label>
+          <InputText id="nombreCa" value={data.nombreCa} readOnly />
+        </div>
+        <div className="p-col-12 p-md-4">
+          <label htmlFor="identificacionCa">Identificación</label>
+          <InputText
+            id="identificacionCa"
+            value={data.identificacionCa}
+            readOnly
+          />
+        </div>
+        <div className="p-col-12 p-md-4">
+          <label htmlFor="telmovilCa">Teléfono</label>
+          <InputText id="telmovilCa" value={data.telmovilCa} readOnly />
+        </div>
+        <div className="p-col-12 p-md-4">
+          <label htmlFor="direccionCa">Dirección</label>
+          <InputText id="direccionCa" value={data.direccionCa} readOnly />
+        </div>
+        <div className="p-col-12 p-md-4">
+          <label htmlFor="correoCa">Correo electrónico</label>
+          <InputText id="correoCa" value={data.correoCa} readOnly />
+        </div>
+      </div>
+    );
+  };
+
+  const leftToolbarTemplate = () => {
+    return (
+      <div style={{ marginTop: "-20px" }}>
+        <Button
+          // label="Nuevo"
+          icon="pi pi-plus"
+          severity="success"
+          className="mr-2"
+          size="large"
+          text
+          rounded
+          tooltip="Añadir contacto"
+          onClick={openNew}
+        />
+      </div>
+    );
+  };
+
+  const rightToolbarTemplate = () => {
+    return (
+      <div style={{ marginTop: "-20px" }}>
+        <Button
+          // label="Editar"
+          icon="pi pi-pencil"
+          severity="help"
+          className="mr-2"
+          size="large"
+          text
+          rounded
+          tooltip="Editar contacto"
+          onClick={editContact}
+        />
+        <Button
+          // label="Eliminar"
+          icon="pi pi-trash"
+          severity="danger"
+          size="large"
+          text
+          rounded
+          tooltip="Eliminar contacto"
+          onClick={deleteContact}
+        />
+      </div>
+    );
+  };
+
+  const contactDialogFooter = (
+    <React.Fragment>
+      <Button
+        label="Cancelar"
+        icon="pi pi-times"
+        className="p-button-text"
+        onClick={() => setContactDialog(false)}
+      />
+      <Button label="Guardar" icon="pi pi-check" onClick={saveContact} />
+    </React.Fragment>
+  );
+
+  return (
+    <div>
+      <Toast ref={toast} />
+      <div>
+        <Toolbar
+          style={{ height: "35px" }}
+          start={leftToolbarTemplate}
+          end={rightToolbarTemplate}
+        />
+      </div>
+      <DataTable
+        value={contacts}
+        expandedRows={expandedRows}
+        onRowToggle={(e) => setExpandedRows(e.data)}
+        onRowExpand={onRowExpand}
+        onRowCollapse={onRowCollapse}
+        rowExpansionTemplate={rowExpansionTemplate}
+        // header={header}
+        dataKey="idcontacto"
+        showHeaders={false}
+        // tableStyle={{ minWidth: '60rem' }}
+      >
+        <Column expander style={{ width: "3em" }} />
+        <Column field="nombreCa" header="Nombre" />
+        <Column field="identificacionCa" header="Identificación" hidden />
+        <Column field="telmovilCa" header="Teléfono" hidden />
+      </DataTable>
+
+      <Dialog
+        visible={contactDialog}
+        style={{ width: "450px" }}
+        header="Detalles del Contacto"
+        modal
+        className="p-fluid"
+        footer={contactDialogFooter}
+        onHide={() => setContactDialog(false)}
+      >
+        <div className="p-field">
+          <label htmlFor="nombreCa">Nombre</label>
+          <InputText
+            id="nombreCa"
+            value={newContact.nombreCa}
+            onChange={(e) =>
+              setNewContact({ ...newContact, nombreCa: e.target.value })
+            }
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="identificacionCa">Identificación</label>
+          <InputText
+            id="identificacionCa"
+            value={newContact.identificacionCa}
+            onChange={(e) =>
+              setNewContact({ ...newContact, identificacionCa: e.target.value })
+            }
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="telmovilCa">Teléfono</label>
+          <InputText
+            id="telmovilCa"
+            value={newContact.telmovilCa}
+            onChange={(e) =>
+              setNewContact({ ...newContact, telmovilCa: e.target.value })
+            }
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="direccionCa">Dirección</label>
+          <InputText
+            id="direccionCa"
+            value={newContact.direccionCa}
+            onChange={(e) =>
+              setNewContact({ ...newContact, direccionCa: e.target.value })
+            }
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="correoCa">Correo electrónico</label>
+          <InputText
+            id="correoCa"
+            value={newContact.correoCa}
+            onChange={(e) =>
+              setNewContact({ ...newContact, correoCa: e.target.value })
+            }
+          />
+        </div>
+      </Dialog>
+    </div>
+  );
+};
+
+export default AdditionalContacts;

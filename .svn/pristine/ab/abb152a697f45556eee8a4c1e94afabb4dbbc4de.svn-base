@@ -1,0 +1,71 @@
+import React, { useState, useEffect } from "react";
+import { InputSwitch } from "primereact/inputswitch";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+
+const UserPermission = () => {
+  const [users, setUsers] = useState([]); // Almacena los usuarios
+  const [loading, setLoading] = useState(true); // Indicador de carga
+
+  useEffect(() => {
+    // Simulación de carga de usuarios desde una API
+    const fetchUsers = async () => {
+      setLoading(true);
+      // Aquí iría la lógica de llamada a la API para obtener usuarios
+      const usersData = [
+        { id: 1, name: "John Doe", canModifySeller: true },
+        { id: 2, name: "Jane Smith", canModifySeller: false },
+        // Más usuarios
+      ];
+      setUsers(usersData);
+      setLoading(false);
+    };
+
+    fetchUsers();
+  }, []);
+
+  const togglePermission = (user, value) => {
+    // Aquí puedes hacer una actualización del permiso en el backend
+    const updatedUsers = users.map((u) =>
+      u.id === user.id ? { ...u, canModifySeller: value } : u
+    );
+    setUsers(updatedUsers);
+    // Llamada a API para actualizar en la base de datos
+    // axios.put(`/api/users/${user.id}`, { canModifySeller: value });
+  };
+
+  const actionTemplate = (rowData) => {
+    return (
+      <InputSwitch
+        checked={rowData.canModifySeller}
+        onChange={(e) => togglePermission(rowData, e.value)}
+      />
+    );
+  };
+
+  return (
+    <div className="card">
+      <h2>Permisos de Usuarios</h2>
+      <DataTable value={users} loading={loading}>
+        <Column field="name" header="Usuario" />
+        <Column
+          body={actionTemplate}
+          header="Puede Modificar Vendedor"
+          style={{ textAlign: "center", width: "10em" }}
+        />
+      </DataTable>
+      <div style={{ marginTop: "20px" }}>
+        <Button
+          label="Guardar Cambios"
+          icon="pi pi-save"
+          onClick={() => {
+            /* Lógica para guardar cambios */
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default UserPermission;

@@ -1,0 +1,230 @@
+import React, { useState } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { Dialog } from "primereact/dialog";
+import { Toolbar } from "primereact/toolbar";
+
+const AdditionalContacts = ({ contacts, setContacts }) => {
+  const [expandedRows, setExpandedRows] = useState(null);
+  const [contactDialog, setContactDialog] = useState(false);
+  const [newContact, setNewContact] = useState({
+    nombreCa: "",
+    identificacionCa: "",
+    telmovilCa: "",
+    direccionCa: "",
+    correoCa: "",
+  });
+
+  const onRowExpand = (event) => {
+    setExpandedRows(event.data);
+  };
+
+  const onRowCollapse = () => {
+    setExpandedRows(null);
+  };
+
+  const openNew = () => {
+    setNewContact({
+      nombreCa: "",
+      identificacionCa: "",
+      telmovilCa: "",
+      direccionCa: "",
+      correoCa: "",
+    });
+    setContactDialog(true);
+  };
+
+  const saveContact = () => {
+    if (newContact.id) {
+      const updatedContacts = contacts.map((contact) =>
+        contact.id === newContact.id ? newContact : contact
+      );
+      setContacts(updatedContacts);
+    } else {
+      setNewContact({ ...newContact, id: Date.now() });
+      setContacts([...contacts, { ...newContact, id: Date.now() }]);
+    }
+    setContactDialog(false);
+  };
+
+  const editContact = (contact) => {
+    setNewContact(contact);
+    setContactDialog(true);
+  };
+
+  const deleteContact = (contact) => {
+    setContacts(contacts.filter((c) => c.id !== contact.id));
+  };
+
+  const renderHeader = () => {
+    return (
+      <div>
+        <Button
+          icon="pi pi-plus"
+          severity="success"
+          size="small"
+          rounded
+          text
+          onClick={openNew}
+        />
+        <Button
+          icon="pi pi-pencil"
+          // onClick={() => editContact(rowData)}
+          severity="help"
+          size="small"
+          rounded
+          text
+        />
+        <Button
+          icon="pi pi-trash"
+          severity="danger"
+          size="small"
+          rounded
+          text
+          // onClick={() => deleteContact(rowData)}
+        />
+      </div>
+    );
+  };
+
+  const header = renderHeader();
+
+  return (
+    <div className="-m-1">
+      <div>
+        <Toolbar start={renderHeader} />
+      </div>
+      <DataTable
+        value={contacts}
+        expandedRows={expandedRows}
+        onRowToggle={(e) => setExpandedRows(e.data)}
+        rowExpansionTemplate={(data) => (
+          <div className="p-grid p-fluid">
+            <div className="p-col-12 p-md-4">
+              <label htmlFor="nombreCa">Nombre</label>
+              <InputText id="nombreCa" value={data.nombreCa} readOnly />
+            </div>
+            <div className="p-col-12 p-md-4">
+              <label htmlFor="identificacionCa">Identificación</label>
+              <InputText
+                id="identificacionCa"
+                value={data.identificacionCa}
+                readOnly
+              />
+            </div>
+            <div className="p-col-12 p-md-4">
+              <label htmlFor="telmovilCa">Teléfono</label>
+              <InputText id="telmovilCa" value={data.telmovilCa} readOnly />
+            </div>
+            <div className="p-col-12 p-md-4">
+              <label htmlFor="direccionCa">Dirección</label>
+              <InputText id="direccionCa" value={data.direccionCa} readOnly />
+            </div>
+            <div className="p-col-12 p-md-4">
+              <label htmlFor="correoCa">Correo electrónico</label>
+              <InputText id="correoCa" value={data.correoCa} readOnly />
+            </div>
+          </div>
+        )}
+        // header={header}
+        dataKey="id"
+        showHeaders={false}
+      >
+        <Column expander style={{ width: "3em" }} />
+        <Column field="nombreCa" header="Nombre" />
+        <Column field="identificacionCa" header="Identificación" hidden />
+        <Column field="telmovilCa" header="Teléfono" hidden />
+        <Column
+          body={(rowData) => (
+            <>
+              <Button
+                icon="pi pi-pencil"
+                onClick={() => editContact(rowData)}
+                severity="help"
+                size="small"
+                rounded
+                text
+              />
+              <Button
+                icon="pi pi-trash"
+                severity="danger"
+                size="small"
+                rounded
+                text
+                onClick={() => deleteContact(rowData)}
+              />
+            </>
+          )}
+        />
+      </DataTable>
+
+      <Dialog
+        visible={contactDialog}
+        style={{ width: "450px" }}
+        header="Detalles del Contacto"
+        modal
+        className="p-fluid"
+        onHide={() => setContactDialog(false)}
+      >
+        <div className="p-field">
+          <label htmlFor="nombreCa">Nombre</label>
+          <InputText
+            id="nombreCa"
+            value={newContact.nombreCa}
+            onChange={(e) =>
+              setNewContact({ ...newContact, nombreCa: e.target.value })
+            }
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="identificacionCa">Identificación</label>
+          <InputText
+            id="identificacionCa"
+            value={newContact.identificacionCa}
+            onChange={(e) =>
+              setNewContact({ ...newContact, identificacionCa: e.target.value })
+            }
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="telmovilCa">Teléfono</label>
+          <InputText
+            id="telmovilCa"
+            value={newContact.telmovilCa}
+            onChange={(e) =>
+              setNewContact({ ...newContact, telmovilCa: e.target.value })
+            }
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="direccionCa">Dirección</label>
+          <InputText
+            id="direccionCa"
+            value={newContact.direccionCa}
+            onChange={(e) =>
+              setNewContact({ ...newContact, direccionCa: e.target.value })
+            }
+          />
+        </div>
+        <div className="p-field">
+          <label htmlFor="correoCa">Correo electrónico</label>
+          <InputText
+            id="correoCa"
+            value={newContact.correoCa}
+            onChange={(e) =>
+              setNewContact({ ...newContact, correoCa: e.target.value })
+            }
+          />
+        </div>
+
+        <div className="p-field">
+          <Button label="Guardar" icon="pi pi-check" onClick={saveContact} />
+        </div>
+      </Dialog>
+    </div>
+  );
+};
+
+export default AdditionalContacts;

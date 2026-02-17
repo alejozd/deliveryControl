@@ -1,0 +1,69 @@
+import React, { useState, useEffect } from 'react';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Dialog } from 'primereact/dialog';
+import { Button } from 'primereact/button';
+import axios from 'axios';
+
+const DetalleEntrega = ({ idEntrega }) => {
+    const [detalleEntrega, setDetalleEntrega] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const handlePrint = () => {
+        // Lógica para imprimir, puedes utilizar el objeto window.print() o alguna librería de impresión.
+        // Por ejemplo:
+        window.print();
+    };
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                console.log('idEntrega antes de req:', idEntrega);
+                const response = await axios.put('http://localhost:8080/Datasnap/rest/TServerMethods1/DetalleEntrega',
+                    { idEntrega: idEntrega });
+                if (response.data.status === 200) {
+                    setDetalleEntrega(response.data.data);
+                } else {
+                    console.error('Error en la respuesta:', response.data.error);
+                    setError(response.data.error || 'Error en la respuesta');
+                }
+            } catch (error) {
+                console.error('Error al realizar la solicitud:', error.message);
+                setError('Error al realizar la solicitud: ' + error.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [idEntrega]);
+
+    return (
+        <div>
+            <h2>Detalle de Entrega</h2>
+            {loading ? (
+                <div>Cargando...</div>
+            ) : (
+                <DataTable
+                    value={detalleEntrega}
+                    showGridlines
+                    stripedRows
+                    className="p-datatable-sm"
+                >
+                    <Column field="nombreproductos" header="Nombre Producto" />
+                    <Column field="referencia" header="Referencia" />
+                    <Column field="cantentregada" header="Cant. Entregada"
+                        body={(rowData) => (
+                            <span>{parseFloat(rowData.cantentregada).toFixed(2)}</span>
+                        )} />
+                    {/* Agrega más columnas según la estructura de tu detalle de entrega */}
+                </DataTable>
+            )}
+
+        </div>
+    );
+};
+
+export default DetalleEntrega;

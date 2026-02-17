@@ -1,0 +1,33 @@
+import React from "react";
+import classNames from "classnames";
+import { Card } from 'primereact/card';
+import NavBar from "./Navbar";
+import { Routes, Route } from "react-router-dom";
+// import Clientes from "./components/Clientes";
+import Clientes from "../Clientes";
+import Productos from "../Productos";
+import Entregas from "../delivery/Entregas";
+import './CustomCard.css';
+
+class Content extends React.Component {
+  render() {
+    return (
+      <Card className={classNames("content", { "is-open": this.props.isOpen })}>
+        <NavBar toggle={this.props.toggle} />
+        <div>
+          <div>
+            {/* Agrega las rutas para las páginas */}
+            <Routes>
+              <Route path="/Clientes" element={<Clientes />} />
+              <Route path="/Productos" element={<Productos />} />
+              <Route path="/Entregas" element={<Entregas />} />
+              {/* Otras rutas aquí */}
+            </Routes>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+}
+
+export default Content;

@@ -1,0 +1,19 @@
+import React, { useState } from 'react';
+import SideBar from "./components/sidebar/SideBar";
+import Content from "./components/content/Content";
+import { BrowserRouter as Router } from 'react-router-dom';
+import "./App.css";
+
+function App() {
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+
+  return (
+    <div className="App">
+      <SideBar sidebarVisible={sidebarVisible} />
+      <Content setSidebarVisible={setSidebarVisible} />
+    </div>
+
+  );
+}
+
+export default App;
