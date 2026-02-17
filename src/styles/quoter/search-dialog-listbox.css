@@ -1,31 +1,70 @@
-.item {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.1em;
-    border-bottom: 1px solid #ddd;
+.customer-search-dialog {
+  width: min(640px, 96vw);
 }
 
-.item-name {
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-right: 10px;
+.customer-dialog__content {
+  display: grid;
+  gap: 0.7rem;
 }
 
-.item-reference {
-    flex: 0 0 auto;
-    text-align: right;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.customer-dialog__search {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  padding-bottom: 0.2rem;
 }
 
-.sticky-input {
-    position: -webkit-sticky; /* Para Safari */
-    position: sticky;
-    top: 0;
-    background: white; /* Para que el fondo sea consistente */
-    z-index: 1; /* Asegúrate de que esté sobre otros elementos */
-    padding: 2px 0; /* Ajusta el padding según sea necesario */
+.customer-dialog__search-field,
+.customer-dialog__search-field .p-inputtext {
+  width: 100%;
+}
+
+.customer-dialog__meta {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.customer-dialog__listbox .p-listbox-list {
+  padding: 0.35rem;
+}
+
+.customer-dialog-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  background: #ffffff;
+}
+
+.customer-dialog-item__name {
+  display: block;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.customer-dialog-item__id {
+  color: #475569;
+}
+
+.customer-dialog__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.customer-dialog__footer-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .customer-dialog__footer {
+    flex-direction: column;
+    align-items: stretch;
   }
+
+  .customer-dialog__footer-actions {
+    justify-content: flex-end;
+  }
+}
