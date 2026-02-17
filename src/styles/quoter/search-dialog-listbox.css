@@ -26,24 +26,41 @@
 }
 
 .customer-dialog__listbox .p-listbox-list {
-  padding: 0.35rem;
+  padding: 0.2rem;
+}
+
+.customer-dialog__listbox .p-listbox-item {
+  padding: 0.12rem !important;
+  margin: 0 !important;
 }
 
 .customer-dialog-item {
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  padding: 0.35rem 0.55rem;
   background: #ffffff;
+}
+
+.customer-dialog-item__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  line-height: 1.2;
 }
 
 .customer-dialog-item__name {
   display: block;
   font-weight: 600;
   color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .customer-dialog-item__id {
   color: #475569;
+  flex-shrink: 0;
 }
 
 .customer-dialog__footer {
