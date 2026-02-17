@@ -1,145 +1,186 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import axios from "axios";
 import { InputText } from "primereact/inputtext";
+import { Password } from "primereact/password";
 import { Button } from "primereact/button";
 import { Card } from "primereact/card";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import { Message } from "primereact/message";
+import { Divider } from "primereact/divider";
 import config from "./Config";
 import "./Login.css";
 
+const INITIAL_FORM = {
+  nombre: "",
+  clave: "",
+};
+
+const getFieldError = (name, value) => {
+  const cleaned = value.trim();
+
+  if (name === "nombre" && !cleaned) {
+    return "El usuario es obligatorio.";
+  }
+
+  if (name === "clave" && !cleaned) {
+    return "La contraseña es obligatoria.";
+  }
+
+  return "";
+};
+
+const getFriendlyLoginError = (error, fallbackMessage) => {
+  if (fallbackMessage) return fallbackMessage;
+
+  const rawMessage = String(error?.message || "");
+
+  if (
+    rawMessage.includes("Network Error") ||
+    rawMessage.includes("Failed to fetch")
+  ) {
+    return "No se pudo conectar al servidor. Verifica tu conexión e inténtalo nuevamente.";
+  }
+
+  return "No fue posible iniciar sesión. Valida tus credenciales e inténtalo de nuevo.";
+};
+
 const Login = ({ onLoginSuccess }) => {
+  const apiUrl = useMemo(
+    () => `${config.apiUrl}/Datasnap/rest/TServerMethods1/Login`,
+    []
+  );
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [formValues, setFormValues] = useState({
-    nombre: "",
-    clave: "",
-  });
-  const [formErrors, setFormErrors] = useState({
-    nombre: "",
-    clave: "",
-  });
-  const apiUrl = `${config.apiUrl}/Datasnap/rest/TServerMethods1/Login`;
+  const [formValues, setFormValues] = useState(INITIAL_FORM);
+  const [touched, setTouched] = useState({ nombre: false, clave: false });
 
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setFormValues((prevValues) => ({
-      ...prevValues,
-      [name]: value,
-    }));
-    validateField(name, value);
+  const fieldErrors = useMemo(
+    () => ({
+      nombre: getFieldError("nombre", formValues.nombre),
+      clave: getFieldError("clave", formValues.clave),
+    }),
+    [formValues]
+  );
+
+  const isFormInvalid = Boolean(fieldErrors.nombre || fieldErrors.clave);
+
+  const updateField = (name, value) => {
+    setFormValues((prev) => ({ ...prev, [name]: value }));
+    setErrorMessage("");
   };
 
-  const validateField = (name, value) => {
-    let error = "";
-    switch (name) {
-      case "nombre":
-        if (!value) {
-          error = "El nombre de usuario es obligatorio";
-        }
-        break;
-      case "clave":
-        if (!value) {
-          error = "La contraseña es obligatoria";
-        }
-        break;
-      default:
-        break;
-    }
-    setFormErrors((prevErrors) => ({
-      ...prevErrors,
-      [name]: error,
-    }));
+  const handleBlur = (name) => {
+    setTouched((prev) => ({ ...prev, [name]: true }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    setTouched({ nombre: true, clave: true });
+    if (isFormInvalid) return;
+
     try {
       setLoading(true);
-      const response = await axios.post(apiUrl, formValues);
-      if (response.data.status === 200) {
-        const user = {
+      const payload = {
+        nombre: formValues.nombre.trim(),
+        clave: formValues.clave,
+      };
+
+      const response = await axios.post(apiUrl, payload);
+
+      if (response?.data?.status === 200) {
+        onLoginSuccess({
           name: response.data.nombre,
           codigo: response.data.codigo,
           modvencli: response.data.modvencli,
-        };
-        onLoginSuccess(user);
-      } else {
-        setErrorMessage(response.data.error);
+        });
+        return;
       }
+
+      setErrorMessage(
+        getFriendlyLoginError(
+          null,
+          response?.data?.error || response?.data?.message
+        )
+      );
     } catch (error) {
-      const errorMsg =
-        error.message === "Network Error"
-          ? "Error de red: No se puede conectar al servidor."
-          : `Error: ${error.message}`;
-      setErrorMessage(errorMsg);
+      setErrorMessage(getFriendlyLoginError(error));
     } finally {
       setLoading(false);
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   return (
-    <div className="login-container">
-      <Card title="Iniciar Sesión" className="login-card">
-        <form onSubmit={handleSubmit}>
-          <div className="input-group">
+    <div className="login-page">
+      <Card className="login-card">
+        <div className="login-card__brand">
+          <h1>Control de Entregas</h1>
+          <p>Accede con tu usuario para continuar.</p>
+        </div>
+
+        <Divider />
+
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="login-field">
             <label htmlFor="nombre">Usuario</label>
-            <InputText
-              id="nombre"
-              name="nombre"
-              type="text"
-              placeholder="Ingresa tu usuario"
-              value={formValues.nombre}
-              onChange={handleInputChange}
-              className={`input-field ${
-                formErrors.nombre ? "input-error" : ""
-              }`}
-            />
-            {formErrors.nombre && (
-              <div className="error-message">{formErrors.nombre}</div>
+            <span className="p-input-icon-left login-input-icon-left">
+              <i className="pi pi-user" />
+              <InputText
+                id="nombre"
+                name="nombre"
+                autoComplete="username"
+                placeholder="Ingresa tu usuario"
+                value={formValues.nombre}
+                onChange={(e) => updateField("nombre", e.target.value)}
+                onBlur={() => handleBlur("nombre")}
+                className={touched.nombre && fieldErrors.nombre ? "p-invalid" : ""}
+              />
+            </span>
+            {touched.nombre && fieldErrors.nombre && (
+              <small className="login-field__error">{fieldErrors.nombre}</small>
             )}
           </div>
 
-          <div className="input-group password-group">
+          <div className="login-field">
             <label htmlFor="clave">Contraseña</label>
-            <div className="password-input-container">
-              <InputText
-                id="clave"
+            <div className="login-password-wrapper">
+              <i className="pi pi-lock login-password-wrapper__icon" />
+              <Password
+                inputId="clave"
                 name="clave"
-                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
                 placeholder="Ingresa tu contraseña"
                 value={formValues.clave}
-                onChange={handleInputChange}
-                className={`input-field ${
-                  formErrors.clave ? "input-error" : ""
-                }`}
+                onChange={(e) => updateField("clave", e.target.value)}
+                onBlur={() => handleBlur("clave")}
+                toggleMask
+                feedback={false}
+                className="login-password"
+                inputClassName={
+                  touched.clave && fieldErrors.clave
+                    ? "p-invalid login-password__input"
+                    : "login-password__input"
+                }
               />
-              <div
-                className="password-toggle-icon"
-                onClick={togglePasswordVisibility}
-              >
-                <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
-              </div>
             </div>
-            {formErrors.clave && (
-              <div className="error-message">{formErrors.clave}</div>
+
+            {touched.clave && fieldErrors.clave && (
+              <small className="login-field__error">{fieldErrors.clave}</small>
             )}
           </div>
+
+          {errorMessage && (
+            <Message severity="error" text={errorMessage} className="login-message" />
+          )}
 
           <Button
             type="submit"
-            label="Iniciar Sesión"
-            icon="pi pi-user"
-            className="login-button"
-            severity="info"
+            label="Iniciar sesión"
+            icon="pi pi-sign-in"
+            className="login-submit"
             loading={loading}
+            disabled={loading || isFormInvalid}
           />
-          {errorMessage && <p className="error-message">{errorMessage}</p>}
         </form>
       </Card>
     </div>
