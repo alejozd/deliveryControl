@@ -1,0 +1,33 @@
+.client-creation-dialog .p-dialog-content {
+  padding-top: 0.6rem;
+}
+
+.client-creation-content {
+  padding: 0.65rem 0.4rem 0.2rem;
+}
+
+.client-creation-steps {
+  display: flex;
+  margin-bottom: 0.65rem;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.client-creation-footer {
+  margin-top: 0.8rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+@media (max-width: 768px) {
+  .client-creation-steps {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .client-creation-footer {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}

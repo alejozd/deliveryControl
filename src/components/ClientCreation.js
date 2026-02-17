@@ -14,6 +14,7 @@ import ClientCreationAddiData from "./ClientCreationAddiData";
 import ClientCreationComercialData from "./ClientCreationComercialData";
 import ClientCreationFELData from "./ClientCreationFELData";
 import "../styles/base/index.css";
+import "../styles/modules/client-creation.css";
 
 const ClientCreation = ({
   visible,
@@ -675,7 +676,6 @@ const ClientCreation = ({
   const handleAcceptPolicy = () => {
     setAceptapotradatos(true);
     setDialogVisible(false);
-    setDialogVisible(false);
   };
 
   useEffect(() => {
@@ -783,7 +783,7 @@ const ClientCreation = ({
   // };
 
   const footerContent = (
-    <div style={{ marginTop: "1em" }}>
+    <div className="client-creation-footer">
       <Button
         label="Guardar"
         severity="success"
@@ -871,21 +871,13 @@ const ClientCreation = ({
         onHide={onHide}
         header={selectedCustomer ? "Editar Cliente" : "Crear Nuevo Cliente"}
         modal
-        className="p-fluid"
         footer={footerContent}
         maximizable
         closeOnEscape={false}
+        className="p-fluid client-creation-dialog"
       >
-        <div
-          className="card"
-          style={{
-            paddingtop: "10px",
-            paddingLeft: "5px",
-            paddingRight: "5px",
-            paddingBottom: "1px",
-          }}
-        >
-          <div className="flex mb-2 gap-2 justify-content-end">
+        <div className="card client-creation-content">
+          <div className="client-creation-steps">
             <Button
               onClick={() => setActiveIndex(0)}
               className={`w-2rem h-2rem p-0 ${getButtonClass(
@@ -910,7 +902,7 @@ const ClientCreation = ({
               onClick={() => setActiveIndex(2)}
               className={`w-2rem h-2rem p-0 ${getButtonClass(
                 isCommercialTabValid,
-                activeIndex === 1
+                activeIndex === 2
               )}`}
               rounded
               outlined={activeIndex !== 2}
@@ -920,7 +912,7 @@ const ClientCreation = ({
               onClick={() => setActiveIndex(3)}
               className={`w-2rem h-2rem p-0 ${getButtonClass(
                 isFELTabValid,
-                activeIndex === 1
+                activeIndex === 3
               )}`}
               rounded
               outlined={activeIndex !== 3}
