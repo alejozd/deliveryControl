@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import axios from "axios";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { Toast } from "primereact/toast";
 import { Button } from "primereact/button";
 import { Toolbar } from "primereact/toolbar";
 import { InputNumber } from "primereact/inputnumber";
@@ -19,7 +18,7 @@ import {
   hasDeliverableItems,
   toNumber,
 } from "./deliveryUtils";
-import "./delivery.css";
+import "../../styles/modules/delivery.css";
 
 const buildFormattedDetalle = (detalle = [], quantities = {}) =>
   detalle
@@ -78,65 +77,71 @@ const EntregasList = ({
   const [errorMessage, setErrorMessage] = useState("");
   const [dialogVisibleForClient, setDialogVisibleForClient] = useState(null);
 
-  const closeErrorDialog = () => setErrorMessage("");
+  const closeErrorDialog = useCallback(() => setErrorMessage(""), []);
 
-  const getEntradaNumero = async () => {
+  const getEntradaNumero = useCallback(async () => {
     const response = await axios.get(getNumEntregaUrl);
     if (response?.data?.status !== 200) {
       throw new Error("No fue posible obtener el número de entrega.");
     }
     return response.data.result?.[0]?.numero;
-  };
+  }, [getNumEntregaUrl]);
 
-  const markAllDocumentAsDeliverable = (factura) => {
+  const markAllDocumentAsDeliverable = useCallback((factura) => {
     const updates = {};
     factura.detalle.forEach((item) => {
       updates[item.id] = item.saldo;
     });
     setCantidadesEntregar((prev) => ({ ...prev, ...updates }));
-  };
+  }, []);
 
-  const handleTodoButtonClick = (rowData) => {
+  const handleTodoButtonClick = useCallback((rowData) => {
     setCantidadesEntregar((prev) => ({
       ...prev,
       [rowData.id]: rowData.saldo,
     }));
-  };
+  }, []);
 
-  const handleCantidadEntregarInput = (e, rowData) => {
-    const incoming = toNumber(e.value);
-    const saldo = toNumber(rowData.saldo);
+  const handleCantidadEntregarInput = useCallback(
+    (e, rowData) => {
+      const incoming = toNumber(e.value);
+      const saldo = toNumber(rowData.saldo);
 
-    if (incoming > saldo) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Cantidad excede saldo",
-        detail: `El valor supera el saldo disponible (${saldo}).`,
-        life: 2500,
-      });
-      setCantidadesEntregar((prev) => ({ ...prev, [rowData.id]: saldo }));
-      return;
-    }
+      if (incoming > saldo) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Cantidad excede saldo",
+          detail: `El valor supera el saldo disponible (${saldo}).`,
+          life: 2500,
+        });
+        setCantidadesEntregar((prev) => ({ ...prev, [rowData.id]: saldo }));
+        return;
+      }
 
-    setCantidadesEntregar((prev) => ({
-      ...prev,
-      [rowData.id]: incoming,
-    }));
-  };
+      setCantidadesEntregar((prev) => ({
+        ...prev,
+        [rowData.id]: incoming,
+      }));
+    },
+    [toast]
+  );
 
-  const openConfirmationModal = async (factura) => {
-    try {
-      setSaving(true);
-      const numero = await getEntradaNumero();
-      setNumEntrega(numero);
-      setSelectedFactura(factura);
-      setShowConfirmationModal(true);
-    } catch (error) {
-      setErrorMessage(getFriendlyErrorMessage(error));
-    } finally {
-      setSaving(false);
-    }
-  };
+  const openConfirmationModal = useCallback(
+    async (factura) => {
+      try {
+        setSaving(true);
+        const numero = await getEntradaNumero();
+        setNumEntrega(numero);
+        setSelectedFactura(factura);
+        setShowConfirmationModal(true);
+      } catch (error) {
+        setErrorMessage(getFriendlyErrorMessage(error));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [getEntradaNumero]
+  );
 
   const handleConfirmEntrega = async (numeroEntrega, notas) => {
     if (!selectedFactura) return null;
@@ -222,6 +227,13 @@ const EntregasList = ({
     );
   };
 
+  const header = (
+    <div className="delivery-expand-controls">
+      <Button icon="pi pi-plus" label="Expandir" onClick={() => setExpandedRows(products)} text />
+      <Button icon="pi pi-minus" label="Contraer" onClick={() => setExpandedRows([])} text />
+    </div>
+  );
+
   const rowExpansionTemplate = (factura) => {
     const acceptIconClassName = classNames({
       "text-green-500 pi pi-check-circle": factura.aceptapotradatos === 1,
@@ -272,24 +284,9 @@ const EntregasList = ({
         <DataTable value={factura.detalle} dataKey="id" size="small">
           <Column field="nombreproductos" header="Producto" sortable />
           <Column field="referencia" header="Referencia" sortable />
-          <Column
-            field="cantfacturada"
-            header="Facturada"
-            sortable
-            body={(row) => formatQuantity(row.cantfacturada)}
-          />
-          <Column
-            field="cant_entregada"
-            header="Entregada"
-            sortable
-            body={(row) => formatQuantity(row.cant_entregada)}
-          />
-          <Column
-            field="saldo"
-            header="Saldo"
-            sortable
-            body={(row) => formatQuantity(row.saldo)}
-          />
+          <Column field="cantfacturada" header="Facturada" sortable body={(row) => formatQuantity(row.cantfacturada)} />
+          <Column field="cant_entregada" header="Entregada" sortable body={(row) => formatQuantity(row.cant_entregada)} />
+          <Column field="saldo" header="Saldo" sortable body={(row) => formatQuantity(row.saldo)} />
           <Column header="Todo" style={{ width: "6rem" }} body={renderTodoButton} />
           <Column header="Cant. entregar" body={renderCantidadEntregar} />
         </DataTable>
@@ -309,19 +306,12 @@ const EntregasList = ({
 
   return (
     <div className="delivery-list-wrapper">
-      <Toast ref={toast} />
-
       <DataTable
         value={products}
         expandedRows={expandedRows}
         onRowToggle={(e) => setExpandedRows(e.data)}
         rowExpansionTemplate={rowExpansionTemplate}
-        header={
-          <div className="delivery-expand-controls">
-            <Button icon="pi pi-plus" label="Expandir" onClick={() => setExpandedRows(products)} text />
-            <Button icon="pi pi-minus" label="Contraer" onClick={() => setExpandedRows([])} text />
-          </div>
-        }
+        header={header}
         emptyMessage="No se encontraron facturas para los filtros seleccionados."
         stripedRows
         loading={loading}

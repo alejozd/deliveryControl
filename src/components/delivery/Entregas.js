@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import { Panel } from "primereact/panel";
@@ -39,6 +39,7 @@ function Entregas() {
 
   const handleSearch = useCallback(async () => {
     setLoading(true);
+    setErrorMessage("");
 
     try {
       const response = await axios.post(
@@ -73,6 +74,11 @@ function Entregas() {
     }
   }, [apiUrl, searchTerm, selectedDate]);
 
+  useEffect(() => {
+    handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="delivery-page">
       <Panel header="Control de Entregas" toggleable>
@@ -92,7 +98,6 @@ function Entregas() {
 
       <EntregasList
         products={products}
-        setProducts={setProducts}
         toast={toast}
         handleSearch={handleSearch}
         onUpdateAceptapotradatos={handleUpdateAceptapotradatos}

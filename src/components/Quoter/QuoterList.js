@@ -19,7 +19,7 @@ import Quoter from "./Quoter";
 import WhatsAppDialog from "./WhatsAppDialog";
 import EmailDialog from "./EmailDialog";
 import ComprobantePDF from "./ComprobantePDF";
-import "./QuoterList.css";
+import "../../styles/modules/quoter-list.css";
 
 const formatDateForApi = (date) =>
   date?.toLocaleDateString("es-CO", {

@@ -4,7 +4,7 @@ import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { Toolbar } from "primereact/toolbar";
 import setupLocale from "../../config/localeConfig";
-import "./delivery.css";
+import "../../styles/modules/delivery.css";
 
 function SearchBar({
   selectedDate,

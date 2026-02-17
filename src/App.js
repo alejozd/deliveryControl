@@ -117,6 +117,7 @@ function App() {
           <div className="App">
             <SideBar
               sidebarVisible={sidebarVisible}
+              setSidebarVisible={setSidebarVisible}
               user={user}
               onLogout={() => handleLogout()}
             />
