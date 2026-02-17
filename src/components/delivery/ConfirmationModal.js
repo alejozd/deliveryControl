@@ -83,6 +83,13 @@ const ConfirmationModal = ({
         <Tag value={`Cantidad total: ${formatNumber(totals.totalCantidad)}`} severity="warning" rounded />
       </div>
 
+      <div className="delivery-confirmation-hint">
+        <i className="pi pi-info-circle" />
+        <span>
+          Al confirmar, se guardará la entrega y se intentará abrir automáticamente la impresión.
+        </span>
+      </div>
+
       <DataTable
         value={factura.detalle}
         emptyMessage="No hay productos para entregar"

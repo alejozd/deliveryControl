@@ -146,7 +146,7 @@ const EntregasList = ({
   );
 
   const handleConfirmEntrega = async (numeroEntrega, notas) => {
-    if (!selectedFactura) return null;
+    if (!selectedFactura) return { success: false };
 
     const now = new Date();
     const payload = buildEntregaPayload({
@@ -164,7 +164,7 @@ const EntregasList = ({
         detail: "Debes ingresar al menos una cantidad a entregar.",
         life: 2500,
       });
-      return null;
+      return { success: false };
     }
 
     try {
@@ -173,13 +173,23 @@ const EntregasList = ({
         headers: { "Content-Type": "application/json" },
       });
 
-      PrintDocument({
-        factura: {
-          ...payload,
-          fechaEntrega: formatDateForApi(now),
-        },
-        isConfirmationModal: true,
-      });
+      try {
+        await PrintDocument({
+          factura: {
+            ...payload,
+            fechaEntrega: formatDateForApi(now),
+          },
+          isConfirmationModal: true,
+        });
+      } catch (printError) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Entrega guardada",
+          detail:
+            "La entrega se guardó, pero no se pudo abrir la impresión automática.",
+          life: 3200,
+        });
+      }
 
       toast.current?.show({
         severity: "success",
@@ -190,10 +200,10 @@ const EntregasList = ({
 
       setShowConfirmationModal(false);
       await handleSearch();
-      return numeroEntrega;
+      return { success: true, numeroEntrega };
     } catch (error) {
       setErrorMessage(getFriendlyErrorMessage(error));
-      return null;
+      return { success: false };
     } finally {
       setSaving(false);
     }
