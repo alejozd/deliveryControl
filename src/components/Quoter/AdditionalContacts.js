@@ -313,13 +313,14 @@ const AdditionalContacts = ({
 
   const leftToolbarTemplate = () => {
     return (
-      <div style={{ marginTop: "-22px" }}>
+      <div className="quoter-contacts-toolbar__group">
         <Button
           // label="buscar"
           icon="pi pi-search"
           severity="warning"
-          size="large"
+          size="small"
           text
+          className="quoter-contacts-toolbar__btn"
           // rounded
           tooltip="Buscar contacto"
           onClick={openSearch}
@@ -330,13 +331,13 @@ const AdditionalContacts = ({
 
   const rightToolbarTemplate = () => {
     return (
-      <div style={{ marginTop: "-22px" }}>
+      <div className="quoter-contacts-toolbar__group">
         <Button
           // label="Editar"
           icon="pi pi-pencil"
           severity="help"
-          className="mr-2"
-          size="large"
+          className="quoter-contacts-toolbar__btn"
+          size="small"
           text
           tooltip="Editar contacto"
           onClick={() => editContact(selectedContactsrows)}
@@ -345,8 +346,9 @@ const AdditionalContacts = ({
         <Button
           icon="pi pi-minus-circle"
           severity="danger"
-          size="large"
+          size="small"
           text
+          className="quoter-contacts-toolbar__btn"
           tooltip="Desligar contacto"
           onClick={() => deleteContact(selectedContactsrows)}
           disabled={contacts.length === 0}
@@ -391,7 +393,7 @@ const AdditionalContacts = ({
       <Toast ref={toast} />
       <div>
         <Toolbar
-          style={{ height: "40px" }}
+          className="quoter-contacts-toolbar"
           start={leftToolbarTemplate}
           end={rightToolbarTemplate}
         />

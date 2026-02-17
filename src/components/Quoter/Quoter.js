@@ -1118,8 +1118,11 @@ const Quoter = ({ onSave, quotationData, user }) => {
 
 
   const shouldShowFieldError = useCallback(
-    (field) => showValidationErrors && Boolean(emptyFields[field]),
-    [emptyFields, showValidationErrors]
+    (field) => {
+      const hasLoadedCustomer = Boolean(selectedCustomer?.idcliente);
+      return (showValidationErrors || hasLoadedCustomer) && Boolean(emptyFields[field]);
+    },
+    [emptyFields, selectedCustomer?.idcliente, showValidationErrors]
   );
 
   const missingRequiredFields = useMemo(() => {

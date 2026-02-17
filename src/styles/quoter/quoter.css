@@ -149,3 +149,23 @@
     min-width: 0;
   }
 }
+
+.quoter-contacts-toolbar {
+  border: 0;
+  padding: 0 0 0.35rem;
+}
+
+.quoter-contacts-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.quoter-contacts-toolbar__btn {
+  width: 2rem;
+  height: 2rem;
+}
+
+.quoter-contacts-toolbar__btn .p-button-icon {
+  font-size: 0.92rem;
+}
