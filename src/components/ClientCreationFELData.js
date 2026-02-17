@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 import { Dropdown } from "primereact/dropdown";
+import "../styles/modules/client-creation-sections.css";
 
 const ClientCreationFELData = ({
   regimenFiscalList,
@@ -9,45 +10,57 @@ const ClientCreationFELData = ({
   selectedResponsabilidadTributaria,
   setSelectedResponsabilidadTributaria,
 }) => {
-  const [error, setError] = useState(null);
-
-  const handleDropdownChange = (setter) => (e) => {
-    if (e.value) {
-      setter(e.value);
-      setError(null); // Clear error on valid selection
-    } else {
-      setError("Debe seleccionar una opción válida.");
-    }
-  };
+  const fields = useMemo(
+    () => [
+      {
+        id: "idregfiscal",
+        label: "Régimen Fiscal",
+        value: selectedRegimenFiscal,
+        onChange: setSelectedRegimenFiscal,
+        options: regimenFiscalList,
+        placeholder: "Seleccionar Régimen Fiscal",
+      },
+      {
+        id: "idresptri",
+        label: "Responsabilidad Tributaria",
+        value: selectedResponsabilidadTributaria,
+        onChange: setSelectedResponsabilidadTributaria,
+        options: responsabilidadTributariaList,
+        placeholder: "Seleccionar Responsabilidad Tributaria",
+      },
+    ],
+    [
+      regimenFiscalList,
+      responsabilidadTributariaList,
+      selectedRegimenFiscal,
+      selectedResponsabilidadTributaria,
+      setSelectedRegimenFiscal,
+      setSelectedResponsabilidadTributaria,
+    ]
+  );
 
   return (
-    <div className="flex flex-column">
-      {error && <div className="error-message">{error}</div>}
-      <div className="labelinput">
-        <label htmlFor="idregfiscal">Régimen Fiscal</label>
-        <Dropdown
-          className="inputtext"
-          id="idregfiscal"
-          value={selectedRegimenFiscal}
-          onChange={handleDropdownChange(setSelectedRegimenFiscal)}
-          options={regimenFiscalList}
-          optionLabel="label"
-          placeholder="Seleccionar Régimen Fiscal"
-          aria-label="Seleccionar Régimen Fiscal"
-        />
-      </div>
-      <div className="labelinput">
-        <label htmlFor="idresptri">Responsabilidad Tributaria</label>
-        <Dropdown
-          className="inputtext"
-          id="idresptri"
-          value={selectedResponsabilidadTributaria}
-          onChange={handleDropdownChange(setSelectedResponsabilidadTributaria)}
-          options={responsabilidadTributariaList}
-          optionLabel="label"
-          placeholder="Seleccionar Responsabilidad Tributaria"
-          aria-label="Seleccionar Responsabilidad Tributaria"
-        />
+    <div className="client-creation-section">
+      <small className="client-creation-section__hint">
+        Define los datos fiscales requeridos para facturación electrónica.
+      </small>
+
+      <div className="client-creation-section__grid client-creation-section__grid--compact">
+        {fields.map((field) => (
+          <div className="labelinput" key={field.id}>
+            <label htmlFor={field.id}>{field.label}</label>
+            <Dropdown
+              className="inputtext"
+              id={field.id}
+              value={field.value}
+              onChange={(e) => field.onChange(e.value)}
+              options={field.options}
+              optionLabel="label"
+              placeholder={field.placeholder}
+              aria-label={field.label}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );
