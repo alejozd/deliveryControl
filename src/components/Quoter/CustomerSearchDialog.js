@@ -134,7 +134,6 @@ const CustomerSearchDialog = ({
           itemTemplate={itemTemplate}
           emptyMessage="No se encontraron clientes con ese criterio"
           className="customer-dialog__listbox"
-          listStyle={{ maxHeight: "22rem" }}
         />
       </div>
 

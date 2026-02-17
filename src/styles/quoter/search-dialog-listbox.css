@@ -2,9 +2,17 @@
   width: min(640px, 96vw);
 }
 
+.customer-search-dialog .p-dialog-content {
+  height: min(68vh, 760px);
+  display: flex;
+  flex-direction: column;
+}
+
 .customer-dialog__content {
   display: grid;
-  gap: 0.7rem;
+  gap: 0.55rem;
+  height: 100%;
+  min-height: 0;
 }
 
 .customer-dialog__search {
@@ -25,6 +33,16 @@
   font-size: 0.85rem;
 }
 
+.customer-dialog__listbox {
+  min-height: 0;
+  height: 100%;
+}
+
+.customer-dialog__listbox .p-listbox-list-wrapper {
+  max-height: 100% !important;
+  overflow-x: hidden;
+}
+
 .customer-dialog__listbox .p-listbox-list {
   padding: 0.2rem;
 }
@@ -39,6 +57,7 @@
   border-radius: 8px;
   padding: 0.35rem 0.55rem;
   background: #ffffff;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .customer-dialog-item__main {
@@ -47,6 +66,7 @@
   justify-content: space-between;
   gap: 0.5rem;
   line-height: 1.2;
+  min-width: 0;
 }
 
 .customer-dialog-item__name {
@@ -56,11 +76,22 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .customer-dialog-item__id {
   color: #475569;
   flex-shrink: 0;
+}
+
+.customer-dialog__listbox .p-listbox-item.p-highlight .customer-dialog-item {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.customer-dialog__listbox .p-listbox-item.p-highlight .customer-dialog-item__name,
+.customer-dialog__listbox .p-listbox-item.p-highlight .customer-dialog-item__id {
+  color: #1d4ed8;
 }
 
 .customer-dialog__footer {
@@ -76,6 +107,10 @@
 }
 
 @media (max-width: 640px) {
+  .customer-search-dialog .p-dialog-content {
+    height: min(72vh, 760px);
+  }
+
   .customer-dialog__footer {
     flex-direction: column;
     align-items: stretch;
