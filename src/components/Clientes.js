@@ -80,12 +80,17 @@ const Clientes = () => {
         setClientes(records);
         setTotalRecords(response.data.totalRecords || 0);
 
-        if (selectedCliente) {
+        setSelectedCliente((prevSelected) => {
+          if (!prevSelected) {
+            return prevSelected;
+          }
+
           const updatedCliente = records.find(
-            (cliente) => cliente.idcliente === selectedCliente.idcliente
+            (cliente) => cliente.idcliente === prevSelected.idcliente
           );
-          setSelectedCliente(updatedCliente || null);
-        }
+
+          return updatedCliente || null;
+        });
         return;
       }
 
@@ -99,7 +104,7 @@ const Clientes = () => {
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, appliedSearchTerm, lazyState, selectedCliente]);
+  }, [apiUrl, appliedSearchTerm, lazyState]);
 
   useEffect(() => {
     loadLazyData();
