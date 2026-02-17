@@ -51,3 +51,20 @@
     text-align: center;
   }
   
+.quoter-validation-banner {
+  margin: 0.5rem 0 0.9rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #fcd34d;
+  background: #fff7ed;
+  color: #92400e;
+  font-size: 0.9rem;
+}
+
+.quoter-field-warning,
+.quoter-field-warning.p-inputtext,
+.quoter-field-warning .p-inputtext,
+.quoter-field-warning.p-dropdown {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 0.1rem rgba(245, 158, 11, 0.15) !important;
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
@@ -91,6 +91,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
   const MIN_SEARCH_LENGTH = 4; //Minimo de caracteres para realizar la busqueda
   const [notas, setNotas] = useState(selectedCustomer?.notas || "");
   const [emptyFields, setEmptyFields] = useState({});
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
 
   const handleEditClient = () => {
     // console.log("handleEditClient-selectedCustomer", selectedCustomer);
@@ -863,33 +864,6 @@ const Quoter = ({ onSave, quotationData, user }) => {
     setSelectedProducts(_products);
   };
 
-  // Define una función para verificar si se pueden guardar los datos
-  const canSaveQuotation = () => {
-    // Verifica si se ha seleccionado un cliente y al menos un artículo
-    // Además, verifica que los campos necesarios del cliente estén completos
-    const {
-      nombrecliente,
-      identidad,
-      telefonoFijo,
-      telmovil,
-      direccion,
-      email,
-      identidadve,
-      idsegmento,
-    } = selectedCustomer;
-    return (
-      nombrecliente !== "" &&
-      identidad !== "" &&
-      (telefonoFijo !== "" || telmovil !== "") &&
-      direccion !== "" &&
-      email !== "" &&
-      identidadve !== "" &&
-      idsegmento !== null &&
-      selectedBodega !== null &&
-      selectedProducts.length > 0
-    );
-  };
-
   // const handleDiscountValueChange = (e, rowData) => {
   //   const vrdescuento = e.value || 0;
   //   const pordescuento =
@@ -1134,6 +1108,53 @@ const Quoter = ({ onSave, quotationData, user }) => {
     setEmptyFields(newEmptyFields);
   }, [selectedCustomer]);
 
+  useEffect(() => {
+    if (selectedCustomer?.idcliente || selectedProducts.length) {
+      setShowValidationErrors(false);
+    }
+  }, [selectedCustomer?.idcliente, selectedProducts.length]);
+
+
+  const shouldShowFieldError = useCallback(
+    (field) => showValidationErrors && Boolean(emptyFields[field]),
+    [emptyFields, showValidationErrors]
+  );
+
+  const missingRequiredFields = useMemo(() => {
+    const missing = [];
+    if (emptyFields.nombrecliente) missing.push("Nombre del cliente");
+    if (emptyFields.identidad) missing.push("Identificación");
+    if (emptyFields.codigoclaseidentidad) missing.push("Tipo de identidad");
+    if (emptyFields.telefonoFijo && emptyFields.telmovil) missing.push("Teléfono fijo o móvil");
+    if (emptyFields.direccion) missing.push("Dirección");
+    if (emptyFields.email) missing.push("Correo electrónico");
+    if (emptyFields.identidadve) missing.push("Vendedor");
+    if (emptyFields.idsegmento) missing.push("Segmento");
+    if (!selectedBodega && selectedBodega !== "-1") missing.push("Bodega");
+    if (!selectedProducts.length) missing.push("Al menos un producto");
+    return missing;
+  }, [emptyFields, selectedBodega, selectedProducts.length]);
+
+  const canSaveQuotation = useCallback(() => missingRequiredFields.length === 0, [missingRequiredFields]);
+
+  const handleOpenSaveDialog = () => {
+    setShowValidationErrors(true);
+
+    if (!canSaveQuotation()) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Campos pendientes",
+        detail: `Completa los campos requeridos: ${missingRequiredFields.slice(0, 3).join(", ")}${
+          missingRequiredFields.length > 3 ? "..." : ""
+        }`,
+        life: 3200,
+      });
+      return;
+    }
+
+    setShowDialog(true);
+  };
+
   const deleteProductDialogFooter = (
     <React.Fragment>
       <Button
@@ -1339,11 +1360,16 @@ const Quoter = ({ onSave, quotationData, user }) => {
             >
               Información del cliente
             </h3>
+            {showValidationErrors && Boolean(missingRequiredFields.length) && (
+              <div className="quoter-validation-banner">
+                Completa los campos obligatorios para guardar la cotización.
+              </div>
+            )}
             <div className="labelinput">
               <label htmlFor="nombrecliente">Nombre</label>
               <InputText
                 className={`inputtext ${
-                  emptyFields.nombrecliente ? "inputtext-empty" : ""
+                  shouldShowFieldError("nombrecliente") ? "quoter-field-warning" : ""
                 }`}
                 id="nombrecliente"
                 value={selectedCustomer.nombrecliente || ""}
@@ -1356,7 +1382,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
                 <label htmlFor="identidad">Identificación</label>
                 <InputText
                   className={`inputtext ${
-                    emptyFields.identidad ? "inputtext-empty" : ""
+                    shouldShowFieldError("identidad") ? "quoter-field-warning" : ""
                   }`}
                   id="identidad"
                   value={selectedCustomer.identidad || ""}
@@ -1368,7 +1394,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
                 <label htmlFor="codigoclaseidentidad">Tipo de Identidad</label>
                 <Dropdown
                   className={`inputtext ${
-                    emptyFields.codigoclaseidentidad ? "inputtext-empty" : ""
+                    shouldShowFieldError("codigoclaseidentidad") ? "quoter-field-warning" : ""
                   }`}
                   id="codigoclaseidentidad"
                   value={selectedCustomer.codigoclaseidentidad || ""}
@@ -1385,7 +1411,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
                 <label htmlFor="telefonoFijo">Teléfono fijo</label>
                 <InputText
                   className={`inputtext ${
-                    emptyFields.telefonoFijo ? "inputtext-empty" : ""
+                    shouldShowFieldError("telefonoFijo") ? "quoter-field-warning" : ""
                   }`}
                   id="telefonoFijo"
                   value={selectedCustomer.telefonoFijo || ""}
@@ -1397,7 +1423,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
                 <label htmlFor="telmovil">Teléfono móvil</label>
                 <InputText
                   className={`inputtext ${
-                    emptyFields.telmovil ? "inputtext-empty" : ""
+                    shouldShowFieldError("telmovil") ? "quoter-field-warning" : ""
                   }`}
                   id="telmovil"
                   value={selectedCustomer.telmovil || ""}
@@ -1410,7 +1436,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
               <label htmlFor="direccion">Dirección</label>
               <InputText
                 className={`inputtext ${
-                  emptyFields.direccion ? "inputtext-empty" : ""
+                  shouldShowFieldError("direccion") ? "quoter-field-warning" : ""
                 }`}
                 id="direccion"
                 value={selectedCustomer.direccion || ""}
@@ -1422,7 +1448,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
               <label htmlFor="email">Correo electrónico</label>
               <InputText
                 className={`inputtext ${
-                  emptyFields.email ? "inputtext-empty" : ""
+                  shouldShowFieldError("email") ? "quoter-field-warning" : ""
                 }`}
                 id="email"
                 value={selectedCustomer.email || ""}
@@ -1434,7 +1460,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
               <label htmlFor="identidadve">Vendedor</label>
               <Dropdown
                 className={`inputtext ${
-                  emptyFields.identidadve ? "inputtext-empty" : ""
+                  shouldShowFieldError("identidadve") ? "quoter-field-warning" : ""
                 }`}
                 id="identidadve"
                 value={selectedCustomer.identidadve || null}
@@ -1449,7 +1475,7 @@ const Quoter = ({ onSave, quotationData, user }) => {
               <label htmlFor="idsegmento">Segmento</label>
               <Dropdown
                 className={`inputtext ${
-                  emptyFields.idsegmento ? "inputtext-empty" : ""
+                  shouldShowFieldError("idsegmento") ? "quoter-field-warning" : ""
                 }`}
                 id="idsegmento"
                 value={selectedCustomer.idsegmento || null}
@@ -1618,9 +1644,9 @@ const Quoter = ({ onSave, quotationData, user }) => {
             <Button
               label="Guardar"
               icon="pi pi-save"
-              onClick={() => setShowDialog(true)}
+              onClick={handleOpenSaveDialog}
               severity="success"
-              disabled={!canSaveQuotation()}
+              disabled={loading}
             />
           }
           end={
