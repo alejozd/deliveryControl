@@ -56,9 +56,6 @@ const SalesDashboard = () => {
   const [selectedClient, setSelectedClient] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [topProductsCount, setTopProductsCount] = useState(5);
-  const [selectedSegment, setSelectedSegment] = useState(
-    segments.length > 0 ? segments[0] : null
-  );
 
   const filteredSales = useMemo(() => {
     if (!selectedSegments.length) {
@@ -102,18 +99,21 @@ const SalesDashboard = () => {
         value: formatCurrency(totalSales),
         icon: "pi-dollar",
         iconBgColor: "#4CAF50",
+        borderColor: "#4CAF50",
       },
       {
         title: "Clientes Activos",
         value: filteredClients.length,
         icon: "pi-users",
         iconBgColor: "#FF9800",
+        borderColor: "#FF9800",
       },
       {
         title: "Cantidad de Ventas",
         value: totalSalesCount,
         icon: "pi-shopping-cart",
         iconBgColor: "#2196F3",
+        borderColor: "#2196F3",
       },
     ],
     [filteredClients.length, totalSales, totalSalesCount]
@@ -147,8 +147,10 @@ const SalesDashboard = () => {
   }, [filteredSales]);
 
   const pieChartData = useMemo(() => {
-    const filteredSegmentSales = selectedSegment
-      ? salesDataByProduct.filter((sale) => sale.segment === selectedSegment)
+    const filteredSegmentSales = selectedSegments.length
+      ? salesDataByProduct.filter((sale) =>
+          selectedSegments.some((segment) => String(segment) === String(sale.segment))
+        )
       : salesDataByProduct;
 
     const salesByProduct = filteredSegmentSales.reduce((acc, sale) => {
@@ -169,7 +171,7 @@ const SalesDashboard = () => {
         },
       ],
     };
-  }, [selectedSegment, topProductsCount]);
+  }, [selectedSegments, topProductsCount]);
 
   const topProductsData = useMemo(() => {
     if (!selectedClient || !Array.isArray(selectedClient.purchases)) {
@@ -314,15 +316,6 @@ const SalesDashboard = () => {
             placeholder="Selecciona segmento(s)"
             display="chip"
             className="sales-dashboard__segments"
-          />
-
-          <Dropdown
-            value={selectedSegment}
-            options={segments}
-            onChange={(e) => setSelectedSegment(e.value)}
-            optionLabel="label"
-            placeholder="Segmento para productos"
-            className="sales-dashboard__dropdown"
           />
 
           <Dropdown
