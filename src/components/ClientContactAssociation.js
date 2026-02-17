@@ -6,6 +6,8 @@ import { Panel } from "primereact/panel";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
 import { FloatLabel } from "primereact/floatlabel";
+import { IconField } from "primereact/iconfield";
+import { InputIcon } from "primereact/inputicon";
 import { Toast } from "primereact/toast";
 import axios from "axios";
 import config from "../Config";
@@ -208,12 +210,15 @@ const ClientContactAssociation = () => {
         <Card className="client-contact-association__search-card">
           <div className="client-contact-association__search-grid">
             <FloatLabel>
-              <InputText
-                id="buscarclientes"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Escribe nombre, NIT o identidad"
-              />
+              <IconField iconPosition="left" className="client-contact-association__search-field">
+                <InputIcon className="pi pi-search" />
+                <InputText
+                  id="buscarclientes"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Escribe nombre, NIT o identidad"
+                />
+              </IconField>
               <label htmlFor="buscarclientes">Buscar cliente</label>
             </FloatLabel>
 

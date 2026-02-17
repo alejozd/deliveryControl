@@ -8,6 +8,8 @@ import { Panel } from "primereact/panel";
 import { Toolbar } from "primereact/toolbar";
 import { Calendar } from "primereact/calendar";
 import { FloatLabel } from "primereact/floatlabel";
+import { IconField } from "primereact/iconfield";
+import { InputIcon } from "primereact/inputicon";
 import { useLocation } from "react-router-dom";
 import { Toast } from "primereact/toast";
 import axios from "axios";
@@ -48,7 +50,8 @@ const QuoterList = () => {
   const [selectedQuotation, setSelectedQuotation] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const [dates, setDates] = useState([new Date(), new Date()]);
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [quoters, setQuoters] = useState([]);
@@ -63,8 +66,8 @@ const QuoterList = () => {
     setupLocale();
   }, []);
 
-  const fechaIni = dates?.[0] || null;
-  const fechaFin = dates?.[1] || dates?.[0] || null;
+  const fechaIni = startDate || null;
+  const fechaFin = endDate || startDate || null;
 
   const showErrorToast = (message) => {
     setErrorMessage(message);
@@ -369,25 +372,40 @@ const QuoterList = () => {
         <Toolbar
           className="quoter-toolbar"
           start={
-            <FloatLabel>
-              <Calendar
-                id="fechaCotizaciones"
-                value={dates}
-                onChange={(e) => setDates(e.value)}
-                selectionMode="range"
-                showIcon
-                readOnlyInput
-                dateFormat="dd/mm/yy"
-                hideOnRangeSelection
-                placeholder="Rango de fechas"
-              />
-              <label htmlFor="fechaCotizaciones">Rango de fechas</label>
-            </FloatLabel>
+            <div className="quoter-toolbar__dates">
+              <FloatLabel>
+                <Calendar
+                  id="fechaInicioCotizaciones"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.value)}
+                  showIcon
+                  readOnlyInput
+                  dateFormat="dd/mm/yy"
+                  placeholder="Fecha inicial"
+                  maxDate={endDate || undefined}
+                />
+                <label htmlFor="fechaInicioCotizaciones">Fecha inicial</label>
+              </FloatLabel>
+
+              <FloatLabel>
+                <Calendar
+                  id="fechaFinCotizaciones"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.value)}
+                  showIcon
+                  readOnlyInput
+                  dateFormat="dd/mm/yy"
+                  placeholder="Fecha final"
+                  minDate={startDate || undefined}
+                />
+                <label htmlFor="fechaFinCotizaciones">Fecha final</label>
+              </FloatLabel>
+            </div>
           }
           end={
             <div className="quoter-toolbar__search">
-              <span className="p-input-icon-left">
-                <i className="pi pi-search" />
+              <IconField iconPosition="left" className="quoter-toolbar__search-field">
+                <InputIcon className="pi pi-search" />
                 <InputText
                   id="searchCriteria"
                   value={searchText}
@@ -395,7 +413,7 @@ const QuoterList = () => {
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   placeholder="Cotización, cédula/nit o nombre"
                 />
-              </span>
+              </IconField>
               <Button label="Consultar" icon="pi pi-sync" loading={loading} onClick={handleSearch} />
               <Button label="Exportar" icon="pi pi-file-excel" severity="success" outlined onClick={handleExport} disabled={!filteredQuoters.length} />
             </div>

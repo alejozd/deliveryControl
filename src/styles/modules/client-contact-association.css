@@ -35,6 +35,8 @@
 }
 
 .client-contact-association__dropdown,
+.client-contact-association__search-field,
+.client-contact-association__search-field .p-inputtext,
 .client-contact-association__search-grid .p-inputtext {
   width: 100%;
 }
